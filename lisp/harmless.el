@@ -185,32 +185,17 @@ With a prefix argument, open the dashboard instead."
   (interactive)
   (harmless-ensure-configured)
   (let* ((cwd (expand-file-name (or cwd (harmless-current-cwd))))
-         (provider
-          (if (and (cdr harmless-providers)
-                   (not noninteractive)
-                   (called-interactively-p 'interactive))
-              (let ((name (completing-read
-                           "Provider: "
-                           (mapcar #'harmless-provider-name harmless-providers)
-                           nil t
-                           (and (harmless-default-provider)
-                                (harmless-provider-name
-                                 (harmless-default-provider))))))
-                (or (cl-find name harmless-providers
-                             :key #'harmless-provider-name
-                             :test #'string=)
-                    (harmless-default-provider)))
-            (harmless-default-provider)))
-         (models (harmless-provider-models provider))
-         (model (if (and models (not noninteractive) (called-interactively-p 'interactive))
-                    (completing-read "Model: " models nil t
-                                     (or harmless-default-model (car models)))
-                  (or harmless-default-model
-                      (harmless-provider-default-model provider))))
-         (parsed (harmless-parse-model-spec model))
+         (choice (and (not noninteractive)
+                      (called-interactively-p 'interactive)
+                      (harmless--read-provider-model-effort)))
+         (provider (or (nth 2 choice) (harmless-default-provider)))
+         (model (or (nth 0 choice)
+                    harmless-default-model
+                    (harmless-provider-default-model provider)))
+         (effort (nth 1 choice))
          (session (harmless-session-new :cwd cwd :provider provider
-                                        :model (car parsed)
-                                        :reasoning-effort (cdr parsed))))
+                                        :model model
+                                        :reasoning-effort effort)))
     (harmless-ui-open-session session)))
 
 ;;;###autoload
@@ -240,32 +225,81 @@ With a prefix argument, open the dashboard instead."
     (harmless-ui-open-session
      (harmless-session-resume (cdr (assoc choice items))))))
 
-(defun harmless--read-model-and-effort ()
-  "Read a model and effort from the minibuffer.  Return (MODEL EFFORT)."
-  (let* ((session (or (harmless--context-session)
-                      (user-error "No Harmless session")))
-         (provider (harmless-session-provider session))
-         (candidates (or (harmless-model-candidates provider)
-                         (list (harmless-session-model-label session))))
-         (choice (completing-read "Model: " candidates nil t
-                                  (harmless-session-model-label session)))
-         (parsed (harmless-parse-model-label choice)))
-    (list (car parsed) (cdr parsed))))
+(defun harmless--read-provider (&optional default)
+  "Prompt for a logged-in provider, defaulting to DEFAULT.
+Skip the prompt when only one provider is available."
+  (let ((ready (harmless-available-providers)))
+    (cond
+     ((null ready)
+      (user-error "No logged-in providers.  Run M-x harmless-login"))
+     ((null (cdr ready))
+      (car ready))
+     (t
+      (let* ((default-name (and default (harmless-provider-name default)))
+             (ok (and default-name
+                      (cl-find default-name ready
+                               :key #'harmless-provider-name
+                               :test #'string=)))
+             (name (completing-read "Provider: "
+                                    (mapcar #'harmless-provider-name ready)
+                                    nil t
+                                    (and ok default-name))))
+        (or (cl-find name ready
+                     :key #'harmless-provider-name
+                     :test #'string=)
+            (car ready)))))))
+
+(defun harmless--read-provider-model-effort ()
+  "Read provider, then model, then effort.  Return (MODEL EFFORT PROVIDER)."
+  (let* ((session (harmless--context-session))
+         (provider (harmless--read-provider
+                    (and session (harmless-session-provider session))))
+         (models (or (harmless-provider-models provider)
+                     (user-error "Provider %s has no models"
+                                 (harmless-provider-name provider))))
+         (same-provider (and session
+                             (equal (harmless-provider-name provider)
+                                    (harmless-session-provider-name session))))
+         (model (if (cdr models)
+                    (completing-read
+                     "Model: " models nil t
+                     (and same-provider (harmless-session-model session)))
+                  (car models)))
+         (parsed (harmless-parse-model-spec model))
+         (model (car parsed))
+         (levels (harmless-model-effort-levels model))
+         (want (or (and same-provider
+                        (harmless-session-effective-reasoning-effort session))
+                   harmless-default-reasoning-effort
+                   "high"))
+         (effort
+          (or (cdr parsed)
+              (and levels
+                   (completing-read
+                    "Reasoning effort: "
+                    levels
+                    nil t
+                    (if (member want levels) want (car levels)))))))
+    (list model effort provider)))
 
 ;;;###autoload
 (defun harmless-pick-model ()
-  "Choose model and reasoning effort for the current session."
+  "Choose provider, model, and reasoning effort for the current session."
   (interactive)
-  (apply #'harmless-set-model (harmless--read-model-and-effort)))
+  (apply #'harmless-set-model (harmless--read-provider-model-effort)))
 
 ;;;###autoload
-(defun harmless-set-model (model &optional effort)
-  "Set the current session's MODEL and optional reasoning EFFORT.
-Interactively, prompt for a combined model and effort."
-  (interactive (harmless--read-model-and-effort))
+(defun harmless-set-model (model &optional effort provider)
+  "Set the current session's MODEL, optional EFFORT, and optional PROVIDER.
+Interactively, prompt provider, then model, then effort."
+  (interactive (harmless--read-provider-model-effort))
   (let ((session (or (harmless--context-session)
                      (user-error "No Harmless session")))
         (parsed (harmless-parse-model-spec model)))
+    (when provider
+      (setf (harmless-session-provider session) provider
+            (harmless-session-provider-name session)
+            (harmless-provider-name provider)))
     (setf (harmless-session-model session) (car parsed)
           (harmless-session-updated-at session) (harmless-now-iso))
     (cond
@@ -277,21 +311,29 @@ Interactively, prompt for a combined model and effort."
       (setf (harmless-session-reasoning-effort session) nil)))
     (harmless-session-save session)
     (force-mode-line-update t)
-    (message "Harmless model: %s" (harmless-session-model-label session))))
+    (message "Harmless model: %s/%s"
+             (or (harmless-session-provider-name session) "?")
+             (harmless-session-model-label session))))
 
 ;;;###autoload
 (defun harmless-set-reasoning-effort (effort)
   "Set the current session's reasoning EFFORT (low, medium, high, xhigh).
 Empty input clears the session override so the default is used."
   (interactive
-   (list (let ((choice (completing-read
-                        "Reasoning effort: "
-                        (cons "" harmless-reasoning-efforts)
-                        nil t
-                        (or (and (harmless--context-session)
-                                 (harmless-session-effective-reasoning-effort
-                                  (harmless--context-session)))
-                            ""))))
+   (list (let* ((session (harmless--context-session))
+                (levels (cons ""
+                              (or (and session
+                                       (harmless-model-effort-levels
+                                        (harmless-session-model session)))
+                                  harmless-reasoning-efforts)))
+                (choice (completing-read
+                         "Reasoning effort: "
+                         levels
+                         nil t
+                         (or (and session
+                                  (harmless-session-effective-reasoning-effort
+                                   session))
+                             ""))))
            (and (not (string-empty-p choice)) choice))))
   (let ((session (or (harmless--context-session)
                      (user-error "No Harmless session"))))

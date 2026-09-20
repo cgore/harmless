@@ -1,6 +1,7 @@
 ;;; harmless-session-tests.el --- Tests for Harmless sessions -*- lexical-binding: t; -*-
 
 (require 'ert)
+(require 'cl-lib)
 (require 'harmless-openai)
 (require 'harmless-session)
 (require 'harmless-util)
@@ -43,7 +44,24 @@
                   (harmless-model-candidates
                    (harmless-make-xai :key "none"))))
   (should (equal '("grok-4.6 (xhigh)" )
-                 (list (harmless-model-label "grok-4.6" "xhigh")))))
+                 (list (harmless-model-label "grok-4.6" "xhigh"))))
+  (should (harmless-model-supports-effort-p "claude-sonnet-4-6"))
+  (should-not (harmless-model-supports-effort-p "claude-sonnet-4-5"))
+  (should (member "max" (harmless-model-effort-levels "claude-sonnet-4-6")))
+  (should-not (member "xhigh" (harmless-model-effort-levels "claude-sonnet-4-6"))))
+
+(ert-deftest harmless-provider-available-p-uses-key-or-oauth ()
+  (should (harmless-provider-available-p
+           (harmless-make-openai-compat "local" :host "h" :key "none")))
+  (let ((p (harmless-make-anthropic "Anthropic"
+                                    :key nil
+                                    :key-env "HARMLESS_NO_SUCH_KEY"))
+        (harmless-anthropic-use-claude-auth nil))
+    (cl-letf (((symbol-function 'harmless-anthropic-token) (lambda () nil)))
+      (should-not (harmless-provider-available-p p)))
+    (cl-letf (((symbol-function 'harmless-anthropic-token)
+               (lambda () "sk-ant-oat01-test")))
+      (should (harmless-provider-available-p p)))))
 
 (ert-deftest harmless-ui-header-model-is-clickable ()
   (let* ((harmless-directory (make-temp-file "harmless-test-" t))

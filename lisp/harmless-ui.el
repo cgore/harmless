@@ -142,7 +142,7 @@
                    'face 'link
                    'mouse-face 'highlight
                    'follow-link t
-                   'help-echo "mouse-1: change model and reasoning effort"
+                   'help-echo "mouse-1: change provider, model, and reasoning effort"
                    'keymap harmless-ui--model-header-map)
        "  "
        (format "%s" (harmless-session-status s))))))

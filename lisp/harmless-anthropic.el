@@ -82,7 +82,14 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
    :key (plist-get args :key)
    :key-env (or (plist-get args :key-env) "ANTHROPIC_API_KEY")
    :models (or (plist-get args :models)
-               '("claude-sonnet-4-5" "claude-opus-4" "claude-haiku-4-5"))
+               '("claude-sonnet-4-6"
+                 "claude-sonnet-5"
+                 "claude-opus-4-6"
+                 "claude-opus-4-7"
+                 "claude-opus-4-8"
+                 "claude-opus-5"
+                 "claude-sonnet-4-5"
+                 "claude-haiku-4-5"))
    :extra-headers (plist-get args :extra-headers)
    :stream (if (plist-member args :stream) (plist-get args :stream) t)))
 
@@ -242,15 +249,17 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
       (_
        (list :role "user" :content (or (plist-get msg :content) ""))))))
 
-(defun harmless-anthropic--payload (provider model messages tools stream)
+(defun harmless-anthropic--payload (provider model messages tools stream &optional effort)
   "Build a Messages API body."
   (ignore provider)
   (let ((body (list :model model
-                    :max_tokens 8192
+                    :max_tokens (if (member effort '("xhigh" "max")) 64000 32000)
                     :messages (harmless-anthropic--format-messages messages)
                     :stream (and stream t))))
     (when tools
       (setq body (append body (list :tools (harmless-anthropic--format-tools tools)))))
+    (when effort
+      (setq body (append body (list :output_config (list :effort effort)))))
     (harmless-json-encode body)))
 
 (defun harmless-anthropic--headers (provider)
@@ -280,7 +289,8 @@ An API key is sent as x-api-key."
          (asm (harmless-anthropic-assembler-create))
          (url (harmless-provider-url provider))
          (headers (harmless-anthropic--headers provider))
-         (body (harmless-anthropic--payload provider model messages tools stream))
+         (body (harmless-anthropic--payload provider model messages tools stream
+                                            harmless-current-reasoning-effort))
          (emit (lambda (event) (funcall callback event))))
     (harmless-log "anthropic POST %s model=%s" url model)
     (harmless-http-post-stream

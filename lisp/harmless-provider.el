@@ -81,7 +81,11 @@ Nil means the first model advertised by the default provider."
   :group 'harmless)
 
 (defconst harmless-reasoning-efforts '("low" "medium" "high" "xhigh")
-  "Known reasoning-effort values for Grok and similar models.")
+  "Known reasoning-effort values for Grok.")
+
+(defconst harmless-anthropic-reasoning-efforts
+  '("low" "medium" "high" "xhigh" "max")
+  "Known effort values for Claude (`output_config.effort`).")
 
 (defcustom harmless-default-reasoning-effort nil
   "Default reasoning effort when a session does not set its own.
@@ -105,7 +109,7 @@ low, medium, high, xhigh."
   "Return (MODEL . EFFORT) from SPEC.
 SPEC may be \"grok-4.6\" or \"grok-4.6-xhigh\"."
   (if (and spec
-           (string-match "\\`\\(.+\\)-\\(low\\|medium\\|high\\|xhigh\\)\\'" spec))
+           (string-match "\\`\\(.+\\)-\\(low\\|medium\\|high\\|xhigh\\|max\\)\\'" spec))
       (cons (match-string 1 spec) (match-string 2 spec))
     (cons spec nil)))
 
@@ -114,7 +118,7 @@ SPEC may be \"grok-4.6\" or \"grok-4.6-xhigh\"."
 Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
   (cond
    ((and label
-         (string-match "\\`\\(.+\\) (\\(low\\|medium\\|high\\|xhigh\\))\\'" label))
+         (string-match "\\`\\(.+\\) (\\(low\\|medium\\|high\\|xhigh\\|max\\))\\'" label))
     (cons (match-string 1 label) (match-string 2 label)))
    (t (harmless-parse-model-spec label))))
 
@@ -127,7 +131,24 @@ Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
 
 (defun harmless-model-supports-effort-p (model)
   "Return non-nil if MODEL accepts a reasoning-effort parameter."
-  (and model (string-match-p "\\`grok-4" model)))
+  (and model
+       (or (string-match-p "\\`grok-4" model)
+           (and (string-prefix-p "claude-" model)
+                (not (string-match-p "haiku" model))
+                (not (string-match-p "sonnet-4-5" model))
+                (not (string-match-p "opus-4\\'" model))))))
+
+(defun harmless-model-effort-levels (model)
+  "Return allowed effort strings for MODEL, or nil."
+  (cond
+   ((not (harmless-model-supports-effort-p model)) nil)
+   ((string-prefix-p "grok-" model)
+    harmless-reasoning-efforts)
+   ((string-match-p "sonnet-4-6\\|opus-4-6" model)
+    '("low" "medium" "high" "max"))
+   ((string-prefix-p "claude-" model)
+    harmless-anthropic-reasoning-efforts)
+   (t harmless-reasoning-efforts)))
 
 (defun harmless-model-candidates (provider)
   "Return completing-read candidates for PROVIDER's models.
@@ -139,6 +160,28 @@ Reasoning models are expanded to one entry per effort level."
             (push (harmless-model-label model effort) out))
         (push model out)))
     (nreverse out)))
+
+(defun harmless-provider-has-key-p (provider)
+  "Return non-nil if PROVIDER has an API key configured."
+  (let ((key (harmless-provider-resolve-key provider)))
+    (and key (not (string-empty-p key)))))
+
+(defun harmless-provider-available-p (provider)
+  "Return non-nil if PROVIDER has a usable login or API key."
+  (cond
+   ((and (fboundp 'harmless-xai-provider-p)
+         (harmless-xai-provider-p provider))
+    (or (and (fboundp 'harmless-xai-token) (harmless-xai-token))
+        (harmless-provider-has-key-p provider)))
+   ((and (fboundp 'harmless-anthropic-provider-p)
+         (harmless-anthropic-provider-p provider))
+    (or (and (fboundp 'harmless-anthropic-token) (harmless-anthropic-token))
+        (harmless-provider-has-key-p provider)))
+   (t (harmless-provider-has-key-p provider))))
+
+(defun harmless-available-providers ()
+  "Return configured providers that Harmless can currently use."
+  (cl-remove-if-not #'harmless-provider-available-p harmless-providers))
 
 (cl-defgeneric harmless-provider-complete (provider messages tools callback)
   "Ask PROVIDER to complete MESSAGES with TOOLS.

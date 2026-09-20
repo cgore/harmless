@@ -17,6 +17,12 @@
     (harmless-openai-finish asm (lambda (event) (push event events)))
     (nreverse events)))
 
+(ert-deftest harmless-anthropic-payload-includes-effort ()
+  (require 'harmless-anthropic)
+  (let ((json (harmless-anthropic--payload nil "claude-sonnet-4-6" nil nil t "high")))
+    (should (string-match-p "output_config" json))
+    (should (string-match-p "\"effort\":\"high\"" json))))
+
 (ert-deftest harmless-openai-payload-includes-effort ()
   (let ((json (harmless-openai--payload nil "grok-4.6" nil nil t "xhigh")))
     (should (string-match-p "\"reasoning_effort\":\"xhigh\"" json))
