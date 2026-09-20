@@ -53,6 +53,7 @@
 ;;
 ;;   M-x harmless              ; current project's session
 ;;   M-x harmless-new          ; new session
+;;   M-x harmless-login        ; sign in (picks a provider when several exist)
 ;;   M-x harmless-dashboard    ; all sessions
 ;;   M-x harmless-menu         ; transient
 
@@ -65,6 +66,7 @@
 (require 'harmless-auth)
 (require 'harmless-http)
 (require 'harmless-provider)
+(require 'harmless-xai)
 (require 'harmless-openai)
 (require 'harmless-anthropic)
 (require 'harmless-session)
@@ -118,6 +120,11 @@ This is `config.el' under `harmless-directory'."
                (string-empty-p (harmless-provider-key provider)))
       (setf (harmless-provider-key provider) nil))
     (harmless-register-provider provider)
+    (when (and (harmless-xai-provider-p provider)
+               (not (harmless-xai-token))
+               (not noninteractive)
+               (y-or-n-p "Sign in to xAI in a browser? "))
+      (harmless-login 'xai))
     (setq harmless-default-provider-name (harmless-provider-name provider))
     (when-let* ((models (harmless-provider-models provider)))
       (setq harmless-default-model

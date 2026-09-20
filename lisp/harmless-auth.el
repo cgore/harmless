@@ -38,12 +38,92 @@
 ;;
 ;; Resolve API keys from an explicit value, the environment, then auth-source.
 ;; Keys are never written to the log.
+;;
+;; Login methods (browser OAuth, device code, …) register here.  `harmless-login'
+;; picks among them; xAI is the only method until others land.
 
 ;;; Code:
 
 (require 'auth-source)
+(require 'cl-lib)
 (require 'subr-x)
 (require 'harmless-util)
+
+(defvar harmless-login-methods nil
+  "Registered login methods as an alist of (ID . SPEC).
+ID is a symbol such as `xai'.  SPEC is a plist:
+
+  :name         Display name (\"xAI\")
+  :login        Function of one argument, the prefix arg
+  :logout       Function of no arguments
+  :logged-in-p  Optional predicate, no arguments")
+
+(defun harmless-login--id (id)
+  "Normalize ID to a symbol."
+  (cond
+   ((symbolp id) id)
+   ((stringp id) (intern (downcase id)))
+   (t (error "Invalid login method id: %S" id))))
+
+(defun harmless-register-login-method (id &rest spec)
+  "Register a login method ID with SPEC plist.  See `harmless-login-methods'."
+  (setq id (harmless-login--id id))
+  (unless (functionp (plist-get spec :login))
+    (error "Login method %s needs a :login function" id))
+  (unless (plist-get spec :name)
+    (setq spec (plist-put spec :name (symbol-name id))))
+  (setq harmless-login-methods
+        (cons (cons id spec)
+              (assq-delete-all id (copy-sequence harmless-login-methods))))
+  id)
+
+(defun harmless-login-method (id)
+  "Return the spec plist for login method ID, or nil."
+  (cdr (assq (harmless-login--id id) harmless-login-methods)))
+
+(defun harmless-login--read-method (prompt)
+  "Return a login-method id, prompting with PROMPT if more than one exists."
+  (cond
+   ((null harmless-login-methods)
+    (user-error "No login methods registered"))
+   ((null (cdr harmless-login-methods))
+    (caar harmless-login-methods))
+   (t
+    (let* ((names (mapcar (lambda (m) (plist-get (cdr m) :name))
+                          harmless-login-methods))
+           (choice (completing-read prompt names nil t)))
+      (car (cl-find choice harmless-login-methods
+                    :key (lambda (m) (plist-get (cdr m) :name))
+                    :test #'string=))))))
+
+;;;###autoload
+(defun harmless-login (&optional method prefix)
+  "Log in with a registered method.
+If METHOD is nil and more than one method is registered, prompt.
+With one method (currently xAI), that method runs immediately.
+PREFIX is passed to the method; interactively this is the prefix arg
+(for xAI, a prefix uses the device-code flow)."
+  (interactive
+   (list (harmless-login--read-method "Log in to: ")
+         current-prefix-arg))
+  (let* ((id (or method (harmless-login--read-method "Log in to: ")))
+         (spec (or (harmless-login-method id)
+                   (user-error "Unknown login method: %s" id))))
+    (funcall (plist-get spec :login) prefix)))
+
+;;;###autoload
+(defun harmless-logout (&optional method)
+  "Log out of a registered method.
+If METHOD is nil and more than one method is registered, prompt."
+  (interactive
+   (list (harmless-login--read-method "Log out of: ")))
+  (let* ((id (or method (harmless-login--read-method "Log out of: ")))
+         (spec (or (harmless-login-method id)
+                   (user-error "Unknown login method: %s" id)))
+         (fn (plist-get spec :logout)))
+    (unless fn
+      (user-error "Login method %s has no logout" id))
+    (funcall fn)))
 
 (defun harmless-auth-key (host key key-env)
   "Return an API key for HOST.

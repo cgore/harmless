@@ -22,20 +22,29 @@ Requires **GNU Emacs 32**.
 
 ## One-provider setup (xAI / Grok)
 
-Put the API key in `~/.authinfo` or `~/.authinfo.gpg`:
-
-```
-machine api.x.ai login apikey password xai-...
-```
-
-Or export `XAI_API_KEY`.  Then in your init file, or in
-`harmless/config.el` under `user-emacs-directory` (for a default Emacs
-that is `~/.emacs.d/harmless/config.el`):
+Browser login is the same flow as Grok Build: Harmless opens `auth.x.ai`,
+you sign in, and tokens are stored in `auth.json` under
+`harmless-directory` (mode `0600`).  They refresh automatically.
 
 ```elisp
 (setq harmless-providers (list (harmless-make-xai))
       harmless-default-model "grok-4.6")
 ```
+
+Then `M-x harmless-login`.  That command is the shared entry for every
+provider login we add; with only xAI registered it goes straight there.
+Prefix argument (`C-u M-x harmless-login`) uses xAI's device-code flow,
+which is also used automatically if port 56121 is already taken (for
+example by Grok Build itself).
+
+If you already ran `grok login`, Harmless will reuse `~/.grok/auth.json`
+until you sign in or out from Emacs.  It never writes that file.
+
+An API key still works as a fallback when no OAuth session is active:
+put it in `~/.authinfo` (`machine api.x.ai login apikey password xai-...`)
+or export `XAI_API_KEY`.  Settings can live in your init file or in
+`harmless/config.el` under `user-emacs-directory` (typically
+`~/.emacs.d/harmless/config.el`).
 
 OpenAI:
 
@@ -75,6 +84,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-dashboard` | All sessions, grouped by project |
 | `M-x harmless-switch` | Jump to a live or saved session |
 | `M-x harmless-menu` | Transient: new / switch / model / permissions / abort |
+| `M-x harmless-login` | Sign in (choose a provider once several exist; xAI today) |
+| `M-x harmless-logout` | Sign out of a provider |
 | `M-x harmless-abort` | Cancel the in-flight turn or shell |
 
 In the prompt window: `C-c C-c` sends.  When a tool needs approval: `y` allow,

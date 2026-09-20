@@ -51,6 +51,8 @@
 (declare-function harmless-switch "harmless")
 (declare-function harmless-set-model "harmless")
 (declare-function harmless-set-permission-mode "harmless")
+(declare-function harmless-login "harmless-auth")
+(declare-function harmless-logout "harmless-auth")
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -63,7 +65,10 @@
     ("a" "Abort" harmless-abort)]
    ["Options"
     ("m" "Model" harmless-set-model)
-    ("p" "Permissions" harmless-set-permission-mode)]])
+    ("p" "Permissions" harmless-set-permission-mode)]
+   ["Account"
+    ("l" "Log in" harmless-login)
+    ("o" "Log out" harmless-logout)]])
 
 (provide 'harmless-transient)
 

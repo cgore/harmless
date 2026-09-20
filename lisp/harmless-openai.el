@@ -48,6 +48,7 @@
 (require 'harmless-log)
 (require 'harmless-http)
 (require 'harmless-provider)
+(require 'harmless-xai)
 
 (declare-function harmless-tool-name "harmless-tools")
 (declare-function harmless-tool-description "harmless-tools")
@@ -223,11 +224,16 @@ This is the unit-tested core of the OpenAI backend."
     (harmless-json-encode body)))
 
 (defun harmless-openai--auth-headers (provider)
-  "Return Authorization and extra headers for PROVIDER."
-  (let* ((key (harmless-provider-resolve-key provider))
+  "Return Authorization and extra headers for PROVIDER.
+For xAI, a browser-login OAuth token wins over an API key."
+  (let* ((oauth (and (harmless-xai-provider-p provider)
+                     (harmless-xai-token)))
+         (key (or oauth (harmless-provider-resolve-key provider)))
          (headers (copy-sequence (or (harmless-provider-headers provider) nil))))
     (when (and key (not (string= key "none")))
-      (push (cons "Authorization" (format "Bearer %s" key)) headers))
+      (push (cons "Authorization" (format "Bearer %s" key)) headers)
+      (when oauth
+        (push (cons "xai-grok-cli" key) headers)))
     headers))
 
 (cl-defmethod harmless-provider-complete ((provider harmless-openai-provider)
