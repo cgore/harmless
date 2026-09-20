@@ -6,6 +6,10 @@ Harmless is an AI coding harness that lives entirely inside Emacs.  It is
 written in Emacs Lisp.  It is not [gptel](https://github.com/karthink/gptel),
 and it does not wrap Grok Build, Claude CLI, or any other external agent.
 
+Conceptually, Harmless is similar to Claude Code, or OpenAI Codex, or Grok
+Build, among many other examples, but is not built upon any of those, and lives
+inside of your Emacs.
+
 Several sessions can run at once in one Emacs, each pinned to a provider and
 model.  Most people will configure a single provider (xAI, OpenAI, Anthropic,
 or a local OpenAI-compatible server).  Mixing is optional: one session on Grok
