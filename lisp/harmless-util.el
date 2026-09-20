@@ -109,7 +109,7 @@ Ignores `browse-url-browser-function' unless
    ((null obj) :null)
    ((keywordp obj) (substring (symbol-name obj) 1))
    ((symbolp obj) (symbol-name obj))
-   ((stringp obj) obj)
+   ((stringp obj) (harmless-ensure-utf8 obj))
    ((numberp obj) obj)
    ((hash-table-p obj)
     (let ((out (make-hash-table :test 'equal)))
@@ -134,8 +134,12 @@ Ignores `browse-url-browser-function' unless
    (t (error "Cannot JSON-encode %S" obj))))
 
 (defun harmless-json-encode (obj)
-  "Encode OBJ as a JSON string."
+  "Encode OBJ as a unibyte UTF-8 JSON string."
   (json-serialize (harmless-json-prepare obj)))
+
+(defun harmless-json-text (obj)
+  "Encode OBJ as multibyte Unicode JSON, safe to insert into a buffer."
+  (decode-coding-string (harmless-json-encode obj) 'utf-8-unix))
 
 (defun harmless-json-decode (string)
   "Decode JSON STRING into plists and lists."
@@ -172,8 +176,31 @@ Ignores `browse-url-browser-function' unless
   "Return non-nil if VALUE is a JSON true, not false or null."
   (and value (not (eq value :false))))
 
+(defun harmless-ensure-utf8 (string)
+  "Return STRING as Unicode text.
+If STRING contains Emacs eight-bit characters (raw bytes from an
+undecoded process), interpret those bytes as UTF-8."
+  (cond
+   ((not (stringp string)) string)
+   ((not (multibyte-string-p string))
+    (decode-coding-string string 'utf-8-unix t))
+   (t
+    (let ((i 0)
+          (n (length string))
+          raw)
+      (while (and (< i n) (not raw))
+        (when (>= (aref string i) #x3FFF80)
+          (setq raw t))
+        (setq i (1+ i)))
+      (if (not raw)
+          string
+        (decode-coding-string
+         (encode-coding-string string 'raw-text-unix)
+         'utf-8-unix t))))))
+
 (defun harmless-truncate (string n)
   "Return STRING truncated to at most N characters."
+  (setq string (harmless-ensure-utf8 string))
   (if (<= (length string) n)
       string
     (concat (substring string 0 (max 0 (- n 1))) "…")))

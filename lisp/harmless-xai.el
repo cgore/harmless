@@ -218,8 +218,10 @@ Harmless never writes that file.  A successful refresh is saved under
          (tmp (make-temp-file "harmless-auth-")))
     (harmless-ensure-directory dir)
     (set-file-modes tmp #o600)
-    (with-temp-file tmp
-      (insert (harmless-json-encode plist) "\n"))
+    (let ((coding-system-for-write 'utf-8-unix))
+      (with-temp-file tmp
+        (setq buffer-file-coding-system 'utf-8-unix)
+        (insert (harmless-json-text plist) "\n")))
     (set-file-modes tmp #o600)
     (rename-file tmp file t)
     (set-file-modes file #o600)

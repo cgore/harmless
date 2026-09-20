@@ -3,6 +3,33 @@
 (require 'ert)
 (require 'harmless-openai)
 (require 'harmless-session)
+(require 'harmless-util)
+
+(ert-deftest harmless-json-ellipsis-roundtrip ()
+  (let ((s "hello…world"))
+    (should (equal s (plist-get (harmless-json-decode
+                                 (harmless-json-encode (list :text s)))
+                                :text)))))
+
+(ert-deftest harmless-session-save-ellipsis-utf8 ()
+  (let* ((harmless-directory (make-temp-file "harmless-test-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-make-openai-compat
+                    "local" :host "127.0.0.1:9" :protocol "http"
+                    :key "none" :models '("m")))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd harmless-directory
+                                        :provider provider
+                                        :model "m")))
+    (harmless-session-append-user session "wait… what")
+    (let ((file (expand-file-name "messages.jsonl"
+                                 (harmless-session-directory session))))
+      (should (file-exists-p file))
+      (should (string-match-p "wait… what"
+                              (with-temp-buffer
+                                (let ((coding-system-for-read 'utf-8-unix))
+                                  (insert-file-contents file)
+                                  (buffer-string))))))))
 
 (ert-deftest harmless-session-persist-resume ()
   (let* ((harmless-directory (make-temp-file "harmless-test-" t))

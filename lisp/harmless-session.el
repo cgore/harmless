@@ -237,13 +237,17 @@ Keyword ARGS: :cwd :provider :model :parent-id :source :permission-mode
 
 (defun harmless-session-save (session)
   "Write SESSION to disk."
-  (let ((dir (harmless-session-dir session)))
+  (let ((dir (harmless-session-dir session))
+        (coding-system-for-write 'utf-8-unix)
+        (buffer-file-coding-system 'utf-8-unix))
     (with-temp-file (expand-file-name "summary.json" dir)
-      (insert (harmless-json-encode (harmless-session-summary-plist session))
+      (setq buffer-file-coding-system 'utf-8-unix)
+      (insert (harmless-json-text (harmless-session-summary-plist session))
               "\n"))
     (with-temp-file (expand-file-name "messages.jsonl" dir)
+      (setq buffer-file-coding-system 'utf-8-unix)
       (dolist (msg (harmless-session-messages session))
-        (insert (harmless-json-encode msg) "\n")))))
+        (insert (harmless-json-text msg) "\n")))))
 
 (defun harmless-session--provider-by-name (name)
   "Find a registered provider named NAME."

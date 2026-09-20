@@ -136,6 +136,7 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
                 :buffer nil
                 :command args
                 :connection-type 'pipe
+                :coding '(utf-8-unix . utf-8-unix)
                 :stderr (get-buffer-create " *harmless-curl-stderr*")
                 :filter #'harmless-http--curl-filter
                 :sentinel #'harmless-http--curl-sentinel)))

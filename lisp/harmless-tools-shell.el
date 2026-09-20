@@ -86,6 +86,7 @@ The UI can still show the full buffer contents."
              :command (list shell-file-name
                             (or shell-command-switch "-c")
                             command)
+             :coding '(utf-8-unix . utf-8-unix)
              :connection-type 'pipe
              :sentinel
              (lambda (p _change)
