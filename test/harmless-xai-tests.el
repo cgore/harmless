@@ -1,6 +1,7 @@
 ;;; harmless-xai-tests.el --- Tests for xAI OAuth helpers -*- lexical-binding: t; -*-
 
 (require 'ert)
+(require 'cl-lib)
 (require 'harmless-xai)
 
 (ert-deftest harmless-xai-b64url-no-padding ()
@@ -43,6 +44,15 @@
       (should (string= "ref" (plist-get got :refresh-token))))
     (let ((harmless-xai-use-grok-auth nil))
       (should (string= "tok" (harmless-xai-token))))))
+
+(ert-deftest harmless-browse-url-ignores-w3m ()
+  (let ((browse-url-browser-function 'w3m-browse-url)
+        (called nil))
+    (cl-letf (((symbol-function 'browse-url-default-browser)
+               (lambda (url &rest _) (setq called url))))
+      (let ((harmless-browse-url-function nil))
+        (harmless-browse-url "https://example.com/")
+        (should (equal called "https://example.com/"))))))
 
 (ert-deftest harmless-xai-authorize-url-contains-pkce ()
   (let ((url (harmless-xai--authorize-url "st" "challenge")))

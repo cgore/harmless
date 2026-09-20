@@ -44,11 +44,33 @@
 (require 'seq)
 (require 'subr-x)
 (require 'url-util)
+(require 'browse-url)
 
 (defgroup harmless nil
   "AI coding harness that lives inside Emacs."
   :group 'tools
   :prefix "harmless-")
+
+(defvar harmless-browse-url-function nil
+  "Function used to open login and similar URLs.
+Nil means `browse-url-default-browser'.")
+
+(defcustom harmless-browse-url-function nil
+  "Function used to open login and similar URLs.
+Nil means `browse-url-default-browser' (the desktop browser), not
+`browse-url-browser-function', which is often an in-Emacs browser
+such as w3m or eww."
+  :type '(choice (const :tag "System default browser" nil)
+                 function)
+  :group 'harmless)
+
+(defun harmless-browse-url (url)
+  "Open URL in an external browser.
+Ignores `browse-url-browser-function' unless
+`harmless-browse-url-function' is set."
+  (funcall (or (symbol-value 'harmless-browse-url-function)
+               #'browse-url-default-browser)
+           url))
 
 (defconst harmless-version "0.1.0"
   "Harmless version string.")

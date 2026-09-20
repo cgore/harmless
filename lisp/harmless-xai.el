@@ -383,7 +383,7 @@ EXPECTED-STATE must match the callback.  Return the server process."
              (setcdr box err)))
           (harmless-log "xAI opening browser for OAuth")
           (message "Harmless: opening browser to sign in with xAI…")
-          (browse-url url)
+          (harmless-browse-url url)
           (message "Harmless: waiting for xAI login (or open %s)" url)
           (harmless-xai--wait-for-code box 300)
           (cond
@@ -432,7 +432,7 @@ EXPECTED-STATE must match the callback.  Return the server process."
         (error "xAI device-code response was incomplete"))
       (setq deadline (time-add (current-time) expires))
       (message "Harmless: enter code %s at %s" user-code uri)
-      (browse-url uri)
+      (harmless-browse-url uri)
       (while (and (null payload) (time-less-p (current-time) deadline))
         (sit-for interval)
         (let ((resp (harmless-xai--token-request
