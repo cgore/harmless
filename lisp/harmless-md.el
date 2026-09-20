@@ -98,14 +98,33 @@
   "Face for Markdown links."
   :group 'harmless)
 
+(defface harmless-md-table
+  '((t :inherit fixed-pitch))
+  "Face for Markdown table grid."
+  :group 'harmless)
+
+(defface harmless-md-table-header
+  '((t :inherit (fixed-pitch bold)))
+  "Face for Markdown table header cells."
+  :group 'harmless)
+
 (defun harmless-md-insert (text)
   "Insert TEXT at point as displayed Markdown."
-  (let ((text (harmless-ensure-utf8 (or text ""))))
+  (harmless-md--insert-document (harmless-ensure-utf8 (or text ""))))
+
+(defun harmless-md--insert-chunk (text)
+  "Insert a non-table, non-fence Markdown chunk."
+  (when (and text (not (string-empty-p text)))
     (if (and harmless-md-use-markdown-mode
              (require 'markdown-mode nil t)
              (fboundp 'gfm-view-mode))
         (insert (harmless-md--via-markdown-mode text))
-      (harmless-md--insert-builtin text))))
+      (harmless-md--insert-prose text))))
+
+(defun harmless-md--bol-p (text pos)
+  "Return non-nil if POS is the beginning of a line in TEXT."
+  (or (eq pos 0)
+      (eq (aref text (1- pos)) ?\n)))
 
 (defun harmless-md--via-markdown-mode (text)
   "Return TEXT fontified by `gfm-view-mode', markup hidden."
@@ -259,6 +278,154 @@
                   (string (aref text i))))
         (setq i (1+ i)))))))
 
+(defun harmless-md--split-row (line)
+  "Split a GFM table LINE into cell strings."
+  (let* ((s (string-trim line))
+         (s (if (string-prefix-p "|" s) (substring s 1) s))
+         (s (if (string-suffix-p "|" s) (substring s 0 -1) s)))
+    (mapcar #'string-trim (split-string s "|"))))
+
+(defun harmless-md--table-row-p (line)
+  "Return non-nil if LINE looks like a GFM table row."
+  (string-match-p "\\`[ \t]*|" line))
+
+(defun harmless-md--delimiter-cell-p (cell)
+  "Return non-nil if CELL is a GFM alignment delimiter."
+  (string-match-p "\\`:?-+:?\\'" cell))
+
+(defun harmless-md--align (cell)
+  "Return alignment symbol for a delimiter CELL."
+  (let ((left (string-prefix-p ":" cell))
+        (right (string-suffix-p ":" cell)))
+    (cond
+     ((and left right) 'center)
+     (right 'right)
+     (t 'left))))
+
+(defun harmless-md--pad-list (items n fill)
+  "Pad ITEMS to length N with FILL."
+  (let ((items (append items nil)))
+    (while (< (length items) n)
+      (setq items (append items (list fill))))
+    (cl-subseq items 0 n)))
+
+(defun harmless-md--line-at (text pos)
+  "Return (NEXT-POS LINE) for the line in TEXT starting at POS."
+  (let* ((eol (or (string-search "\n" text pos) (length text)))
+         (line (substring text pos eol))
+         (next (if (< eol (length text)) (1+ eol) eol)))
+    (list next line)))
+
+(defun harmless-md--parse-table (text start)
+  "If a GFM table starts at START, return (END ROWS ALIGNS), else nil."
+  (when (and (harmless-md--bol-p text start)
+             (< start (length text)))
+    (let* ((header (harmless-md--line-at text start))
+           (header-line (nth 1 header)))
+      (when (harmless-md--table-row-p header-line)
+        (let* ((sep-pos (nth 0 header)))
+          (when (< sep-pos (length text))
+            (let* ((sep (harmless-md--line-at text sep-pos))
+                   (sep-cells (and (harmless-md--table-row-p (nth 1 sep))
+                                   (harmless-md--split-row (nth 1 sep)))))
+              (when (and sep-cells (cl-every #'harmless-md--delimiter-cell-p sep-cells))
+                (let ((rows (list (harmless-md--split-row header-line)))
+                      (aligns (mapcar #'harmless-md--align sep-cells))
+                      (pos (nth 0 sep)))
+                  (while (and (< pos (length text))
+                              (let ((ln (nth 1 (harmless-md--line-at text pos))))
+                                (and (harmless-md--table-row-p ln)
+                                     (not (string-empty-p (string-trim ln))))))
+                    (let ((ln (harmless-md--line-at text pos)))
+                      (push (harmless-md--split-row (nth 1 ln)) rows)
+                      (setq pos (nth 0 ln))))
+                  (list pos (nreverse rows) aligns))))))))))
+
+(defun harmless-md--cell-width (text)
+  "Return display width of inline Markdown TEXT."
+  (with-temp-buffer
+    (harmless-md--insert-inline text nil)
+    (string-width (buffer-substring-no-properties (point-min) (point-max)))))
+
+(defun harmless-md--insert-padded-cell (text width align)
+  "Insert Markdown cell TEXT padded to WIDTH with ALIGN."
+  (let* ((inner (with-temp-buffer
+                  (harmless-md--insert-inline text nil)
+                  (buffer-string)))
+         (w (string-width (substring-no-properties inner)))
+         (pad (max 0 (- width w)))
+         (left (pcase align
+                 ('right pad)
+                 ('center (/ pad 2))
+                 (_ 0)))
+         (right (- pad left)))
+    (insert (make-string left ?\s)
+            inner
+            (make-string right ?\s))))
+
+(defun harmless-md--hline (widths left mid right)
+  "Insert a box-drawing rule for column WIDTHS."
+  (insert
+   (propertize
+    (concat left
+            (mapconcat (lambda (w) (make-string (+ w 2) ?─)) widths mid)
+            right
+            "\n")
+    'face 'harmless-md-table)))
+
+(defun harmless-md--insert-table-row (cells widths aligns header)
+  "Insert one table row."
+  (insert (propertize "│" 'face 'harmless-md-table))
+  (cl-loop for cell in cells
+           for width in widths
+           for align in aligns
+           do
+           (insert (propertize " " 'face 'harmless-md-table))
+           (let ((beg (point)))
+             (harmless-md--insert-padded-cell cell width align)
+             (when header
+               (add-face-text-property beg (point) 'harmless-md-table-header))
+             (add-face-text-property beg (point) 'harmless-md-table))
+           (insert (propertize " │" 'face 'harmless-md-table)))
+  (insert "\n"))
+
+(defun harmless-md--insert-table (rows aligns)
+  "Insert a pretty table from ROWS and ALIGNS."
+  (let* ((ncols (apply #'max 1 (mapcar #'length rows)))
+         (aligns (harmless-md--pad-list aligns ncols 'left))
+         (rows (mapcar (lambda (r) (harmless-md--pad-list r ncols "")) rows))
+         (widths (make-list ncols 0)))
+    (dolist (row rows)
+      (setq widths
+            (cl-mapcar (lambda (w c) (max w (harmless-md--cell-width c)))
+                       widths row)))
+    (harmless-md--hline widths "┌" "┬" "┐")
+    (harmless-md--insert-table-row (car rows) widths aligns t)
+    (harmless-md--hline widths "├" "┼" "┤")
+    (dolist (row (cdr rows))
+      (harmless-md--insert-table-row row widths aligns nil))
+    (harmless-md--hline widths "└" "┴" "┘")))
+
+(defun harmless-md--next-special (text start)
+  "Return the next fence or table position after START, or end of TEXT."
+  (let ((p (if (harmless-md--bol-p text start)
+               start
+             (let ((nl (string-search "\n" text start)))
+               (if nl (1+ nl) (length text))))))
+    (when (= p start)
+      (let ((nl (string-search "\n" text start)))
+        (setq p (if nl (1+ nl) (length text)))))
+    (catch 'found
+      (while (< p (length text))
+        (when (or (and (or (harmless-md--starts-at text p "```")
+                           (harmless-md--starts-at text p "~~~"))
+                       (harmless-md--bol-p text p))
+                  (harmless-md--parse-table text p))
+          (throw 'found p))
+        (let ((nl (string-search "\n" text p)))
+          (setq p (if nl (1+ nl) (length text)))))
+      (length text))))
+
 (defun harmless-md--insert-prose (text)
   "Insert non-fenced Markdown TEXT."
   (dolist (line (split-string text "\n"))
@@ -284,33 +451,41 @@
       (harmless-md--insert-inline line nil)
       (insert "\n")))))
 
-(defun harmless-md--insert-builtin (text)
-  "Insert TEXT using the built-in Markdown renderer."
+(defun harmless-md--insert-document (text)
+  "Insert TEXT, pretty-printing tables and fenced code."
   (let ((start 0)
         (len (length text)))
     (while (< start len)
-      (if (string-match "^\\(```\\|~~~\\)\\([^\n]*\\)\n" text start)
-          (let* ((fence-beg (match-beginning 0))
-                 (fence (match-string 1 text))
-                 (info (string-trim (match-string 2 text)))
-                 (body-beg (match-end 0)))
-            (when (> fence-beg start)
-              (harmless-md--insert-prose (substring text start fence-beg)))
-            (let ((close (string-match
-                          (concat "^" (regexp-quote fence) "[ \t]*$")
-                          text body-beg)))
-              (if (not close)
-                  (progn
-                    (harmless-md--insert-prose (substring text fence-beg))
-                    (setq start len))
-                (harmless-md--insert-code-block
-                 (car (split-string info))
-                 (substring text body-beg close))
-                (setq start (match-end 0))
-                (when (and (< start len) (eq (aref text start) ?\n))
-                  (setq start (1+ start))))))
-        (harmless-md--insert-prose (substring text start))
-        (setq start len)))))
+      (cond
+       ((and (harmless-md--bol-p text start)
+             (or (harmless-md--starts-at text start "```")
+                 (harmless-md--starts-at text start "~~~"))
+             (string-match "^\\(```\\|~~~\\)\\([^\n]*\\)\n" text start)
+             (eq (match-beginning 0) start))
+        (let* ((fence (match-string 1 text))
+               (info (string-trim (match-string 2 text)))
+               (body-beg (match-end 0))
+               (close (string-match
+                       (concat "^" (regexp-quote fence) "[ \t]*$")
+                       text body-beg)))
+          (if (not close)
+              (progn
+                (harmless-md--insert-chunk (substring text start))
+                (setq start len))
+            (harmless-md--insert-code-block
+             (car (split-string info))
+             (substring text body-beg close))
+            (setq start (match-end 0))
+            (when (and (< start len) (eq (aref text start) ?\n))
+              (setq start (1+ start))))))
+       ((harmless-md--parse-table text start)
+        (let ((parsed (harmless-md--parse-table text start)))
+          (harmless-md--insert-table (nth 1 parsed) (nth 2 parsed))
+          (setq start (nth 0 parsed))))
+       (t
+        (let ((next (harmless-md--next-special text start)))
+          (harmless-md--insert-chunk (substring text start next))
+          (setq start next)))))))
 
 (provide 'harmless-md)
 

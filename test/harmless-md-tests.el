@@ -45,4 +45,25 @@
       (should (equal "https://gnu.org"
                      (get-text-property (match-beginning 0) 'harmless-md-url))))))
 
+(ert-deftest harmless-md-table ()
+  (let ((harmless-md-use-markdown-mode nil))
+    (with-temp-buffer
+      (harmless-md-insert
+       "before\n\n| A | B |\n| --- | --- |\n| 1 | 22 |\n\nafter\n")
+      (let ((plain (buffer-substring-no-properties (point-min) (point-max))))
+        (should (string-match-p "┌" plain))
+        (should (string-match-p "│ A " plain))
+        (should (string-match-p "22" plain))
+        (should-not (string-match-p "| ---" plain))
+        (should (string-match-p "before" plain))
+        (should (string-match-p "after" plain))))))
+
+(ert-deftest harmless-md-table-alignment ()
+  (let ((harmless-md-use-markdown-mode nil))
+    (with-temp-buffer
+      (harmless-md-insert "| L | R |\n|:--|---:|\n| a | zz |\n")
+      (let ((plain (buffer-substring-no-properties (point-min) (point-max))))
+        (should (string-match-p "│ a " plain))
+        (should (string-match-p " zz │" plain))))))
+
 (provide 'harmless-md-tests)
