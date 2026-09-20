@@ -90,6 +90,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-switch` | Jump to a live or saved session |
 | `M-x harmless-menu` | Transient: new / switch / model / effort / permissions / abort |
 | `M-x harmless-set-reasoning-effort` | Set low / medium / high / xhigh |
+| Click `xAI/grok-4.6 (xhigh)` in the session header | Pick model and effort |
 | `M-x harmless-login` | Sign in (choose a provider once several exist; xAI today) |
 | `M-x harmless-logout` | Sign out of a provider |
 | `M-x harmless-abort` | Cancel the in-flight turn or shell |

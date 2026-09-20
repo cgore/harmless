@@ -109,12 +109,36 @@ SPEC may be \"grok-4.6\" or \"grok-4.6-xhigh\"."
       (cons (match-string 1 spec) (match-string 2 spec))
     (cons spec nil)))
 
+(defun harmless-parse-model-label (label)
+  "Return (MODEL . EFFORT) from a display LABEL.
+Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
+  (cond
+   ((and label
+         (string-match "\\`\\(.+\\) (\\(low\\|medium\\|high\\|xhigh\\))\\'" label))
+    (cons (match-string 1 label) (match-string 2 label)))
+   (t (harmless-parse-model-spec label))))
+
 (defun harmless-model-label (model &optional effort)
   "Return MODEL with optional EFFORT in parentheses."
   (cond
    ((and model effort) (format "%s (%s)" model effort))
    (model model)
    (t "?")))
+
+(defun harmless-model-supports-effort-p (model)
+  "Return non-nil if MODEL accepts a reasoning-effort parameter."
+  (and model (string-match-p "\\`grok-4" model)))
+
+(defun harmless-model-candidates (provider)
+  "Return completing-read candidates for PROVIDER's models.
+Reasoning models are expanded to one entry per effort level."
+  (let (out)
+    (dolist (model (or (and provider (harmless-provider-models provider)) nil))
+      (if (harmless-model-supports-effort-p model)
+          (dolist (effort harmless-reasoning-efforts)
+            (push (harmless-model-label model effort) out))
+        (push model out)))
+    (nreverse out)))
 
 (cl-defgeneric harmless-provider-complete (provider messages tools callback)
   "Ask PROVIDER to complete MESSAGES with TOOLS.

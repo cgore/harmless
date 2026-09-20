@@ -4,6 +4,7 @@
 (require 'harmless-openai)
 (require 'harmless-session)
 (require 'harmless-util)
+(require 'harmless-ui)
 
 (ert-deftest harmless-json-ellipsis-roundtrip ()
   (let ((s "hello…world"))
@@ -36,8 +37,30 @@
                  (harmless-parse-model-spec "grok-4.6-xhigh")))
   (should (equal '("grok-4.6" . nil)
                  (harmless-parse-model-spec "grok-4.6")))
+  (should (equal '("grok-4.6" . "xhigh")
+                 (harmless-parse-model-label "grok-4.6 (xhigh)")))
+  (should (member "grok-4.6 (xhigh)"
+                  (harmless-model-candidates
+                   (harmless-make-xai :key "none"))))
   (should (equal '("grok-4.6 (xhigh)" )
                  (list (harmless-model-label "grok-4.6" "xhigh")))))
+
+(ert-deftest harmless-ui-header-model-is-clickable ()
+  (let* ((harmless-directory (make-temp-file "harmless-test-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-make-xai :key "none"))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd harmless-directory
+                                        :provider provider
+                                        :model "grok-4.6"
+                                        :reasoning-effort "xhigh")))
+    (with-temp-buffer
+      (setq harmless--session session)
+      (let* ((line (harmless-ui--header-line))
+             (pos (string-match "grok-4.6" line)))
+        (should pos)
+        (should (string-match-p "grok-4.6 (xhigh)" line))
+        (should (keymapp (get-text-property pos 'keymap line)))))))
 
 (ert-deftest harmless-session-persist-resume ()
   (let* ((harmless-directory (make-temp-file "harmless-test-" t))

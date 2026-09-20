@@ -217,23 +217,41 @@ With a prefix argument, open the dashboard instead."
     (harmless-ui-open-session
      (harmless-session-resume (cdr (assoc choice items))))))
 
+(defun harmless--read-model-and-effort ()
+  "Read a model and effort from the minibuffer.  Return (MODEL EFFORT)."
+  (let* ((session (or (harmless--context-session)
+                      (user-error "No Harmless session")))
+         (provider (harmless-session-provider session))
+         (candidates (or (harmless-model-candidates provider)
+                         (list (harmless-session-model-label session))))
+         (choice (completing-read "Model: " candidates nil t
+                                  (harmless-session-model-label session)))
+         (parsed (harmless-parse-model-label choice)))
+    (list (car parsed) (cdr parsed))))
+
 ;;;###autoload
-(defun harmless-set-model (model)
-  "Set the current session's MODEL."
-  (interactive
-   (let* ((session (or (harmless--context-session)
-                       (user-error "No Harmless session")))
-          (models (harmless-provider-models
-                   (harmless-session-provider session))))
-     (list (completing-read "Model: " models nil t
-                            (harmless-session-model session)))))
+(defun harmless-pick-model ()
+  "Choose model and reasoning effort for the current session."
+  (interactive)
+  (apply #'harmless-set-model (harmless--read-model-and-effort)))
+
+;;;###autoload
+(defun harmless-set-model (model &optional effort)
+  "Set the current session's MODEL and optional reasoning EFFORT.
+Interactively, prompt for a combined model and effort."
+  (interactive (harmless--read-model-and-effort))
   (let ((session (or (harmless--context-session)
                      (user-error "No Harmless session")))
         (parsed (harmless-parse-model-spec model)))
     (setf (harmless-session-model session) (car parsed)
           (harmless-session-updated-at session) (harmless-now-iso))
-    (when (cdr parsed)
+    (cond
+     ((cdr parsed)
       (setf (harmless-session-reasoning-effort session) (cdr parsed)))
+     (effort
+      (setf (harmless-session-reasoning-effort session) effort))
+     ((not (harmless-model-supports-effort-p (car parsed)))
+      (setf (harmless-session-reasoning-effort session) nil)))
     (harmless-session-save session)
     (force-mode-line-update t)
     (message "Harmless model: %s" (harmless-session-model-label session))))

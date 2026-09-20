@@ -51,6 +51,7 @@
 (declare-function harmless-dashboard "harmless-dashboard")
 (declare-function harmless-menu "harmless-transient")
 (declare-function harmless-new "harmless")
+(declare-function harmless-pick-model "harmless")
 
 (defface harmless-user-face
   '((t :inherit font-lock-keyword-face :weight bold))
@@ -85,10 +86,19 @@
     (define-key map (kbd "g") #'harmless-dashboard)
     (define-key map (kbd "n") #'harmless-new)
     (define-key map (kbd "m") #'harmless-menu)
+    (define-key map (kbd "M") #'harmless-pick-model)
     (define-key map (kbd "i") #'harmless-ui-goto-prompt)
     (define-key map (kbd "RET") #'harmless-ui-goto-prompt)
     map)
   "Keymap for `harmless-session-mode'.")
+
+(defvar harmless-ui--model-header-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-1] #'harmless-pick-model)
+    (define-key map [header-line mouse-1] #'harmless-pick-model)
+    (define-key map [header-line mouse-2] #'harmless-pick-model)
+    map)
+  "Keymap for the clickable model label in the session header line.")
 
 (defvar harmless-prompt-mode-map
   (let ((map (make-sparse-keymap)))
@@ -119,13 +129,23 @@
 (defun harmless-ui--header-line ()
   "Header line for the session buffer."
   (when harmless--session
-    (let ((s harmless--session))
-      (format " %s  %s/%s  %s"
-              (or (harmless-session-title s)
-                  (harmless-session-project-name s))
-              (or (harmless-session-provider-name s) "?")
-              (harmless-session-model-label s)
-              (harmless-session-status s)))))
+    (let* ((s harmless--session)
+           (model (concat (or (harmless-session-provider-name s) "?")
+                          "/"
+                          (harmless-session-model-label s))))
+      (concat
+       " "
+       (or (harmless-session-title s)
+           (harmless-session-project-name s))
+       "  "
+       (propertize model
+                   'face 'link
+                   'mouse-face 'highlight
+                   'follow-link t
+                   'help-echo "mouse-1: change model and reasoning effort"
+                   'keymap harmless-ui--model-header-map)
+       "  "
+       (format "%s" (harmless-session-status s))))))
 
 (defun harmless-ui--session-buffer-name (session)
   "Buffer name for SESSION's transcript."
