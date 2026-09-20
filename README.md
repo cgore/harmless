@@ -28,7 +28,9 @@ Put the API key in `~/.authinfo` or `~/.authinfo.gpg`:
 machine api.x.ai login apikey password xai-...
 ```
 
-Or export `XAI_API_KEY`.  Then in your init file or `~/.harmless/config.el`:
+Or export `XAI_API_KEY`.  Then in your init file, or in
+`harmless/config.el` under `user-emacs-directory` (for a default Emacs
+that is `~/.emacs.d/harmless/config.el`):
 
 ```elisp
 (setq harmless-providers (list (harmless-make-xai))
@@ -84,8 +86,10 @@ commands still prompt in `accept-edits`.
 ## Layout
 
 Each session is a read-only transcript buffer plus a small prompt window at
-the bottom.  The dashboard is a tabulated list.  Sessions are stored under
-`~/.harmless/sessions/`; the buffer is a view, not the source of truth.
+the bottom.  The dashboard is a tabulated list.  Config and sessions live
+under `harmless-directory`, which defaults to `harmless/` in
+`user-emacs-directory` (so `~/.emacs.d/harmless/` for a typical setup).
+The buffer is a view, not the source of truth.
 
 ## Development
 

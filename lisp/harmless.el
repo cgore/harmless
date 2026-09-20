@@ -78,13 +78,18 @@
 (require 'harmless-transient)
 
 (defvar harmless--config-loaded nil
-  "Non-nil after `~/.harmless/config.el' has been loaded.")
+  "Non-nil after the Harmless config file has been loaded.")
+
+(defun harmless-config-file ()
+  "Return the path of the optional Harmless config file.
+This is `config.el' under `harmless-directory'."
+  (expand-file-name "config.el" harmless-directory))
 
 (defun harmless-load-config ()
   "Load `config.el' from `harmless-directory' once."
   (unless harmless--config-loaded
     (setq harmless--config-loaded t)
-    (let ((file (expand-file-name "config.el" harmless-directory)))
+    (let ((file (harmless-config-file)))
       (when (file-exists-p file)
         (load file nil t)))))
 

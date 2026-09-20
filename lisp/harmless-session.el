@@ -50,8 +50,10 @@
 (require 'harmless-log)
 (require 'harmless-provider)
 
-(defcustom harmless-directory (expand-file-name "~/.harmless")
-  "Root directory for Harmless config and sessions."
+(defcustom harmless-directory (locate-user-emacs-file "harmless/")
+  "Root directory for Harmless config and sessions.
+Defaults to `harmless/' under `user-emacs-directory' (for example
+`~/.emacs.d/harmless/')."
   :type 'directory
   :group 'harmless)
 
