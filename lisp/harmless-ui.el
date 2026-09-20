@@ -46,6 +46,7 @@
 (require 'harmless-session)
 (require 'harmless-turn)
 (require 'harmless-perm)
+(require 'harmless-md)
 
 (declare-function harmless-dashboard "harmless-dashboard")
 (declare-function harmless-menu "harmless-transient")
@@ -73,6 +74,7 @@
 
 (defvar-local harmless--session nil)
 (defvar-local harmless--stream-marker nil)
+(defvar-local harmless--stream-start nil)
 (defvar-local harmless--perm-callback nil)
 (defvar-local harmless--perm-class nil)
 
@@ -106,6 +108,7 @@
   :interactive nil
   (setq buffer-read-only t
         truncate-lines nil)
+  (add-to-invisibility-spec 'markdown-markup)
   (setq-local header-line-format '(:eval (harmless-ui--header-line))))
 
 (define-derived-mode harmless-prompt-mode text-mode "Harmless-Prompt"
@@ -183,7 +186,8 @@
   (with-current-buffer (harmless-ui-ensure-session-buffer session)
     (let ((inhibit-read-only t))
       (erase-buffer)
-      (setq harmless--stream-marker nil)
+      (setq harmless--stream-marker nil
+            harmless--stream-start nil)
       (dolist (msg (harmless-session-messages session))
         (harmless-ui--insert-message msg))
       (goto-char (point-max)))))
@@ -204,7 +208,7 @@
        (unless (string-empty-p r)
          (insert (propertize (concat "Reasoning: " (harmless-truncate r 200) "\n")
                              'face 'harmless-tool-face))))
-     (insert (or (plist-get msg :content) ""))
+     (harmless-md-insert (or (plist-get msg :content) ""))
      (dolist (tc (plist-get msg :tool-calls))
        (insert (propertize
                 (format "\n[tool %s %s]\n"
@@ -239,7 +243,35 @@
       (let ((inhibit-read-only t))
         (goto-char (point-max))
         (harmless-ui--insert-label "Assistant" 'harmless-assistant-face)
-        (setq harmless--stream-marker (point-marker))))))
+        (setq harmless--stream-start (point-marker)
+              harmless--stream-marker (point-marker))
+        (set-marker-insertion-type harmless--stream-marker t)))))
+
+(defun harmless-ui--finalize-assistant (session msg)
+  "Replace the streamed assistant body with displayed Markdown from MSG."
+  (harmless-ui--with-session-buffer
+   session
+   (lambda ()
+     (let ((start (and harmless--stream-start
+                       (marker-position harmless--stream-start)))
+           (end (and harmless--stream-marker
+                     (marker-position harmless--stream-marker))))
+       (if (and start end)
+           (progn
+             (delete-region start end)
+             (goto-char start))
+         (goto-char (point-max))
+         (harmless-ui--insert-label "Assistant" 'harmless-assistant-face))
+       (harmless-md-insert (or (plist-get msg :content) ""))
+       (dolist (tc (plist-get msg :tool-calls))
+         (insert (propertize
+                  (format "\n[tool %s %s]\n"
+                          (or (plist-get tc :name) "?")
+                          (harmless-truncate (format "%s" (plist-get tc :args)) 80))
+                  'face 'harmless-tool-face)))
+       (insert "\n\n")
+       (setq harmless--stream-start nil
+             harmless--stream-marker nil)))))
 
 (defun harmless-ui--stream-text (session text)
   "Append TEXT to SESSION's live assistant stream."
@@ -258,12 +290,15 @@
      (pcase (plist-get msg :role)
        ((or :user 'user "user")
         (with-current-buffer (harmless-ui-ensure-session-buffer session)
-          (setq harmless--stream-marker nil))
+          (setq harmless--stream-marker nil
+                harmless--stream-start nil))
         (harmless-ui--with-session-buffer
          session
          (lambda ()
            (goto-char (point-max))
            (harmless-ui--insert-message msg))))
+       ((or :assistant 'assistant "assistant")
+        (harmless-ui--finalize-assistant session msg))
        ((or :tool 'tool "tool")
         (harmless-ui--with-session-buffer
          session
@@ -289,16 +324,12 @@
         (insert (propertize (format "Error: %s\n\n" err)
                             'face 'harmless-error-face))))
      (with-current-buffer (harmless-ui-ensure-session-buffer session)
-       (setq harmless--stream-marker nil)))
+       (setq harmless--stream-marker nil
+             harmless--stream-start nil)))
     (`(:stop ,_reason)
-     (harmless-ui--with-session-buffer
-      session
-      (lambda ()
-        (goto-char (point-max))
-        (unless (bolp) (insert "\n"))
-        (insert "\n")))
-     (with-current-buffer (harmless-ui-ensure-session-buffer session)
-       (setq harmless--stream-marker nil)))
+     ;; Markers stay until the assistant :message event rewrites the
+     ;; streamed body as displayed Markdown.
+     nil)
     (`(:status ,_st) nil)
     (_ nil))
   (force-mode-line-update t))
