@@ -1,0 +1,5 @@
+*.elc
+lisp/harmless-autoloads.el
+*~
+\#*\#
+.dir-locals.el
