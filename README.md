@@ -37,10 +37,17 @@ you sign in, and tokens are stored in `auth.json` under
 ```
 
 Then `M-x harmless-login`.  That command is the shared entry for every
-provider login we add; with only xAI registered it goes straight there.
-Prefix argument (`C-u M-x harmless-login`) uses xAI's device-code flow,
-which is also used automatically if port 56121 is already taken (for
-example by Grok Build itself).
+provider login.  With more than one method registered it asks which
+provider.  Prefix argument (`C-u M-x harmless-login`) uses xAI's
+device-code flow, which is also used automatically if port 56121 is
+already taken (for example by Grok Build itself).
+
+Anthropic / Claude uses Claude Code's OAuth client.  The browser shows
+a code; paste it at the minibuffer prompt.  Tokens go in
+`auth-anthropic.json` under `harmless-directory`.  If you already ran
+`claude login`, Harmless will reuse a still-valid
+`~/.claude/.credentials.json` access token (it never writes or
+refreshes that file).
 
 If you already ran `grok login`, Harmless will reuse `~/.grok/auth.json`
 until you sign in or out from Emacs.  It never writes that file.
@@ -91,7 +98,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-menu` | Transient: new / switch / model / effort / permissions / abort |
 | `M-x harmless-set-reasoning-effort` | Set low / medium / high / xhigh |
 | Click `xAI/grok-4.6 (xhigh)` in the session header | Pick model and effort |
-| `M-x harmless-login` | Sign in (choose a provider once several exist; xAI today) |
+| `M-x harmless-login` | Sign in (xAI or Anthropic) |
 | `M-x harmless-logout` | Sign out of a provider |
 | `M-x harmless-abort` | Cancel the in-flight turn or shell |
 

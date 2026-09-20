@@ -69,6 +69,7 @@
 (require 'harmless-xai)
 (require 'harmless-openai)
 (require 'harmless-anthropic)
+(require 'harmless-anthropic-oauth)
 (require 'harmless-session)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
@@ -125,6 +126,13 @@ This is `config.el' under `harmless-directory'."
                (not noninteractive)
                (y-or-n-p "Sign in to xAI in a browser? "))
       (harmless-login 'xai))
+    (when (and (fboundp 'harmless-anthropic-provider-p)
+               (harmless-anthropic-provider-p provider)
+               (not (and (fboundp 'harmless-anthropic-token)
+                         (harmless-anthropic-token)))
+               (not noninteractive)
+               (y-or-n-p "Sign in to Anthropic in a browser? "))
+      (harmless-login 'anthropic))
     (setq harmless-default-provider-name (harmless-provider-name provider))
     (when-let* ((models (harmless-provider-models provider)))
       (setq harmless-default-model
@@ -177,7 +185,22 @@ With a prefix argument, open the dashboard instead."
   (interactive)
   (harmless-ensure-configured)
   (let* ((cwd (expand-file-name (or cwd (harmless-current-cwd))))
-         (provider (harmless-default-provider))
+         (provider
+          (if (and (cdr harmless-providers)
+                   (not noninteractive)
+                   (called-interactively-p 'interactive))
+              (let ((name (completing-read
+                           "Provider: "
+                           (mapcar #'harmless-provider-name harmless-providers)
+                           nil t
+                           (and (harmless-default-provider)
+                                (harmless-provider-name
+                                 (harmless-default-provider))))))
+                (or (cl-find name harmless-providers
+                             :key #'harmless-provider-name
+                             :test #'string=)
+                    (harmless-default-provider)))
+            (harmless-default-provider)))
          (models (harmless-provider-models provider))
          (model (if (and models (not noninteractive) (called-interactively-p 'interactive))
                     (completing-read "Model: " models nil t

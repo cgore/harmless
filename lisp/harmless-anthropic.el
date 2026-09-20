@@ -48,6 +48,7 @@
 (require 'harmless-log)
 (require 'harmless-http)
 (require 'harmless-provider)
+(require 'harmless-anthropic-oauth)
 
 (declare-function harmless-tool-name "harmless-tools")
 (declare-function harmless-tool-description "harmless-tools")
@@ -253,13 +254,21 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
     (harmless-json-encode body)))
 
 (defun harmless-anthropic--headers (provider)
-  "Return Anthropic HTTP headers for PROVIDER."
-  (let ((key (harmless-provider-resolve-key provider))
-        (headers (copy-sequence (or (harmless-provider-headers provider) nil))))
+  "Return Anthropic HTTP headers for PROVIDER.
+An OAuth access token is sent as Bearer with the oauth beta header.
+An API key is sent as x-api-key."
+  (let* ((oauth (and (fboundp 'harmless-anthropic-token)
+                     (harmless-anthropic-token)))
+         (key (harmless-provider-resolve-key provider))
+         (headers (copy-sequence (or (harmless-provider-headers provider) nil))))
     (push '("anthropic-version" . "2023-06-01") headers)
     (push '("Content-Type" . "application/json") headers)
-    (when key
-      (push (cons "x-api-key" key) headers))
+    (cond
+     (oauth
+      (push (cons "Authorization" (format "Bearer %s" oauth)) headers)
+      (push (cons "anthropic-beta" harmless-anthropic-oauth-beta) headers))
+     (key
+      (push (cons "x-api-key" key) headers)))
     headers))
 
 (cl-defmethod harmless-provider-complete ((provider harmless-anthropic-provider)
