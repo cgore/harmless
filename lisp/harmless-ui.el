@@ -124,7 +124,7 @@
               (or (harmless-session-title s)
                   (harmless-session-project-name s))
               (or (harmless-session-provider-name s) "?")
-              (or (harmless-session-model s) "?")
+              (harmless-session-model-label s)
               (harmless-session-status s)))))
 
 (defun harmless-ui--session-buffer-name (session)

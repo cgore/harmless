@@ -32,7 +32,8 @@ you sign in, and tokens are stored in `auth.json` under
 
 ```elisp
 (setq harmless-providers (list (harmless-make-xai))
-      harmless-default-model "grok-4.6")
+      harmless-default-model "grok-4.6"
+      harmless-default-reasoning-effort "xhigh")
 ```
 
 Then `M-x harmless-login`.  That command is the shared entry for every
@@ -87,7 +88,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-new` | Start a new session (picks a model) |
 | `M-x harmless-dashboard` | All sessions, grouped by project |
 | `M-x harmless-switch` | Jump to a live or saved session |
-| `M-x harmless-menu` | Transient: new / switch / model / permissions / abort |
+| `M-x harmless-menu` | Transient: new / switch / model / effort / permissions / abort |
+| `M-x harmless-set-reasoning-effort` | Set low / medium / high / xhigh |
 | `M-x harmless-login` | Sign in (choose a provider once several exist; xAI today) |
 | `M-x harmless-logout` | Sign out of a provider |
 | `M-x harmless-abort` | Cancel the in-flight turn or shell |

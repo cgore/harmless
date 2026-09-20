@@ -95,7 +95,9 @@
 (defun harmless-turn--call (session)
   "Send SESSION messages to the provider."
   (let ((acc (harmless-turn-acc-create))
-        (harmless-current-model (harmless-session-model session)))
+        (harmless-current-model (harmless-session-model session))
+        (harmless-current-reasoning-effort
+         (harmless-session-effective-reasoning-effort session)))
     (harmless-session-set-status session 'streaming)
     (let ((proc (harmless-provider-complete
                  (harmless-session-provider session)

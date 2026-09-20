@@ -80,8 +80,41 @@ Nil means the first model advertised by the default provider."
   :type '(choice (const nil) string)
   :group 'harmless)
 
+(defconst harmless-reasoning-efforts '("low" "medium" "high" "xhigh")
+  "Known reasoning-effort values for Grok and similar models.")
+
+(defcustom harmless-default-reasoning-effort nil
+  "Default reasoning effort when a session does not set its own.
+Nil omits the parameter (grok-4.6 then uses high).  Typical values:
+low, medium, high, xhigh."
+  :type '(choice (const :tag "Provider default" nil)
+                 (const "low")
+                 (const "medium")
+                 (const "high")
+                 (const "xhigh")
+                 string)
+  :group 'harmless)
+
 (defvar harmless-current-model nil
   "Model id for the in-flight completion, bound by the turn loop.")
+
+(defvar harmless-current-reasoning-effort nil
+  "Reasoning effort for the in-flight completion, bound by the turn loop.")
+
+(defun harmless-parse-model-spec (spec)
+  "Return (MODEL . EFFORT) from SPEC.
+SPEC may be \"grok-4.6\" or \"grok-4.6-xhigh\"."
+  (if (and spec
+           (string-match "\\`\\(.+\\)-\\(low\\|medium\\|high\\|xhigh\\)\\'" spec))
+      (cons (match-string 1 spec) (match-string 2 spec))
+    (cons spec nil)))
+
+(defun harmless-model-label (model &optional effort)
+  "Return MODEL with optional EFFORT in parentheses."
+  (cond
+   ((and model effort) (format "%s (%s)" model effort))
+   (model model)
+   (t "?")))
 
 (cl-defgeneric harmless-provider-complete (provider messages tools callback)
   "Ask PROVIDER to complete MESSAGES with TOOLS.

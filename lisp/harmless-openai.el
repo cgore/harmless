@@ -212,7 +212,7 @@ This is the unit-tested core of the OpenAI backend."
                             (args (harmless-json-encode args))
                             (t "{}"))))))
 
-(defun harmless-openai--payload (_provider model messages tools stream)
+(defun harmless-openai--payload (_provider model messages tools stream &optional effort)
   "Build the Chat Completions request body."
   (let ((body (list :model model
                     :messages (harmless-openai--format-messages messages)
@@ -221,6 +221,8 @@ This is the unit-tested core of the OpenAI backend."
       (setq body (append body
                          (list :tools (mapcar #'harmless-openai--format-tool
                                               tools)))))
+    (when effort
+      (setq body (append body (list :reasoning_effort effort))))
     (harmless-json-encode body)))
 
 (defun harmless-openai--auth-headers (provider)
@@ -241,11 +243,13 @@ For xAI, a browser-login OAuth token wins over an API key."
   "Complete MESSAGES using the OpenAI-compatible PROVIDER."
   (let* ((model (or harmless-current-model
                     (harmless-provider-default-model provider)))
+         (effort harmless-current-reasoning-effort)
          (stream (harmless-provider-stream provider))
          (asm (harmless-openai-assembler-create))
          (url (harmless-provider-url provider))
          (headers (harmless-openai--auth-headers provider))
-         (body (harmless-openai--payload provider model messages tools stream))
+         (body (harmless-openai--payload provider model messages tools stream
+                                         effort))
          (emit (lambda (event) (funcall callback event))))
     (harmless-log "openai POST %s model=%s stream=%s" url model stream)
     (harmless-http-post-stream

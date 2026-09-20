@@ -50,6 +50,7 @@
 (declare-function harmless-current "harmless")
 (declare-function harmless-switch "harmless")
 (declare-function harmless-set-model "harmless")
+(declare-function harmless-set-reasoning-effort "harmless")
 (declare-function harmless-set-permission-mode "harmless")
 (declare-function harmless-login "harmless-auth")
 (declare-function harmless-logout "harmless-auth")
@@ -65,6 +66,7 @@
     ("a" "Abort" harmless-abort)]
    ["Options"
     ("m" "Model" harmless-set-model)
+    ("e" "Effort" harmless-set-reasoning-effort)
     ("p" "Permissions" harmless-set-permission-mode)]
    ["Account"
     ("l" "Log in" harmless-login)

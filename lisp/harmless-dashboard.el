@@ -80,7 +80,7 @@
   (list (harmless-session-id s)
         (vector (harmless-session-project-name s)
                 (or (harmless-session-title s) "(untitled)")
-                (or (harmless-session-model s) "")
+                (harmless-session-model-label s)
                 (format "%s" (harmless-session-status s))
                 (or (harmless-session-updated-at s) ""))))
 
@@ -93,7 +93,9 @@
                       (file-name-nondirectory (directory-file-name cwd))
                     "?")
                   (or (plist-get summary :title) "(untitled)")
-                  (or (plist-get summary :model) "")
+                  (harmless-model-label (plist-get summary :model)
+                                        (or (plist-get summary :reasoning-effort)
+                                            harmless-default-reasoning-effort))
                   "saved"
                   (or (plist-get summary :updated-at) "")))))
 

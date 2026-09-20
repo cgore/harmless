@@ -184,7 +184,10 @@ With a prefix argument, open the dashboard instead."
                                      (or harmless-default-model (car models)))
                   (or harmless-default-model
                       (harmless-provider-default-model provider))))
-         (session (harmless-session-new :cwd cwd :provider provider :model model)))
+         (parsed (harmless-parse-model-spec model))
+         (session (harmless-session-new :cwd cwd :provider provider
+                                        :model (car parsed)
+                                        :reasoning-effort (cdr parsed))))
     (harmless-ui-open-session session)))
 
 ;;;###autoload
@@ -225,12 +228,39 @@ With a prefix argument, open the dashboard instead."
      (list (completing-read "Model: " models nil t
                             (harmless-session-model session)))))
   (let ((session (or (harmless--context-session)
+                     (user-error "No Harmless session")))
+        (parsed (harmless-parse-model-spec model)))
+    (setf (harmless-session-model session) (car parsed)
+          (harmless-session-updated-at session) (harmless-now-iso))
+    (when (cdr parsed)
+      (setf (harmless-session-reasoning-effort session) (cdr parsed)))
+    (harmless-session-save session)
+    (force-mode-line-update t)
+    (message "Harmless model: %s" (harmless-session-model-label session))))
+
+;;;###autoload
+(defun harmless-set-reasoning-effort (effort)
+  "Set the current session's reasoning EFFORT (low, medium, high, xhigh).
+Empty input clears the session override so the default is used."
+  (interactive
+   (list (let ((choice (completing-read
+                        "Reasoning effort: "
+                        (cons "" harmless-reasoning-efforts)
+                        nil t
+                        (or (and (harmless--context-session)
+                                 (harmless-session-effective-reasoning-effort
+                                  (harmless--context-session)))
+                            ""))))
+           (and (not (string-empty-p choice)) choice))))
+  (let ((session (or (harmless--context-session)
                      (user-error "No Harmless session"))))
-    (setf (harmless-session-model session) model
+    (setf (harmless-session-reasoning-effort session) effort
           (harmless-session-updated-at session) (harmless-now-iso))
     (harmless-session-save session)
     (force-mode-line-update t)
-    (message "Harmless model: %s" model)))
+    (message "Harmless effort: %s"
+             (or (harmless-session-effective-reasoning-effort session)
+                 "provider default"))))
 
 ;;;###autoload
 (defun harmless-set-permission-mode (mode)

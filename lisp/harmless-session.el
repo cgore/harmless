@@ -80,6 +80,7 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
   provider
   provider-name
   model
+  reasoning-effort
   messages
   status
   parent-id
@@ -100,6 +101,16 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
   "Notify observers that EVENT happened on SESSION."
   (dolist (fn harmless-event-functions)
     (funcall fn session event)))
+
+(defun harmless-session-effective-reasoning-effort (session)
+  "Return SESSION's reasoning effort, falling back to the default."
+  (or (harmless-session-reasoning-effort session)
+      harmless-default-reasoning-effort))
+
+(defun harmless-session-model-label (session)
+  "Return SESSION's model with reasoning effort when set."
+  (harmless-model-label (harmless-session-model session)
+                        (harmless-session-effective-reasoning-effort session)))
 
 (defun harmless-session-project-name (session)
   "Return a short project label for SESSION."
@@ -159,21 +170,26 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
 
 (defun harmless-session-new (&rest args)
   "Create, register, and persist a new session.
-Keyword ARGS: :cwd :provider :model :parent-id :source :permission-mode
-:title."
+Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
+:permission-mode :title."
   (let* ((provider (or (plist-get args :provider) (harmless-default-provider)))
          (cwd (expand-file-name (or (plist-get args :cwd)
                                     (harmless-current-cwd))))
          (now (harmless-now-iso))
+         (parsed (harmless-parse-model-spec
+                  (or (plist-get args :model)
+                      (and provider
+                           (harmless-provider-default-model provider)))))
          (session (harmless-session--create
                    :id (or (plist-get args :id) (harmless-uuid))
                    :title (plist-get args :title)
                    :cwd cwd
                    :provider provider
                    :provider-name (and provider (harmless-provider-name provider))
-                   :model (or (plist-get args :model)
-                              (and provider
-                                   (harmless-provider-default-model provider)))
+                   :model (car parsed)
+                   :reasoning-effort (or (plist-get args :reasoning-effort)
+                                         (cdr parsed)
+                                         harmless-default-reasoning-effort)
                    :messages nil
                    :status 'idle
                    :parent-id (plist-get args :parent-id)
@@ -225,6 +241,7 @@ Keyword ARGS: :cwd :provider :model :parent-id :source :permission-mode
         :cwd (harmless-session-cwd session)
         :provider (harmless-session-provider-name session)
         :model (harmless-session-model session)
+        :reasoning-effort (harmless-session-reasoning-effort session)
         :status (format "%s" (harmless-session-status session))
         :parent-id (harmless-session-parent-id session)
         :source (format "%s" (harmless-session-source session))
@@ -306,6 +323,7 @@ Keyword ARGS: :cwd :provider :model :parent-id :source :permission-mode
                      :provider provider
                      :provider-name provider-name
                      :model (plist-get summary :model)
+                     :reasoning-effort (plist-get summary :reasoning-effort)
                      :messages (nreverse messages)
                      :status (harmless-session--parse-status
                               (plist-get summary :status))

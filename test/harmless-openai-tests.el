@@ -17,6 +17,11 @@
     (harmless-openai-finish asm (lambda (event) (push event events)))
     (nreverse events)))
 
+(ert-deftest harmless-openai-payload-includes-effort ()
+  (let ((json (harmless-openai--payload nil "grok-4.6" nil nil t "xhigh")))
+    (should (string-match-p "\"reasoning_effort\":\"xhigh\"" json))
+    (should (string-match-p "\"model\":\"grok-4.6\"" json))))
+
 (ert-deftest harmless-openai-text-deltas ()
   (let ((events (harmless-test--collect-openai
                  '("{\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}"
