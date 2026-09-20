@@ -1,5 +1,7 @@
 # Harmless
 
+[![Dan Patch, from Types and Breeds of Farm Animals (1906)](dan-patch.jpg)](https://commons.wikimedia.org/wiki/File:Danpatch1.jpg)
+
 Harmless is an AI coding harness that lives entirely inside Emacs.  It is
 written in Emacs Lisp.  It is not [gptel](https://github.com/karthink/gptel),
 and it does not wrap Grok Build, Claude CLI, or any other external agent.
