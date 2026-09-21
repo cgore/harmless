@@ -40,7 +40,7 @@
 ;; Keys are never written to the log.
 ;;
 ;; Login methods (browser OAuth, device code, …) register here.  `harmless-login'
-;; picks among them (xAI, Anthropic, …).
+;; picks among them (xAI, Anthropic, OpenAI, …).
 
 ;;; Code:
 
@@ -102,7 +102,8 @@ ID is a symbol such as `xai'.  SPEC is a plist:
 If METHOD is nil and more than one method is registered, prompt.
 With one method (currently xAI), that method runs immediately.
 PREFIX is passed to the method; interactively this is the prefix arg
-(for xAI, a prefix uses the device-code flow; Anthropic ignores it)."
+(for xAI, a prefix uses the device-code flow; for OpenAI, paste
+the redirect URL; Anthropic ignores it)."
   (interactive
    (list (harmless-login--read-method "Log in to: ")
          current-prefix-arg))

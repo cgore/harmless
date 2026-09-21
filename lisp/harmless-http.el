@@ -97,11 +97,16 @@ DATA is the joined data string, or nil for `done'."
           (when (string-prefix-p " " payload)
             (setq payload (substring payload 1)))
           (push payload data-parts)))))
-    (when data-parts
+    (cond
+     (data-parts
       (let ((data (string-join (nreverse data-parts) "\n")))
         (if (string= data "[DONE]")
             (funcall emit 'done nil)
-          (funcall emit (or event 'message) data))))))
+          (funcall emit (or event 'message) data))))
+     ;; HTTP error bodies are raw JSON, not SSE.
+     ((and (not event)
+           (string-match-p "\\`[ \t\n]*[{[]" block))
+      (funcall emit 'message (string-trim block))))))
 
 (defun harmless-http-post-stream (url headers body on-event on-done)
   "POST BODY to URL as JSON and stream SSE events.
@@ -120,10 +125,20 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
     (process-put process 'harmless-aborted t)
     (delete-process process)))
 
+(defun harmless-http--status-from-headers (text)
+  "Return the last HTTP status code in TEXT, or nil."
+  (let (code)
+    (dolist (line (split-string (or text "") "\n"))
+      (when (string-match "HTTP/[0-9.]+ \\([0-9]+\\)" line)
+        (setq code (string-to-number (match-string 1 line)))))
+    code))
+
 (defun harmless-http--curl-stream (url headers body on-event on-done)
   "Start a curl process for URL.  Return the process."
-  (let* ((args (append (list harmless-curl-program
+  (let* ((header-file (make-temp-file "harmless-http-hdr-"))
+         (args (append (list harmless-curl-program
                              "-sS" "-N" "--no-buffer"
+                             "-D" header-file
                              "-X" "POST"
                              "-H" "Content-Type: application/json"
                              "--data-binary" "@-")
@@ -144,6 +159,7 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
     (process-put proc 'harmless-on-event on-event)
     (process-put proc 'harmless-on-done on-done)
     (process-put proc 'harmless-aborted nil)
+    (process-put proc 'harmless-header-file header-file)
     (process-send-string proc body)
     (process-send-eof proc)
     proc))
@@ -158,17 +174,30 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
 (defun harmless-http--curl-sentinel (proc _change)
   "Process sentinel for curl PROC."
   (unless (process-live-p proc)
-    (let ((on-event (process-get proc 'harmless-on-event))
-          (on-done (process-get proc 'harmless-on-done))
-          (state (process-get proc 'harmless-sse))
-          (aborted (process-get proc 'harmless-aborted))
-          (status (process-exit-status proc)))
+    (let* ((on-event (process-get proc 'harmless-on-event))
+           (on-done (process-get proc 'harmless-on-done))
+           (state (process-get proc 'harmless-sse))
+           (aborted (process-get proc 'harmless-aborted))
+           (status (process-exit-status proc))
+           (header-file (process-get proc 'harmless-header-file))
+           (http (and header-file (file-readable-p header-file)
+                      (harmless-http--status-from-headers
+                       (with-temp-buffer
+                         (insert-file-contents header-file)
+                         (buffer-string)))))
+           (http-err (and (numberp http) (>= http 400))))
+      (when (and header-file (file-exists-p header-file))
+        (ignore-errors (delete-file header-file)))
       (when (and state on-event)
         (harmless-http-sse-flush state on-event))
+      (when (and http-err on-event)
+        (harmless-log "http %s" http)
+        (funcall on-event 'error (format "http %s" http)))
       (when on-done
         (funcall on-done
                  (cond
                   (aborted 'abort)
+                  (http-err 'error)
                   ((eq status 0) 'ok)
                   (t 'error)))))))
 

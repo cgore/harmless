@@ -109,7 +109,7 @@ low, medium, high, xhigh."
   "Return (MODEL . EFFORT) from SPEC.
 SPEC may be \"grok-4.6\" or \"grok-4.6-xhigh\"."
   (if (and spec
-           (string-match "\\`\\(.+\\)-\\(low\\|medium\\|high\\|xhigh\\|max\\)\\'" spec))
+           (string-match "\\`\\(.+\\)-\\(low\\|medium\\|high\\|xhigh\\|max\\|ultra\\)\\'" spec))
       (cons (match-string 1 spec) (match-string 2 spec))
     (cons spec nil)))
 
@@ -118,7 +118,7 @@ SPEC may be \"grok-4.6\" or \"grok-4.6-xhigh\"."
 Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
   (cond
    ((and label
-         (string-match "\\`\\(.+\\) (\\(low\\|medium\\|high\\|xhigh\\|max\\))\\'" label))
+         (string-match "\\`\\(.+\\) (\\(low\\|medium\\|high\\|xhigh\\|max\\|ultra\\))\\'" label))
     (cons (match-string 1 label) (match-string 2 label)))
    (t (harmless-parse-model-spec label))))
 
@@ -133,6 +133,9 @@ Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
   "Return non-nil if MODEL accepts a reasoning-effort parameter."
   (and model
        (or (string-match-p "\\`grok-4" model)
+           (string-match-p "\\`gpt-5" model)
+           (string-match-p "\\`gpt-6" model)
+           (string-equal model "gpt-reserve")
            (and (string-prefix-p "claude-" model)
                 (not (string-match-p "haiku" model))
                 (not (string-match-p "sonnet-4-5" model))
@@ -142,7 +145,13 @@ Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
   "Return allowed effort strings for MODEL, or nil."
   (cond
    ((not (harmless-model-supports-effort-p model)) nil)
-   ((string-prefix-p "grok-" model)
+   ((string-match-p "\\`gpt-6\\|gpt-5\\.6-sol\\|gpt-5\\.6-terra" model)
+    '("low" "medium" "high" "xhigh" "max" "ultra"))
+   ((string-match-p "gpt-5\\.6-luna\\|gpt-reserve" model)
+    '("low" "medium" "high" "xhigh" "max"))
+   ((or (string-prefix-p "grok-" model)
+        (string-prefix-p "gpt-5" model)
+        (string-prefix-p "gpt-" model))
     harmless-reasoning-efforts)
    ((string-match-p "sonnet-4-6\\|opus-4-6" model)
     '("low" "medium" "high" "max"))
@@ -150,11 +159,24 @@ Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
     harmless-anthropic-reasoning-efforts)
    (t harmless-reasoning-efforts)))
 
+(defun harmless-provider-model-list (provider)
+  "Return model ids currently offered by PROVIDER.
+ChatGPT OAuth uses the Codex catalog rather than api.openai.com ids."
+  (cond
+   ((and provider
+         (fboundp 'harmless-openai-official-p)
+         (harmless-openai-official-p provider)
+         (fboundp 'harmless-openai-token)
+         (harmless-openai-token)
+         (boundp 'harmless-openai-codex-models))
+    harmless-openai-codex-models)
+   (t (and provider (harmless-provider-models provider)))))
+
 (defun harmless-model-candidates (provider)
   "Return completing-read candidates for PROVIDER's models.
 Reasoning models are expanded to one entry per effort level."
   (let (out)
-    (dolist (model (or (and provider (harmless-provider-models provider)) nil))
+    (dolist (model (or (harmless-provider-model-list provider) nil))
       (if (harmless-model-supports-effort-p model)
           (dolist (effort harmless-reasoning-efforts)
             (push (harmless-model-label model effort) out))
@@ -176,6 +198,10 @@ Reasoning models are expanded to one entry per effort level."
    ((and (fboundp 'harmless-anthropic-provider-p)
          (harmless-anthropic-provider-p provider))
     (or (and (fboundp 'harmless-anthropic-token) (harmless-anthropic-token))
+        (harmless-provider-has-key-p provider)))
+   ((and (fboundp 'harmless-openai-official-p)
+         (harmless-openai-official-p provider))
+    (or (and (fboundp 'harmless-openai-token) (harmless-openai-token))
         (harmless-provider-has-key-p provider)))
    (t (harmless-provider-has-key-p provider))))
 
@@ -227,8 +253,11 @@ or nil for a non-streaming request.")
 
 (defun harmless-provider-default-model (provider)
   "Return a model id for PROVIDER."
-  (or harmless-default-model
-      (car (harmless-provider-models provider))))
+  (or (let ((models (harmless-provider-model-list provider)))
+        (and harmless-default-model
+             (member harmless-default-model models)
+             harmless-default-model))
+      (car (harmless-provider-model-list provider))))
 
 (defun harmless-register-provider (provider)
   "Add PROVIDER to `harmless-providers' by name, replacing any previous."

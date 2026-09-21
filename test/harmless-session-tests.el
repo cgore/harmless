@@ -48,7 +48,10 @@
   (should (harmless-model-supports-effort-p "claude-sonnet-4-6"))
   (should-not (harmless-model-supports-effort-p "claude-sonnet-4-5"))
   (should (member "max" (harmless-model-effort-levels "claude-sonnet-4-6")))
-  (should-not (member "xhigh" (harmless-model-effort-levels "claude-sonnet-4-6"))))
+  (should-not (member "xhigh" (harmless-model-effort-levels "claude-sonnet-4-6")))
+  (should (harmless-model-supports-effort-p "gpt-5.5"))
+  (should (member "xhigh" (harmless-model-effort-levels "gpt-5.5")))
+  (should (member "ultra" (harmless-model-effort-levels "gpt-6-astra"))))
 
 (ert-deftest harmless-provider-available-p-uses-key-or-oauth ()
   (should (harmless-provider-available-p

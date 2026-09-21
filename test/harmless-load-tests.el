@@ -8,6 +8,8 @@
   (should (fboundp 'harmless))
   (should (fboundp 'harmless-make-xai))
   (should (fboundp 'harmless-make-anthropic))
+  (should (fboundp 'harmless-make-openai))
+  (should (harmless-login-method 'openai))
   (should (harmless-tool-by-name "read_file"))
   (should (harmless-tool-by-name "run_shell")))
 

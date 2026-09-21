@@ -43,6 +43,15 @@
   (should (equal (harmless-test--sse '("data: a\ndata: b\n\n"))
                  '((message . "a\nb")))))
 
+(ert-deftest harmless-http-sse-json-error-body ()
+  (should (equal (harmless-test--sse '("{\"detail\":\"nope\"}"))
+                 '((message . "{\"detail\":\"nope\"}")))))
+
+(ert-deftest harmless-http-status-from-headers ()
+  (should (eq 400 (harmless-http--status-from-headers
+                   "HTTP/1.1 302 Found\nHTTP/2 400 \nContent-Type: application/json\n")))
+  (should (eq 200 (harmless-http--status-from-headers "HTTP/2 200 OK\n"))))
+
 (ert-deftest harmless-http-sse-fixture-openai-text ()
   (let* ((raw (with-temp-buffer
                 (insert-file-contents

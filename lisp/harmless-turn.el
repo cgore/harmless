@@ -51,6 +51,8 @@
 (require 'harmless-tools)
 (require 'harmless-perm)
 
+(declare-function harmless-tools-shell-kill "harmless-tools-shell")
+
 (cl-defstruct (harmless-turn-acc
                (:constructor harmless-turn-acc-create)
                (:copier nil))

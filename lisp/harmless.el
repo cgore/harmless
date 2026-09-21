@@ -68,6 +68,7 @@
 (require 'harmless-provider)
 (require 'harmless-xai)
 (require 'harmless-openai)
+(require 'harmless-openai-oauth)
 (require 'harmless-anthropic)
 (require 'harmless-anthropic-oauth)
 (require 'harmless-session)
@@ -133,8 +134,15 @@ This is `config.el' under `harmless-directory'."
                (not noninteractive)
                (y-or-n-p "Sign in to Anthropic in a browser? "))
       (harmless-login 'anthropic))
+    (when (and (fboundp 'harmless-openai-official-p)
+               (harmless-openai-official-p provider)
+               (not (and (fboundp 'harmless-openai-token)
+                         (harmless-openai-token)))
+               (not noninteractive)
+               (y-or-n-p "Sign in to ChatGPT in a browser? "))
+      (harmless-login 'openai))
     (setq harmless-default-provider-name (harmless-provider-name provider))
-    (when-let* ((models (harmless-provider-models provider)))
+    (when-let* ((models (harmless-provider-model-list provider)))
       (setq harmless-default-model
             (completing-read "Default model: " models nil t (car models))))
     provider))
@@ -254,7 +262,7 @@ Skip the prompt when only one provider is available."
   (let* ((session (harmless--context-session))
          (provider (harmless--read-provider
                     (and session (harmless-session-provider session))))
-         (models (or (harmless-provider-models provider)
+         (models (or (harmless-provider-model-list provider)
                      (user-error "Provider %s has no models"
                                  (harmless-provider-name provider))))
          (same-provider (and session

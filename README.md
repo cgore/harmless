@@ -62,8 +62,18 @@ OpenAI:
 
 ```elisp
 (setq harmless-providers (list (harmless-make-openai))
-      harmless-default-model "gpt-4o")
+      harmless-default-model "gpt-5.5")
 ```
+
+`M-x harmless-login` → **OpenAI** opens ChatGPT OAuth (Codex CLI's
+public client, loopback on `localhost:1455`). Prefix argument pastes
+the redirect URL instead, which is also used if that port is busy
+(for example Codex CLI itself). Tokens go in `auth-openai.json`. A
+still-valid `~/.codex/auth.json` is reused (never written). ChatGPT
+subscription tokens are sent to the Codex Responses API
+(`chatgpt.com/backend-api/codex/responses`), not `api.openai.com`.
+An `OPENAI_API_KEY` still works as a usage-based fallback on Chat
+Completions.
 
 Anthropic:
 
@@ -98,7 +108,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-menu` | Transient: new / switch / model / effort / permissions / abort |
 | `M-x harmless-set-reasoning-effort` | Set low / medium / high / xhigh |
 | Click `xAI/grok-4.6 (xhigh)` in the session header | Provider, then model, then effort |
-| `M-x harmless-login` | Sign in (xAI or Anthropic) |
+| `M-x harmless-login` | Sign in (xAI, Anthropic, or OpenAI) |
 | `M-x harmless-logout` | Sign out of a provider |
 | `M-x harmless-abort` | Cancel the in-flight turn or shell |
 
