@@ -159,6 +159,20 @@ Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
     harmless-anthropic-reasoning-efforts)
    (t harmless-reasoning-efforts)))
 
+(defun harmless-provider-login-vendor (provider)
+  "Return the login-method id for PROVIDER, or nil if it has no browser login."
+  (cond
+   ((and (fboundp 'harmless-xai-provider-p)
+         (harmless-xai-provider-p provider))
+    'xai)
+   ((and (fboundp 'harmless-anthropic-provider-p)
+         (harmless-anthropic-provider-p provider))
+    'anthropic)
+   ((and (fboundp 'harmless-openai-official-p)
+         (harmless-openai-official-p provider))
+    'openai)
+   (t nil)))
+
 (defun harmless-provider-model-list (provider)
   "Return model ids currently offered by PROVIDER.
 ChatGPT OAuth uses the Codex catalog rather than api.openai.com ids."
@@ -167,7 +181,7 @@ ChatGPT OAuth uses the Codex catalog rather than api.openai.com ids."
          (fboundp 'harmless-openai-official-p)
          (harmless-openai-official-p provider)
          (fboundp 'harmless-openai-token)
-         (harmless-openai-token)
+         (harmless-openai-token provider)
          (boundp 'harmless-openai-codex-models))
     harmless-openai-codex-models)
    (t (and provider (harmless-provider-models provider)))))
@@ -193,15 +207,17 @@ Reasoning models are expanded to one entry per effort level."
   (cond
    ((and (fboundp 'harmless-xai-provider-p)
          (harmless-xai-provider-p provider))
-    (or (and (fboundp 'harmless-xai-token) (harmless-xai-token))
+    (or (and (fboundp 'harmless-xai-token) (harmless-xai-token provider))
         (harmless-provider-has-key-p provider)))
    ((and (fboundp 'harmless-anthropic-provider-p)
          (harmless-anthropic-provider-p provider))
-    (or (and (fboundp 'harmless-anthropic-token) (harmless-anthropic-token))
+    (or (and (fboundp 'harmless-anthropic-token)
+             (harmless-anthropic-token provider))
         (harmless-provider-has-key-p provider)))
    ((and (fboundp 'harmless-openai-official-p)
          (harmless-openai-official-p provider))
-    (or (and (fboundp 'harmless-openai-token) (harmless-openai-token))
+    (or (and (fboundp 'harmless-openai-token)
+             (harmless-openai-token provider))
         (harmless-provider-has-key-p provider)))
    (t (harmless-provider-has-key-p provider))))
 

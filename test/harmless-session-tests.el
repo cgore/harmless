@@ -60,10 +60,11 @@
                                     :key nil
                                     :key-env "HARMLESS_NO_SUCH_KEY"))
         (harmless-anthropic-use-claude-auth nil))
-    (cl-letf (((symbol-function 'harmless-anthropic-token) (lambda () nil)))
+    (cl-letf (((symbol-function 'harmless-anthropic-token)
+               (lambda (&rest _) nil)))
       (should-not (harmless-provider-available-p p)))
     (cl-letf (((symbol-function 'harmless-anthropic-token)
-               (lambda () "sk-ant-oat01-test")))
+               (lambda (&rest _) "sk-ant-oat01-test")))
       (should (harmless-provider-available-p p)))))
 
 (ert-deftest harmless-ui-header-model-is-clickable ()

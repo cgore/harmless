@@ -92,12 +92,11 @@ Code refresh tokens are single-use)."
   (let ((host (harmless-provider-host provider)))
     (and host (string-match-p "\\`api\\.anthropic\\.com\\'" host))))
 
-(defun harmless-anthropic-auth-file ()
-  "Return the path of Harmless's Anthropic token file."
-  (expand-file-name "auth-anthropic.json"
-                    (if (boundp 'harmless-directory)
-                        harmless-directory
-                      (locate-user-emacs-file "harmless/"))))
+(defun harmless-anthropic-auth-file (&optional provider)
+  "Return the path of the Anthropic token file for PROVIDER.
+The default connection named \"Anthropic\" uses `auth-anthropic.json'.
+Other connections use `auth-SLUG.json'."
+  (harmless-connection-auth-file provider "auth-anthropic.json" 'anthropic))
 
 (defun harmless-anthropic--authorize-url (state challenge)
   "Build the Claude authorize URL for STATE and PKCE CHALLENGE."
@@ -236,13 +235,16 @@ Never refreshes and never writes that file."
              (not (harmless-xai--expired-p exp 0))
              token)))))
 
-(defun harmless-anthropic-token ()
-  "Return a live Anthropic OAuth access token, or nil.
-Does not fall back to an API key; callers do that."
-  (or (harmless-anthropic--live-token (harmless-anthropic--read-store))
-      (getenv "CLAUDE_CODE_OAUTH_TOKEN")
-      (and harmless-anthropic-use-claude-auth
-           (harmless-anthropic--token-from-claude-cli))))
+(defun harmless-anthropic-token (&optional provider)
+  "Return a live Anthropic OAuth access token for PROVIDER, or nil.
+Does not fall back to an API key; callers do that.  Claude Code's
+token is reused only for the default \"Anthropic\" connection."
+  (let ((harmless-oauth-provider (or provider harmless-oauth-provider)))
+    (or (harmless-anthropic--live-token (harmless-anthropic--read-store))
+        (and (harmless-connection-default-p harmless-oauth-provider 'anthropic)
+             (or (getenv "CLAUDE_CODE_OAUTH_TOKEN")
+                 (and harmless-anthropic-use-claude-auth
+                      (harmless-anthropic--token-from-claude-cli)))))))
 
 (defun harmless-anthropic--exchange-code (code verifier state)
   "Exchange authorization CODE for tokens and store them."
@@ -276,17 +278,19 @@ prompt.  PREFIX is ignored (kept for `harmless-login')."
       (unless (and code (not (string-empty-p code)))
         (user-error "No authorization code"))
       (harmless-anthropic--exchange-code code (car pkce) state)
-      (message "Harmless: signed in to Anthropic")
+      (message "Harmless: signed in to %s"
+               (harmless-connection-display-name nil "Anthropic"))
       t)))
 
 (defun harmless-anthropic-logout ()
-  "Forget the stored Anthropic OAuth session.
+  "Forget the stored Anthropic OAuth session for the current connection.
 Does not delete `~/.claude/.credentials.json'."
   (interactive)
   (let ((file (harmless-anthropic-auth-file)))
     (when (file-exists-p file)
       (delete-file file)))
-  (message "Harmless: signed out of Anthropic"))
+  (message "Harmless: signed out of %s"
+           (harmless-connection-display-name nil "Anthropic")))
 
 (harmless-register-login-method
  'anthropic

@@ -105,9 +105,12 @@ This is `config.el' under `harmless-directory'."
                                 nil t))
          (provider
           (pcase kind
-            ("xAI" (harmless-make-xai))
-            ("OpenAI" (harmless-make-openai))
-            ("Anthropic" (harmless-make-anthropic "Anthropic"))
+            ("xAI" (harmless-make-xai
+                    (read-string "Connection name: " "xAI")))
+            ("OpenAI" (harmless-make-openai
+                       (read-string "Connection name: " "OpenAI")))
+            ("Anthropic" (harmless-make-anthropic
+                          (read-string "Connection name: " "Anthropic")))
             ("OpenAI-compatible"
              (harmless-make-openai-compat
               (read-string "Name: " "local")
@@ -123,24 +126,27 @@ This is `config.el' under `harmless-directory'."
       (setf (harmless-provider-key provider) nil))
     (harmless-register-provider provider)
     (when (and (harmless-xai-provider-p provider)
-               (not (harmless-xai-token))
+               (not (harmless-xai-token provider))
                (not noninteractive)
-               (y-or-n-p "Sign in to xAI in a browser? "))
-      (harmless-login 'xai))
+               (y-or-n-p (format "Sign in to %s in a browser? "
+                                 (harmless-provider-name provider))))
+      (harmless-login provider))
     (when (and (fboundp 'harmless-anthropic-provider-p)
                (harmless-anthropic-provider-p provider)
                (not (and (fboundp 'harmless-anthropic-token)
-                         (harmless-anthropic-token)))
+                         (harmless-anthropic-token provider)))
                (not noninteractive)
-               (y-or-n-p "Sign in to Anthropic in a browser? "))
-      (harmless-login 'anthropic))
+               (y-or-n-p (format "Sign in to %s in a browser? "
+                                 (harmless-provider-name provider))))
+      (harmless-login provider))
     (when (and (fboundp 'harmless-openai-official-p)
                (harmless-openai-official-p provider)
                (not (and (fboundp 'harmless-openai-token)
-                         (harmless-openai-token)))
+                         (harmless-openai-token provider)))
                (not noninteractive)
-               (y-or-n-p "Sign in to ChatGPT in a browser? "))
-      (harmless-login 'openai))
+               (y-or-n-p (format "Sign in to %s in a browser? "
+                                 (harmless-provider-name provider))))
+      (harmless-login provider))
     (setq harmless-default-provider-name (harmless-provider-name provider))
     (when-let* ((models (harmless-provider-model-list provider)))
       (setq harmless-default-model

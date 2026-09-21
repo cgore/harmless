@@ -267,7 +267,7 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
 An OAuth access token is sent as Bearer with the oauth beta header.
 An API key is sent as x-api-key."
   (let* ((oauth (and (fboundp 'harmless-anthropic-token)
-                     (harmless-anthropic-token)))
+                     (harmless-anthropic-token provider)))
          (key (harmless-provider-resolve-key provider))
          (headers (copy-sequence (or (harmless-provider-headers provider) nil))))
     (push '("anthropic-version" . "2023-06-01") headers)

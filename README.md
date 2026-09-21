@@ -37,10 +37,31 @@ you sign in, and tokens are stored in `auth.json` under
 ```
 
 Then `M-x harmless-login`.  That command is the shared entry for every
-provider login.  With more than one method registered it asks which
-provider.  Prefix argument (`C-u M-x harmless-login`) uses xAI's
+provider login.  With more than one named connection it asks which
+account.  Prefix argument (`C-u M-x harmless-login`) uses xAI's
 device-code flow, which is also used automatically if port 56121 is
 already taken (for example by Grok Build itself).
+
+Several accounts on the same vendor are separate connections: give each
+a name.  The default names (`xAI`, `Anthropic`, `OpenAI`) keep the
+original token files (`auth.json`, `auth-anthropic.json`,
+`auth-openai.json`).  Extra connections get `auth-<slug>.json`.
+
+```elisp
+(setq harmless-providers
+      (list (harmless-make-xai "xAI")
+            (harmless-make-xai "xAI work")
+            (harmless-make-anthropic "Anthropic")
+            (harmless-make-anthropic "Anthropic work")
+            (harmless-make-openai))
+      harmless-default-provider-name "xAI"
+      harmless-default-model "grok-4.6"
+      harmless-default-reasoning-effort "xhigh")
+```
+
+Then `M-x harmless-login` and pick **xAI work** (or **Anthropic work**)
+to sign that account in.  Sessions pin to a connection name, so one
+buffer can stay on personal Grok while another uses work Claude.
 
 Anthropic / Claude uses Claude Code's OAuth client.  The browser shows
 a code; paste it at the minibuffer prompt.  Tokens go in

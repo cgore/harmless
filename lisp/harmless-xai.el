@@ -96,12 +96,11 @@ Harmless never writes that file.  A successful refresh is saved under
   (let ((host (harmless-provider-host provider)))
     (and host (string-match-p "\\`api\\.x\\.ai\\'" host))))
 
-(defun harmless-xai-auth-file ()
-  "Return the path of Harmless's xAI token file."
-  (expand-file-name "auth.json"
-                    (if (boundp 'harmless-directory)
-                        harmless-directory
-                      (locate-user-emacs-file "harmless/"))))
+(defun harmless-xai-auth-file (&optional provider)
+  "Return the path of the xAI token file for PROVIDER.
+The default connection named \"xAI\" uses `auth.json'.  Other
+connections use `auth-SLUG.json'."
+  (harmless-connection-auth-file provider "auth.json" 'xai))
 
 (defun harmless-xai--b64url (bytes)
   "Base64url-encode BYTES with no padding."
@@ -287,12 +286,15 @@ Never writes that file.  A refresh is stored in Harmless's own file."
                  :client-id (or (plist-get entry :oidc_client_id)
                                 harmless-xai-client-id))))))))
 
-(defun harmless-xai-token ()
-  "Return a live xAI OAuth access token, or nil.
-Does not fall back to an API key; callers do that."
-  (or (harmless-xai--live-token (harmless-xai--read-store))
-      (and harmless-xai-use-grok-auth
-           (harmless-xai--token-from-grok))))
+(defun harmless-xai-token (&optional provider)
+  "Return a live xAI OAuth access token for PROVIDER, or nil.
+Does not fall back to an API key; callers do that.  Grok Build's
+`~/.grok/auth.json' is reused only for the default \"xAI\" connection."
+  (let ((harmless-oauth-provider (or provider harmless-oauth-provider)))
+    (or (harmless-xai--live-token (harmless-xai--read-store))
+        (and (harmless-connection-default-p harmless-oauth-provider 'xai)
+             harmless-xai-use-grok-auth
+             (harmless-xai--token-from-grok)))))
 
 (defun harmless-xai--authorize-url (state challenge)
   "Build the browser authorize URL for STATE and PKCE CHALLENGE."
@@ -473,18 +475,20 @@ automatically."
                             (error-message-string err))
               (message "Harmless: login port busy, switching to device code")
               (harmless-xai--device-login)))))))
-    (message "Harmless: signed in to xAI")
+    (message "Harmless: signed in to %s"
+             (harmless-connection-display-name nil "xAI"))
     plist))
 
 (defun harmless-xai-logout ()
-  "Forget the stored xAI OAuth session.
+  "Forget the stored xAI OAuth session for the current connection.
 Does not delete `~/.grok/auth.json'."
   (interactive)
   (harmless-xai--stop-server)
   (let ((file (harmless-xai-auth-file)))
     (when (file-exists-p file)
       (delete-file file)))
-  (message "Harmless: signed out of xAI"))
+  (message "Harmless: signed out of %s"
+           (harmless-connection-display-name nil "xAI")))
 
 (harmless-register-login-method
  'xai

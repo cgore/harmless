@@ -1,7 +1,10 @@
 ;;; harmless-auth-tests.el --- Tests for Harmless login dispatch -*- lexical-binding: t; -*-
 
 (require 'ert)
+(require 'cl-lib)
 (require 'harmless-auth)
+(require 'harmless-openai)
+(require 'harmless-anthropic)
 
 (ert-deftest harmless-login-register-and-dispatch ()
   (let ((harmless-login-methods nil)
@@ -31,5 +34,70 @@
     (harmless-login 'openai)
     (should (eq 'openai got))
     (should-error (harmless-login 'nope) :type 'user-error)))
+
+(ert-deftest harmless-connection-slug ()
+  (should (string= "xai-work" (harmless-connection-slug "xAI work")))
+  (should (string= "anthropic-work" (harmless-connection-slug "Anthropic work"))))
+
+(ert-deftest harmless-connection-auth-files-are-per-name ()
+  (let* ((harmless-directory (make-temp-file "harmless-auth-" t))
+         (a (harmless-make-xai "xAI"))
+         (b (harmless-make-xai "xAI work"))
+         (c (harmless-make-anthropic "Anthropic"))
+         (d (harmless-make-anthropic "Anthropic work")))
+    (should (string-suffix-p "auth.json" (harmless-xai-auth-file a)))
+    (should (string-match-p "auth-xai-work\\.json\\'" (harmless-xai-auth-file b)))
+    (should (string-suffix-p "auth-anthropic.json" (harmless-anthropic-auth-file c)))
+    (should (string-match-p "auth-anthropic-work\\.json\\'"
+                            (harmless-anthropic-auth-file d)))
+    (should-not (equal (harmless-xai-auth-file a) (harmless-xai-auth-file b)))))
+
+(ert-deftest harmless-xai-tokens-are-per-connection ()
+  (let* ((harmless-directory (make-temp-file "harmless-auth-" t))
+         (a (harmless-make-xai "xAI"))
+         (b (harmless-make-xai "xAI work"))
+         (harmless-xai-use-grok-auth nil)
+         (harmless-oauth-provider nil))
+    (let ((harmless-oauth-provider a))
+      (harmless-xai--write-store
+       (list :access-token "tok-a" :refresh-token "r"
+             :expires-at "2099-01-01T00:00:00Z"
+             :issuer "https://auth.x.ai" :client-id "c")))
+    (let ((harmless-oauth-provider b))
+      (harmless-xai--write-store
+       (list :access-token "tok-b" :refresh-token "r"
+             :expires-at "2099-01-01T00:00:00Z"
+             :issuer "https://auth.x.ai" :client-id "c")))
+    (should (string= "tok-a" (harmless-xai-token a)))
+    (should (string= "tok-b" (harmless-xai-token b)))
+    (should (file-exists-p (harmless-xai-auth-file a)))
+    (should (file-exists-p (harmless-xai-auth-file b)))))
+
+(ert-deftest harmless-login-accepts-provider ()
+  (let ((harmless-login-methods nil)
+        (got nil)
+        (p (harmless-make-xai "xAI work")))
+    (harmless-register-login-method
+     'xai :name "xAI"
+     :login (lambda (_) (setq got harmless-oauth-provider))
+     :logout #'ignore)
+    (harmless-login p)
+    (should (eq p got))))
+
+(ert-deftest harmless-available-p-is-per-connection ()
+  (let* ((harmless-directory (make-temp-file "harmless-auth-" t))
+         (a (harmless-make-xai "xAI" :key nil :key-env "HARMLESS_NO_SUCH_XAI_A"))
+         (b (harmless-make-xai "xAI work" :key nil :key-env "HARMLESS_NO_SUCH_XAI_B"))
+         (harmless-xai-use-grok-auth nil))
+    (cl-letf (((symbol-function 'harmless-auth-key) (lambda (&rest _) nil)))
+      (should-not (harmless-provider-available-p a))
+      (should-not (harmless-provider-available-p b))
+      (let ((harmless-oauth-provider a))
+        (harmless-xai--write-store
+         (list :access-token "tok-a" :refresh-token "r"
+               :expires-at "2099-01-01T00:00:00Z"
+               :issuer "https://auth.x.ai" :client-id "c")))
+      (should (harmless-provider-available-p a))
+      (should-not (harmless-provider-available-p b)))))
 
 (provide 'harmless-auth-tests)

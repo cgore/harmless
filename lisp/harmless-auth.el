@@ -40,7 +40,8 @@
 ;; Keys are never written to the log.
 ;;
 ;; Login methods (browser OAuth, device code, …) register here.  `harmless-login'
-;; picks among them (xAI, Anthropic, OpenAI, …).
+;; picks among named connections (several xAI or Anthropic accounts) when
+;; `harmless-providers' has more than one OAuth-capable provider.
 
 ;;; Code:
 
@@ -48,6 +49,10 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'harmless-util)
+
+(declare-function harmless-provider-p "harmless-provider")
+(declare-function harmless-provider-name "harmless-provider")
+(declare-function harmless-provider-login-vendor "harmless-provider")
 
 (defvar harmless-login-methods nil
   "Registered login methods as an alist of (ID . SPEC).
@@ -57,6 +62,55 @@ ID is a symbol such as `xai'.  SPEC is a plist:
   :login        Function of one argument, the prefix arg
   :logout       Function of no arguments
   :logged-in-p  Optional predicate, no arguments")
+
+(defvar harmless-oauth-provider nil
+  "Provider/connection whose OAuth store is in use, or nil for the default.")
+
+(defconst harmless-connection-default-names
+  '((xai . "xAI")
+    (anthropic . "Anthropic")
+    (openai . "OpenAI"))
+  "Default connection names that reuse the original per-vendor auth files.")
+
+(defun harmless-connection-slug (name)
+  "Return a filesystem slug for connection NAME."
+  (let ((s (replace-regexp-in-string
+            "[^a-z0-9]+" "-" (downcase (or name "")) t t)))
+    (replace-regexp-in-string "\\`-+\\|-+\\'" "" s t t)))
+
+(defun harmless-connection-default-p (provider vendor)
+  "Return non-nil if PROVIDER uses VENDOR's original auth file."
+  (let ((name (and provider
+                   (fboundp 'harmless-provider-name)
+                   (harmless-provider-name provider)))
+        (default (cdr (assq vendor harmless-connection-default-names))))
+    (or (null name)
+        (null default)
+        (string= name default))))
+
+(defun harmless-connection-display-name (&optional provider fallback)
+  "Return PROVIDER's connection name, or FALLBACK."
+  (or (and (or provider harmless-oauth-provider)
+           (fboundp 'harmless-provider-name)
+           (harmless-provider-name (or provider harmless-oauth-provider)))
+      fallback
+      "account"))
+
+(defun harmless-connection-auth-file (provider default-file vendor)
+  "Return the OAuth JSON path for PROVIDER.
+DEFAULT-FILE is used for the default VENDOR connection so existing
+logins keep working.  Other connections use `auth-SLUG.json'."
+  (let ((p (or provider harmless-oauth-provider)))
+    (expand-file-name
+     (if (harmless-connection-default-p p vendor)
+         default-file
+       (format "auth-%s.json"
+               (harmless-connection-slug
+                (and p (fboundp 'harmless-provider-name)
+                     (harmless-provider-name p)))))
+     (if (boundp 'harmless-directory)
+         harmless-directory
+       (locate-user-emacs-file "harmless/")))))
 
 (defun harmless-login--id (id)
   "Normalize ID to a symbol."
@@ -96,35 +150,106 @@ ID is a symbol such as `xai'.  SPEC is a plist:
                     :key (lambda (m) (plist-get (cdr m) :name))
                     :test #'string=))))))
 
-;;;###autoload
-(defun harmless-login (&optional method prefix)
-  "Log in with a registered method.
-If METHOD is nil and more than one method is registered, prompt.
-With one method (currently xAI), that method runs immediately.
-PREFIX is passed to the method; interactively this is the prefix arg
-(for xAI, a prefix uses the device-code flow; for OpenAI, paste
-the redirect URL; Anthropic ignores it)."
-  (interactive
-   (list (harmless-login--read-method "Log in to: ")
-         current-prefix-arg))
-  (let* ((id (or method (harmless-login--read-method "Log in to: ")))
-         (spec (or (harmless-login-method id)
-                   (user-error "Unknown login method: %s" id))))
-    (funcall (plist-get spec :login) prefix)))
+(defun harmless-login--oauth-providers ()
+  "Return configured providers that support browser login."
+  (and (boundp 'harmless-providers)
+       (fboundp 'harmless-provider-login-vendor)
+       (cl-remove-if-not #'harmless-provider-login-vendor
+                         harmless-providers)))
+
+(defun harmless-login--read-target (prompt)
+  "Return a provider or a vendor symbol, prompting with PROMPT if needed."
+  (let ((conns (harmless-login--oauth-providers)))
+    (cond
+     ((null conns)
+      (harmless-login--read-method prompt))
+     ((null (cdr conns))
+      (car conns))
+     (t
+      (let* ((names (mapcar #'harmless-provider-name conns))
+             (choice (completing-read prompt names nil t)))
+        (cl-find choice conns :key #'harmless-provider-name :test #'string=))))))
+
+(defun harmless-login--provider-for-vendor (vendor)
+  "Return a provider for VENDOR, or nil to use the default auth file."
+  (let ((conns (cl-remove-if-not
+                (lambda (p)
+                  (eq vendor (harmless-provider-login-vendor p)))
+                (or (harmless-login--oauth-providers) nil)))
+        (default (cdr (assq vendor harmless-connection-default-names))))
+    (cond
+     ((null conns) nil)
+     ((null (cdr conns)) (car conns))
+     ((and default
+           (cl-find default conns :key #'harmless-provider-name :test #'string=)))
+     (t (car conns)))))
+
+(defun harmless-login--run (target prefix)
+  "Run the login method for TARGET with PREFIX.
+TARGET is a provider object or a vendor symbol."
+  (cond
+   ((and (fboundp 'harmless-provider-p)
+         (harmless-provider-p target))
+    (let ((vendor (and (fboundp 'harmless-provider-login-vendor)
+                       (harmless-provider-login-vendor target)))
+          (harmless-oauth-provider target))
+      (unless vendor
+        (user-error "%s has no browser login"
+                    (harmless-provider-name target)))
+      (harmless-login--run vendor prefix)))
+   (t
+    (let* ((id (harmless-login--id target))
+           (spec (or (harmless-login-method id)
+                     (user-error "Unknown login method: %s" id)))
+           (harmless-oauth-provider
+            (or harmless-oauth-provider
+                (and (fboundp 'harmless-provider-login-vendor)
+                     (harmless-login--provider-for-vendor id)))))
+      (funcall (plist-get spec :login) prefix)))))
 
 ;;;###autoload
-(defun harmless-logout (&optional method)
-  "Log out of a registered method.
-If METHOD is nil and more than one method is registered, prompt."
+(defun harmless-login (&optional target prefix)
+  "Log in to TARGET, a named connection or a vendor symbol.
+If TARGET is nil, prompt.  With several named providers (for example
+two xAI accounts), the prompt lists connection names.
+PREFIX is passed to the vendor login; interactively this is the
+prefix arg (xAI device-code, OpenAI paste-redirect)."
   (interactive
-   (list (harmless-login--read-method "Log out of: ")))
-  (let* ((id (or method (harmless-login--read-method "Log out of: ")))
-         (spec (or (harmless-login-method id)
-                   (user-error "Unknown login method: %s" id)))
-         (fn (plist-get spec :logout)))
-    (unless fn
-      (user-error "Login method %s has no logout" id))
-    (funcall fn)))
+   (list (harmless-login--read-target "Log in to: ")
+         current-prefix-arg))
+  (harmless-login--run
+   (or target (harmless-login--read-target "Log in to: "))
+   prefix))
+
+;;;###autoload
+(defun harmless-logout (&optional target)
+  "Log out of TARGET, a named connection or a vendor symbol.
+If TARGET is nil, prompt."
+  (interactive
+   (list (harmless-login--read-target "Log out of: ")))
+  (let ((target (or target (harmless-login--read-target "Log out of: "))))
+    (cond
+     ((and (fboundp 'harmless-provider-p)
+           (harmless-provider-p target))
+      (let ((vendor (and (fboundp 'harmless-provider-login-vendor)
+                         (harmless-provider-login-vendor target)))
+            (harmless-oauth-provider target))
+        (unless vendor
+          (user-error "%s has no browser login"
+                      (harmless-provider-name target)))
+        (harmless-logout vendor)))
+     (t
+      (let* ((id (harmless-login--id target))
+             (spec (or (harmless-login-method id)
+                       (user-error "Unknown login method: %s" id)))
+             (fn (plist-get spec :logout))
+             (harmless-oauth-provider
+              (or harmless-oauth-provider
+                  (and (fboundp 'harmless-provider-login-vendor)
+                       (harmless-login--provider-for-vendor id)))))
+        (unless fn
+          (user-error "Login method %s has no logout" id))
+        (funcall fn))))))
 
 (defun harmless-auth-key (host key key-env)
   "Return an API key for HOST.

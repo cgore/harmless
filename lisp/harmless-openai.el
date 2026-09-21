@@ -85,23 +85,33 @@ Keyword ARGS: :host :protocol :endpoint :key :key-env :models
    :stream (if (plist-member args :stream) (plist-get args :stream) t)))
 
 (defun harmless-make-openai (&rest args)
-  "Return an OpenAI provider.  ARGS are as `harmless-make-openai-compat'."
-  (apply #'harmless-make-openai-compat "OpenAI"
-         :host "api.openai.com"
-         :key-env "OPENAI_API_KEY"
-         :models (or (plist-get args :models)
-                     '("gpt-5.4" "gpt-5.4-mini" "gpt-5.3-codex"
-                       "gpt-5.2" "gpt-5" "gpt-4o"))
-         args))
+  "Return an OpenAI provider.
+The first argument may be a connection NAME (default \"OpenAI\").
+Remaining ARGS are keyword arguments as in `harmless-make-openai-compat'."
+  (let ((name "OpenAI"))
+    (when (and args (not (keywordp (car args))))
+      (setq name (pop args)))
+    (apply #'harmless-make-openai-compat name
+           :host "api.openai.com"
+           :key-env "OPENAI_API_KEY"
+           :models (or (plist-get args :models)
+                       '("gpt-5.4" "gpt-5.4-mini" "gpt-5.3-codex"
+                         "gpt-5.2" "gpt-5" "gpt-4o"))
+           args)))
 
 (defun harmless-make-xai (&rest args)
-  "Return an xAI / Grok provider.  ARGS are as `harmless-make-openai-compat'."
-  (apply #'harmless-make-openai-compat "xAI"
-         :host "api.x.ai"
-         :key-env "XAI_API_KEY"
-         :models (or (plist-get args :models)
-                     '("grok-4.6" "grok-4.5" "grok-4" "grok-3" "grok-3-mini"))
-         args))
+  "Return an xAI / Grok provider.
+The first argument may be a connection NAME (default \"xAI\").
+Remaining ARGS are keyword arguments as in `harmless-make-openai-compat'."
+  (let ((name "xAI"))
+    (when (and args (not (keywordp (car args))))
+      (setq name (pop args)))
+    (apply #'harmless-make-openai-compat name
+           :host "api.x.ai"
+           :key-env "XAI_API_KEY"
+           :models (or (plist-get args :models)
+                       '("grok-4.6" "grok-4.5" "grok-4" "grok-3" "grok-3-mini"))
+           args)))
 
 (defun harmless-openai--tool-entry (asm index)
   "Return the tool-call plist for INDEX in ASM, creating it if needed."
@@ -240,7 +250,7 @@ This is the unit-tested core of the OpenAI backend."
   (and (fboundp 'harmless-openai-official-p)
        (harmless-openai-official-p provider)
        (fboundp 'harmless-openai-token)
-       (harmless-openai-token)))
+       (harmless-openai-token provider)))
 
 (defun harmless-openai--event-name (type payload)
   "Return a string event name from SSE TYPE and JSON PAYLOAD."
@@ -499,10 +509,10 @@ error), a dummy output is inserted so Codex does not 400."
   "Return Authorization and extra headers for PROVIDER.
 Browser-login OAuth tokens win over an API key."
   (let* ((xai (and (harmless-xai-provider-p provider)
-                   (harmless-xai-token)))
+                   (harmless-xai-token provider)))
          (openai (and (not xai)
                       (harmless-openai--use-codex-p provider)))
-         (oauth (or xai (and openai (harmless-openai-token))))
+         (oauth (or xai (and openai (harmless-openai-token provider))))
          (key (or oauth (harmless-provider-resolve-key provider)))
          (headers (copy-sequence (or (harmless-provider-headers provider) nil))))
     (when (and key (not (string= key "none")))
@@ -514,7 +524,7 @@ Browser-login OAuth tokens win over an API key."
         (push '("OpenAI-Beta" . "responses=v1") headers)
         (push '("Accept" . "text/event-stream") headers)
         (push (cons "session_id" (harmless-uuid)) headers)
-        (when-let* ((acct (harmless-openai-account-id)))
+        (when-let* ((acct (harmless-openai-account-id provider)))
           (push (cons "ChatGPT-Account-Id" acct) headers))))
     headers))
 
