@@ -49,6 +49,7 @@
 (require 'subr-x)
 (require 'harmless-util)
 (require 'harmless-instructions)
+(require 'harmless-memory)
 
 (defconst harmless-skill-vendors
   '("agents" "codex" "claude" "grok" "harmless")
@@ -190,19 +191,14 @@ STOP is passed to `harmless-skills-discover'."
         "\n")))))
 
 (defun harmless-context-messages (dir messages &optional stop)
-  "Return MESSAGES with instructions and the skill catalog for DIR.
-STOP bounds both walks.  The session transcript is not modified."
-  (let* ((base (harmless-instructions-apply dir messages stop))
-         (catalog (harmless-skills-catalog dir stop)))
-    (cond
-     ((not catalog) base)
-     ((and base (harmless-message-system-p (car base)))
-      (cons (list :role :system
-                  :content (concat (plist-get (car base) :content)
-                                   "\n\n"
-                                   catalog))
-            (cdr base)))
-     (t (cons (list :role :system :content catalog) base)))))
+  "Return MESSAGES with instructions, skills, and memory for DIR.
+STOP bounds the instruction and skill walks.  The session transcript
+is not modified."
+  (harmless-context-append
+   (harmless-context-append
+    (harmless-instructions-apply dir messages stop)
+    (harmless-skills-catalog dir stop))
+   (harmless-memory-catalog dir)))
 
 (provide 'harmless-skills)
 

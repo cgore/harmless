@@ -183,6 +183,19 @@ directory, later entries in this list replace earlier ones:
 `/etc/codex/skills` is included when it exists, at the lowest priority.
 Codex's own bundled skills are not on disk and are not read.
 
+## Memory
+
+Memory is Markdown under `harmless-directory`, in `memory/`.  Global
+notes apply to every project.  Workspace notes belong to one project
+directory.  A new fact goes to `observations/_inbox/`.  `M-x
+harmless-dream` folds the inbox into `topics/` and moves those files
+to `archive/`.  `MEMORY.md` is a generated index.
+
+Each turn sends the index, not the notes.  The model reads a note with
+`memory_read`, saves a fact with `memory_remember`, and replaces a
+topic with `memory_write_topic`.  `M-x harmless-remember` saves a note
+directly.  A prefix argument stores it in global memory.
+
 ## Development
 
 ```shell

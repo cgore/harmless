@@ -45,6 +45,7 @@
 (require 'harmless-provider)
 (require 'harmless-ui)
 (require 'harmless-dashboard)
+(require 'harmless-memory)
 
 (declare-function harmless-new "harmless")
 (declare-function harmless-current "harmless")
@@ -71,7 +72,10 @@
     ("p" "Permissions" harmless-set-permission-mode)]
    ["Account"
     ("l" "Log in" harmless-login)
-    ("o" "Log out" harmless-logout)]])
+    ("o" "Log out" harmless-logout)]
+   ["Memory"
+    ("r" "Remember" harmless-remember)
+    ("D" "Dream" harmless-dream)]])
 
 (provide 'harmless-transient)
 

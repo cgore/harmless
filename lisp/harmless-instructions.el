@@ -123,6 +123,19 @@ STOP is passed to `harmless-instruction-files'."
        "Project instructions for this session.  Files are listed from the outermost directory to the innermost.  When they disagree, prefer the later file.\n\n"
        (mapconcat #'identity chunks "\n\n")))))
 
+(defun harmless-context-append (messages block)
+  "Return MESSAGES with BLOCK added to the leading system message.
+MESSAGES is unchanged when BLOCK is empty."
+  (if (or (null block) (string-empty-p block))
+      messages
+    (if (and messages (harmless-message-system-p (car messages)))
+        (cons (list :role :system
+                    :content (concat (plist-get (car messages) :content)
+                                     "\n\n"
+                                     block))
+              (cdr messages))
+      (cons (list :role :system :content block) messages))))
+
 (defun harmless-instructions-apply (dir messages &optional stop)
   "Return MESSAGES with project instructions for DIR prepended.
 MESSAGES is unchanged when DIR has no instruction files.  STOP is
