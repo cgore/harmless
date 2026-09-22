@@ -151,6 +151,15 @@ under `harmless-directory`, which defaults to `harmless/` in
 `user-emacs-directory` (so `~/.emacs.d/harmless/` for a typical setup).
 The buffer is a view, not the source of truth.
 
+## Project instructions
+
+Harmless reads `HARMLESS.md` and `.harmless/HARMLESS.md` from the session
+directory and from each parent directory up through your home directory.
+Both files apply.  Outer directories come first, and at each directory
+the top-level file comes before the one inside `.harmless/`.  When two
+files disagree, the later one wins.  The text is sent with every turn
+and is not stored in the transcript.
+
 ## Development
 
 ```shell

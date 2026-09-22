@@ -72,6 +72,7 @@
 (require 'harmless-anthropic)
 (require 'harmless-anthropic-oauth)
 (require 'harmless-session)
+(require 'harmless-instructions)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
 (require 'harmless-tools-shell)

@@ -199,6 +199,9 @@ This is the unit-tested core of the OpenAI backend."
        (list :role "tool"
              :tool_call_id (plist-get msg :id)
              :content (or (plist-get msg :content) "")))
+      ((or :system 'system "system")
+       (list :role "system"
+             :content (or (plist-get msg :content) "")))
       ((or :assistant 'assistant)
        (let ((out (list :role "assistant"
                         :content (or (plist-get msg :content) "")))
@@ -298,6 +301,7 @@ error), a dummy output is inserted so Codex does not 400."
   (let (out open)
     (dolist (msg messages)
       (pcase (plist-get msg :role)
+        ((or :system 'system "system") nil)
         ((or :tool 'tool)
          (let ((id (plist-get msg :id)))
            (when (and id (member id open))
@@ -338,6 +342,8 @@ error), a dummy output is inserted so Codex does not 400."
     (setq out (cdr (harmless-openai--responses-close-open open out)))
     (nreverse out)))
 
+(declare-function harmless-messages-system-text "harmless-instructions")
+
 (defun harmless-openai--responses-payload (_provider model messages tools stream
                                                     &optional effort)
   "Build a Codex / Responses API request body."
@@ -345,6 +351,8 @@ error), a dummy output is inserted so Codex does not 400."
                     :input (harmless-openai--responses-input messages)
                     :stream (and stream t)
                     :store :false)))
+    (when-let* ((system (harmless-messages-system-text messages)))
+      (setq body (append body (list :instructions system))))
     (when tools
       (setq body (append body
                          (list :tools (mapcar #'harmless-openai--responses-tool

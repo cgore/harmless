@@ -93,4 +93,37 @@
                                          (harmless-session-messages session))
                              :content)))))
 
+(ert-deftest harmless-turn-sends-project-instructions ()
+  (let* ((dir (make-temp-file "harmless-proj-" t))
+         (harmless-directory (expand-file-name ".harmless-state" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-perm-ask-function
+          (lambda (_s _c _i cb) (funcall cb 'allow)))
+         (seen nil)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (messages callback)
+             (setq seen messages)
+             (funcall callback '(:text "ok"))
+             (funcall callback '(:stop "stop")))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (make-directory (expand-file-name ".harmless" dir))
+    (with-temp-file (expand-file-name "HARMLESS.md" dir)
+      (insert "Use two spaces.\n"))
+    (with-temp-file (expand-file-name ".harmless/HARMLESS.md" dir)
+      (insert "Prefer the dotfile.\n"))
+    (harmless-turn-run session "hello")
+    (let ((text (plist-get (car seen) :content)))
+      (should (eq :system (plist-get (car seen) :role)))
+      (should (string-match-p "Use two spaces" text))
+      (should (string-match-p "Prefer the dotfile" text))
+      (should (< (string-match "Use two spaces" text)
+                 (string-match "Prefer the dotfile" text))))
+    (should-not (cl-find-if #'harmless-message-system-p
+                            (harmless-session-messages session)))))
+
 (provide 'harmless-turn-tests)

@@ -203,12 +203,15 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
                                     '(:type "object" :properties nil))))
           tools))
 
+(declare-function harmless-messages-system-text "harmless-instructions")
+
 (defun harmless-anthropic--format-messages (messages)
   "Convert canonical MESSAGES to Anthropic messages (no system)."
   (let (out pending-tools)
     (dolist (msg messages)
       (let ((role (plist-get msg :role)))
         (pcase role
+          ((or :system 'system "system") nil)
           ((or :tool 'tool)
            (push (list :type "tool_result"
                        :tool_use_id (plist-get msg :id)
@@ -255,7 +258,10 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
   (let ((body (list :model model
                     :max_tokens (if (member effort '("xhigh" "max")) 64000 32000)
                     :messages (harmless-anthropic--format-messages messages)
-                    :stream (and stream t))))
+                    :stream (and stream t)))
+        (system (harmless-messages-system-text messages)))
+    (when system
+      (setq body (append body (list :system system))))
     (when tools
       (setq body (append body (list :tools (harmless-anthropic--format-tools tools)))))
     (when effort
