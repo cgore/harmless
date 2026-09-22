@@ -49,6 +49,7 @@
 (require 'harmless-provider)
 (require 'harmless-session)
 (require 'harmless-instructions)
+(require 'harmless-skills)
 (require 'harmless-tools)
 (require 'harmless-perm)
 
@@ -104,7 +105,7 @@
     (harmless-session-set-status session 'streaming)
     (let ((proc (harmless-provider-complete
                  (harmless-session-provider session)
-                 (harmless-instructions-apply
+                 (harmless-context-messages
                   (harmless-session-cwd session)
                   (harmless-session-messages session))
                  (harmless-tools-enabled)

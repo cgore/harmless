@@ -1,0 +1,67 @@
+;;; harmless-skills-tests.el --- Tests for skill discovery -*- lexical-binding: t; -*-
+
+(require 'ert)
+(require 'cl-lib)
+(require 'harmless-skills)
+
+(defun harmless-skills-test-write (root vendor name description body)
+  "Write a SKILL.md under ROOT's .VENDOR/skills/NAME."
+  (let ((dir (expand-file-name (format ".%s/skills/%s" vendor name) root)))
+    (make-directory dir t)
+    (with-temp-file (expand-file-name "SKILL.md" dir)
+      (insert (format "---\nname: %s\ndescription: %s\n---\n%s\n"
+                      name description body)))))
+
+(defun harmless-skills-test-named (skills name)
+  "Return the skill in SKILLS named NAME."
+  (cl-find name skills :key (lambda (skill) (plist-get skill :name)) :test #'equal))
+
+(ert-deftest harmless-skills-closer-directory-wins ()
+  (let* ((base (make-temp-file "harmless-skills-" t))
+         (root (expand-file-name "proj" base))
+         (child (expand-file-name "sub" root)))
+    (harmless-skills-test-write base "grok" "other" "above the stop" "ABOVE-BODY")
+    (harmless-skills-test-write root "grok" "commit" "from grok" "GROK-BODY")
+    (harmless-skills-test-write root "claude" "commit" "from claude" "CLAUDE-BODY")
+    (harmless-skills-test-write root "harmless" "commit" "from harmless" "HARMLESS-BODY")
+    (harmless-skills-test-write root "agents" "review" "from agents" "AGENTS-BODY")
+    (harmless-skills-test-write child "codex" "commit" "from codex" "CODEX-BODY")
+    (harmless-skills-test-write child "claude" "review" "from claude review" "REVIEW-BODY")
+    (let* ((skills (harmless-skills-discover child root))
+           (commit (harmless-skills-test-named skills "commit"))
+           (review (harmless-skills-test-named skills "review")))
+      (should commit)
+      (should (string-match-p "/\\.codex/" (plist-get commit :path)))
+      (should (string= "from codex" (plist-get commit :description)))
+      (should review)
+      (should (string-match-p "/\\.claude/" (plist-get review :path)))
+      (should (string= "from claude review" (plist-get review :description)))
+      (should-not (harmless-skills-test-named skills "other")))
+    (let ((text (harmless-context-messages child nil root)))
+      (should (eq :system (plist-get (car text) :role)))
+      (should (string-match-p "from codex" (plist-get (car text) :content)))
+      (should (string-match-p "read_file" (plist-get (car text) :content)))
+      (should-not (string-match-p "CODEX-BODY" (plist-get (car text) :content)))
+      (should-not (string-match-p "ABOVE-BODY" (plist-get (car text) :content))))))
+
+(ert-deftest harmless-skills-name-and-description-fallbacks ()
+  (let* ((root (make-temp-file "harmless-skill-fallback-" t))
+         (dir (expand-file-name ".harmless/skills/Ship It" root)))
+    (make-directory dir t)
+    (with-temp-file (expand-file-name "SKILL.md" dir)
+      (insert "---\n---\n\nShip the branch.\n\nMore detail that stays on disk.\n"))
+    (let ((skill (harmless-skills-test-named
+                  (harmless-skills-discover root root) "ship-it")))
+      (should skill)
+      (should (string= "Ship the branch." (plist-get skill :description))))))
+
+(ert-deftest harmless-skills-same-directory-harmless-wins ()
+  (let* ((root (make-temp-file "harmless-skill-vendor-" t)))
+    (harmless-skills-test-write root "agents" "commit" "from agents" "A")
+    (harmless-skills-test-write root "codex" "commit" "from codex" "C")
+    (harmless-skills-test-write root "grok" "commit" "from grok" "G")
+    (harmless-skills-test-write root "harmless" "commit" "from harmless" "H")
+    (let ((commit (harmless-skills-test-named
+                   (harmless-skills-discover root root) "commit")))
+      (should (string-match-p "/\\.harmless/" (plist-get commit :path)))
+      (should (string= "from harmless" (plist-get commit :description))))))

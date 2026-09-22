@@ -160,6 +160,28 @@ the top-level file comes before the one inside `.harmless/`.  When two
 files disagree, the later one wins.  The text is sent with every turn
 and is not stored in the transcript.
 
+## Skills
+
+A skill is a directory with a `SKILL.md` file.  The file starts with
+`name` and `description` frontmatter.  Each turn lists the name,
+description, and path.  The model reads that file with `read_file`
+when the task fits.  The body is not sent until then.
+
+Harmless looks for `skills/` inside these directories, at every level
+from your home directory down to the session.  A skill closer to the
+session replaces one of the same name farther away.  In a single
+directory, later entries in this list replace earlier ones:
+
+| Directory | Whose layout |
+|---|---|
+| `.agents/skills/`, `.codex/skills/` | Codex |
+| `.claude/skills/` | Claude Code |
+| `.grok/skills/` | Grok Build |
+| `.harmless/skills/` | Harmless |
+
+`/etc/codex/skills` is included when it exists, at the lowest priority.
+Codex's own bundled skills are not on disk and are not read.
+
 ## Development
 
 ```shell
