@@ -136,6 +136,10 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 In the prompt window: `C-c C-c` sends.  When a tool needs approval: `y` allow,
 `n` deny, `!` always allow that class for the rest of the session.
 
+In the transcript, a tool run is a collapsed line.  `TAB` toggles the
+entry at point, `Left` closes it, `Right` opens it, and `S-TAB` toggles
+every entry.  A run of reads and searches is one `explored` line.
+
 Permission modes: `ask` (default), `accept-edits`, `always-approve`.  Shell
 commands still prompt in `accept-edits`.
 
