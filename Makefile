@@ -12,7 +12,7 @@ BATCH := $(EMACS) -Q --batch --eval "(setq load-prefer-newer t)"
 all: test
 
 version-check:
-	@$(BATCH) --eval "(unless (>= emacs-major-version 32) (error \"Emacs 32 required, got %s\" emacs-version))"
+	@$(BATCH) --eval "(unless (>= emacs-major-version 31) (error \"Emacs 31 required, got %s\" emacs-version))"
 
 compile: version-check
 	$(BATCH) -L $(LISPDIR) \

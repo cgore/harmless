@@ -15,7 +15,7 @@ model.  Most people will configure a single provider (xAI, OpenAI, Anthropic,
 or a local OpenAI-compatible server).  Mixing is optional: one session on Grok
 4.6, another on a local LLM, a third on Claude, each in its own project.
 
-Requires **GNU Emacs 32**.
+Requires **GNU Emacs 31**.
 
 ## Install
 
