@@ -196,6 +196,22 @@ Each turn sends the index, not the notes.  The model reads a note with
 topic with `memory_write_topic`.  `M-x harmless-remember` saves a note
 directly.  A prefix argument stores it in global memory.
 
+## Plan mode
+
+`M-x harmless-plan` turns on plan mode for the current session.  A
+prefix argument turns it off.  The same command is `P` in the Harmless
+menu.  The model may also ask to enter plan mode.
+
+In plan mode, `write_file` and `replace` fail.  The model writes
+`plan.md` in the session directory with `write_plan`, then calls
+`exit_plan_mode`.  That shows the plan and asks you to approve it,
+send revision notes, or quit.  Approving turns plan mode off so the
+same turn can start changing project files.  Shell commands are not
+inspected for writes.
+
+The session header shows `plan` while the mode is on.  The flag is
+saved with the session.
+
 ## Development
 
 ```shell

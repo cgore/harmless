@@ -95,7 +95,8 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
   process
   buffer
   prompt-buffer
-  title-locked)
+  title-locked
+  plan-mode)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -250,7 +251,8 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
         :completion-tokens (harmless-session-completion-tokens session)
         :created-at (harmless-session-created-at session)
         :updated-at (harmless-session-updated-at session)
-        :title-locked (and (harmless-session-title-locked session) t)))
+        :title-locked (and (harmless-session-title-locked session) t)
+        :plan-mode (and (harmless-session-plan-mode session) t)))
 
 (defun harmless-session-save (session)
   "Write SESSION to disk."
@@ -338,7 +340,9 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
                      :created-at (plist-get summary :created-at)
                      :updated-at (plist-get summary :updated-at)
                      :directory dir
-                     :title-locked (plist-get summary :title-locked))))
+                     :title-locked (plist-get summary :title-locked)
+                     :plan-mode (harmless-json-true-p
+                                 (plist-get summary :plan-mode)))))
       (harmless-session-register session)
       session)))
 

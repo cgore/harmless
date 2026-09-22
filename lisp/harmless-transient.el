@@ -65,7 +65,8 @@
     ("c" "Current project" harmless-current)
     ("s" "Switch" harmless-switch)
     ("d" "Dashboard" harmless-dashboard)
-    ("a" "Abort" harmless-abort)]
+    ("a" "Abort" harmless-abort)
+    ("P" "Plan" harmless-plan)]
    ["Options"
     ("m" "Model" harmless-pick-model)
     ("e" "Effort" harmless-set-reasoning-effort)

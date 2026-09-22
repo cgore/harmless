@@ -79,6 +79,7 @@
 (require 'harmless-tools-shell)
 (require 'harmless-perm)
 (require 'harmless-turn)
+(require 'harmless-plan)
 (require 'harmless-ui)
 (require 'harmless-dashboard)
 (require 'harmless-transient)

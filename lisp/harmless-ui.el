@@ -163,7 +163,8 @@
                    'help-echo "mouse-1: change provider, model, and reasoning effort"
                    'keymap harmless-ui--model-header-map)
        "  "
-       (format "%s" (harmless-session-status s))))))
+       (format "%s" (harmless-session-status s))
+       (if (harmless-session-plan-mode s) "  plan" "")))))
 
 (defun harmless-ui--session-buffer-name (session)
   "Buffer name for SESSION's transcript."
@@ -245,6 +246,9 @@
     ("memory_read" "memory")
     ("memory_remember" "remember")
     ("memory_write_topic" "memory")
+    ("write_plan" "plan")
+    ("exit_plan_mode" "plan")
+    ("enter_plan_mode" "plan")
     (_ (or name "?"))))
 
 (defun harmless-ui--tool-groupable-p (name)

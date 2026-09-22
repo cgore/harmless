@@ -123,8 +123,14 @@
         (insert "\n[truncated]"))
       (buffer-string))))
 
+(defun harmless-tools-fs--reject-plan-edit (session)
+  "Signal when SESSION is in plan mode and this edit is not allowed."
+  (when (harmless-session-plan-mode session)
+    (error "Plan mode is on. Only plan.md may be edited, with write_plan")))
+
 (defun harmless-tools-fs--write (session args)
   "write_file implementation."
+  (harmless-tools-fs--reject-plan-edit session)
   (let* ((path (harmless-tools-fs-resolve session (harmless-tool-arg args :path)))
          (contents (or (harmless-tool-arg args :contents)
                        (harmless-tool-arg args :content)
@@ -136,6 +142,7 @@
 
 (defun harmless-tools-fs--replace (session args)
   "replace implementation (unique old_string -> new_string)."
+  (harmless-tools-fs--reject-plan-edit session)
   (let* ((path (harmless-tools-fs-resolve session (harmless-tool-arg args :path)))
          (old (harmless-tool-arg args :old_string))
          (new (or (harmless-tool-arg args :new_string) ""))

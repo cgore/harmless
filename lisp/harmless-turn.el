@@ -50,6 +50,7 @@
 (require 'harmless-session)
 (require 'harmless-instructions)
 (require 'harmless-skills)
+(require 'harmless-plan)
 (require 'harmless-tools)
 (require 'harmless-perm)
 
@@ -105,9 +106,12 @@
     (harmless-session-set-status session 'streaming)
     (let ((proc (harmless-provider-complete
                  (harmless-session-provider session)
-                 (harmless-context-messages
-                  (harmless-session-cwd session)
-                  (harmless-session-messages session))
+                 (harmless-context-append
+                  (harmless-context-messages
+                   (harmless-session-cwd session)
+                   (harmless-session-messages session))
+                  (when (harmless-session-plan-mode session)
+                    (harmless-plan-instructions)))
                  (harmless-tools-enabled)
                  (lambda (event)
                    (harmless-turn--on-event session acc event)))))
