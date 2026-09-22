@@ -36,8 +36,8 @@
 
 ;;; Commentary:
 ;;
-;; Project instructions live in `HARMLESS.md' at a directory root and in
-;; `.harmless/HARMLESS.md'.  Both apply to that directory and everything
+;; Project instructions live in `AGENTS.md', `HARMLESS.md', and
+;; `.harmless/HARMLESS.md'.  Each applies to that directory and everything
 ;; under it.  Files are read from the home directory down to the session
 ;; directory.  A later file wins when two of them disagree.
 
@@ -81,16 +81,22 @@ and does not continue above it.  It also stops at the filesystem root."
                            (directory-file-name parent)))))))
     acc))
 
+(defun harmless-instruction-candidates (dir)
+  "Return instruction paths for DIR, in the order they should be read.
+`AGENTS.md' comes first, then `HARMLESS.md', then `.harmless/HARMLESS.md'."
+  (list (expand-file-name "AGENTS.md" dir)
+        (expand-file-name "HARMLESS.md" dir)
+        (expand-file-name "HARMLESS.md"
+                          (expand-file-name ".harmless" dir))))
+
 (defun harmless-instruction-files (dir &optional stop)
   "Return instruction files that apply to DIR, outermost first.
-At each directory, `HARMLESS.md' comes before `.harmless/HARMLESS.md'.
-STOP is passed to `harmless-instruction-directories'."
+At each directory, `AGENTS.md' comes before `HARMLESS.md', which comes
+before `.harmless/HARMLESS.md'.  STOP is passed to
+`harmless-instruction-directories'."
   (let (files)
     (dolist (ancestor (harmless-instruction-directories dir stop))
-      (dolist (path (list (expand-file-name "HARMLESS.md" ancestor)
-                          (expand-file-name
-                           "HARMLESS.md"
-                           (expand-file-name ".harmless" ancestor))))
+      (dolist (path (harmless-instruction-candidates ancestor))
         (when (file-readable-p path)
           (push path files))))
     (nreverse files)))

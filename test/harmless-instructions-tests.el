@@ -53,6 +53,21 @@
     (let ((empty (make-temp-file "harmless-empty-" t)))
       (should-not (harmless-instructions-text empty empty)))))
 
+(ert-deftest harmless-instructions-agents-before-harmless ()
+  (let* ((root (make-temp-file "harmless-agents-" t))
+         (child (expand-file-name "pkg" root)))
+    (harmless-instructions-test-write
+     (expand-file-name "AGENTS.md" root) "root-agents\n")
+    (harmless-instructions-test-write
+     (expand-file-name "HARMLESS.md" root) "root-harmless\n")
+    (harmless-instructions-test-write
+     (expand-file-name "AGENTS.md" child) "child-agents\n")
+    (let ((text (harmless-instructions-text child root)))
+      (should (< (string-match "root-agents" text)
+                 (string-match "root-harmless" text)))
+      (should (< (string-match "root-harmless" text)
+                 (string-match "child-agents" text))))))
+
 (ert-deftest harmless-instructions-skip-blank-files ()
   (let* ((root (make-temp-file "harmless-blank-" t)))
     (harmless-instructions-test-write

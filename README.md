@@ -153,12 +153,13 @@ The buffer is a view, not the source of truth.
 
 ## Project instructions
 
-Harmless reads `HARMLESS.md` and `.harmless/HARMLESS.md` from the session
-directory and from each parent directory up through your home directory.
-Both files apply.  Outer directories come first, and at each directory
-the top-level file comes before the one inside `.harmless/`.  When two
-files disagree, the later one wins.  The text is sent with every turn
-and is not stored in the transcript.
+Harmless reads `AGENTS.md`, `HARMLESS.md`, and `.harmless/HARMLESS.md`
+from the session directory and from each parent directory up through
+your home directory.  Each file applies to its directory and everything
+under it.  Outer directories come first.  At each directory, `AGENTS.md`
+comes before `HARMLESS.md`, which comes before the file inside
+`.harmless/`.  When two files disagree, the later one wins.  The text
+is sent with every turn and is not stored in the transcript.
 
 ## Skills
 
