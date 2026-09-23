@@ -221,9 +221,40 @@ Reasoning models are expanded to one entry per effort level."
         (harmless-provider-has-key-p provider)))
    (t (harmless-provider-has-key-p provider))))
 
+(defun harmless-default-provider-for-vendor (vendor)
+  "Return the default provider object for login-method VENDOR, or nil."
+  (cond
+   ((and (eq vendor 'xai) (fboundp 'harmless-make-xai))
+    (harmless-make-xai))
+   ((and (eq vendor 'anthropic) (fboundp 'harmless-make-anthropic))
+    (harmless-make-anthropic "Anthropic"))
+   ((and (eq vendor 'openai) (fboundp 'harmless-make-openai))
+    (harmless-make-openai))
+   (t nil)))
+
 (defun harmless-available-providers ()
-  "Return configured providers that Harmless can currently use."
-  (cl-remove-if-not #'harmless-provider-available-p harmless-providers))
+  "Return providers Harmless can currently use.
+Configured providers come first.  A vendor with a saved login is
+included even when `harmless-providers' does not list it, so its
+models appear in the selector."
+  (let ((ready (cl-remove-if-not #'harmless-provider-available-p
+                                 (or harmless-providers nil)))
+        (have nil))
+    (dolist (provider ready)
+      (let ((vendor (harmless-provider-login-vendor provider)))
+        (when vendor (push vendor have))))
+    (when (boundp 'harmless-login-methods)
+      (dolist (method harmless-login-methods)
+        (let ((id (car method))
+              (pred (plist-get (cdr method) :logged-in-p)))
+          (when (and (not (memq id have))
+                     (functionp pred)
+                     (funcall pred))
+            (let ((provider (harmless-default-provider-for-vendor id)))
+              (when (and provider (harmless-provider-available-p provider))
+                (setq ready (append ready (list provider)))
+                (push id have)))))))
+    ready))
 
 (cl-defgeneric harmless-provider-complete (provider messages tools callback)
   "Ask PROVIDER to complete MESSAGES with TOOLS.

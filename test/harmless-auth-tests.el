@@ -22,6 +22,27 @@
     (harmless-logout)
     (should (eq 'out got))))
 
+(ert-deftest harmless-available-providers-includes-logged-in-anthropic ()
+  (let* ((harmless-directory (make-temp-file "harmless-providers-" t))
+         (harmless-providers
+          (list (harmless-make-xai :key nil :key-env "HARMLESS_NO_SUCH_XAI")))
+         (harmless-xai-use-grok-auth nil)
+         (harmless-anthropic-use-claude-auth nil)
+         (harmless-login-methods nil)
+         (harmless-oauth-provider nil))
+    (harmless-register-login-method
+     'anthropic :name "Anthropic" :login #'ignore :logout #'ignore
+     :logged-in-p (lambda () (and (harmless-anthropic--read-store) t)))
+    (harmless-anthropic--write-store
+     (list :access-token "tok-anthropic" :refresh-token "r"
+           :expires-at "2099-01-01T00:00:00Z"))
+    (let ((names (mapcar #'harmless-provider-name
+                         (harmless-available-providers))))
+      (should (equal '("Anthropic") names))
+      (should (member "claude-sonnet-4-6"
+                      (harmless-provider-model-list
+                       (car (harmless-available-providers))))))))
+
 (ert-deftest harmless-login-offers-vendors-beside-one-connection ()
   (let ((harmless-login-methods nil)
         (harmless-providers (list (harmless-make-xai))))
