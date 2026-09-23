@@ -172,6 +172,48 @@ used and ON-DONE runs later)."
         (setq code (string-to-number (match-string 1 line)))))
     code))
 
+(defun harmless-http-error-message (status body)
+  "Return a short description of HTTP STATUS and response BODY."
+  (let* ((payload (and (stringp body)
+                       (harmless-json-decode-safe (string-trim body))))
+         (err (and (harmless-plist-p payload) (plist-get payload :error)))
+         (etype (cond ((harmless-plist-p err) (plist-get err :type))
+                      ((stringp err) err)))
+         (emsg (cond ((harmless-plist-p err) (plist-get err :message))
+                     ((and (harmless-plist-p payload)
+                           (stringp (plist-get payload :message)))
+                      (plist-get payload :message))
+                     ((and (stringp body)
+                           (not payload)
+                           (not (string-empty-p (string-trim body))))
+                      (string-trim body)))))
+    (when (and (stringp emsg) (> (length emsg) 300))
+      (setq emsg (substring emsg 0 300)))
+    (if status
+        (concat (format "HTTP %s" status)
+                (if etype (format " %s" etype) "")
+                (if (and (stringp emsg)
+                         (not (string-empty-p emsg))
+                         (not (string= emsg "Error")))
+                    (format ": %s" emsg)
+                  ""))
+      (or (and (stringp emsg) (not (string-empty-p emsg)) emsg)
+          "http error"))))
+
+(defun harmless-http--finish-body (http body emit)
+  "Dispatch a completed response BODY.
+When HTTP is 400 or higher, call EMIT with one error and return
+`error'.  Otherwise dispatch a trailing SSE block and return `ok'."
+  (if (and (numberp http) (>= http 400))
+      (progn
+        (harmless-log "http %s" http)
+        (when emit
+          (funcall emit 'error (harmless-http-error-message http body)))
+        'error)
+    (when (and emit (stringp body) (not (string-empty-p (string-trim body))))
+      (harmless-http--sse-dispatch-block (string-trim body) emit))
+    'ok))
+
 (defun harmless-http--curl-stream (url headers body on-event on-done &optional on-limits)
   "Start a curl process for URL.  Return the process."
   (let* ((header-file (make-temp-file "harmless-http-hdr-"))
@@ -226,24 +268,24 @@ used and ON-DONE runs later)."
                                (buffer-string))))
            (http (and header-text (harmless-http--status-from-headers header-text)))
            (limits (and header-text (harmless-http-rate-limits header-text)))
-           (on-limits (process-get proc 'harmless-on-limits))
-           (http-err (and (numberp http) (>= http 400))))
+           (on-limits (process-get proc 'harmless-on-limits)))
       (when (and limits on-limits)
         (funcall on-limits limits))
       (when (and header-file (file-exists-p header-file))
         (ignore-errors (delete-file header-file)))
-      (when (and state on-event)
-        (harmless-http-sse-flush state on-event))
-      (when (and http-err on-event)
-        (harmless-log "http %s" http)
-        (funcall on-event 'error (format "http %s" http)))
-      (when on-done
-        (funcall on-done
-                 (cond
-                  (aborted 'abort)
-                  (http-err 'error)
-                  ((eq status 0) 'ok)
-                  (t 'error)))))))
+      (let* ((body (and state (harmless-sse-state-buf state)))
+             (outcome (if aborted
+                          'abort
+                        (harmless-http--finish-body http body on-event))))
+        (when state
+          (setf (harmless-sse-state-buf state) ""))
+        (when on-done
+          (funcall on-done
+                   (cond
+                    ((eq outcome 'abort) 'abort)
+                    ((eq outcome 'error) 'error)
+                    ((eq status 0) 'ok)
+                    (t 'error))))))))
 
 (defun harmless-http--url-post (url headers body on-event on-done &optional on-limits)
   "Non-streaming POST via `url-retrieve'."
@@ -260,17 +302,29 @@ used and ON-DONE runs later)."
                (funcall on-event 'error (format "%s" err))
                (funcall on-done 'error))
            (goto-char (point-min))
-           (let ((header-end (point)))
+           (let ((header-end (point))
+                 (payload "")
+                 (http nil))
              (when (re-search-forward "\n\n" nil t)
-               (setq header-end (match-beginning 0))
-               (let ((payload (buffer-substring-no-properties (point) (point-max))))
-                 (funcall on-event 'message (string-trim payload))))
+               (setq header-end (match-beginning 0)
+                     payload (string-trim
+                              (buffer-substring-no-properties
+                               (point) (point-max)))))
+             (setq http (harmless-http--status-from-headers
+                         (buffer-substring-no-properties
+                          (point-min) header-end)))
              (when on-limits
                (let ((limits (harmless-http-rate-limits
-                              (buffer-substring-no-properties (point-min) header-end))))
+                              (buffer-substring-no-properties
+                               (point-min) header-end))))
                  (when limits
-                   (funcall on-limits limits)))))
-           (funcall on-done 'ok))))
+                   (funcall on-limits limits))))
+             (funcall on-done
+                      (if (eq (harmless-http--finish-body
+                               http payload on-event)
+                              'error)
+                          'error
+                        'ok))))))
      nil t t)))
 
 (provide 'harmless-http)

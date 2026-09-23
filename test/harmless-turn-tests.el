@@ -151,4 +151,29 @@
     (should-not (cl-find-if #'harmless-message-system-p
                             (harmless-session-messages session)))))
 
+(ert-deftest harmless-turn-empty-stop-is-an-error ()
+  (let* ((dir (make-temp-file "harmless-empty-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (events nil)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (funcall callback '(:stop "end_turn")))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (let ((harmless-event-functions
+           (cons (lambda (_s event) (push event events))
+                 harmless-event-functions)))
+      (harmless-turn-run session "hello"))
+    (should (eq 'error (harmless-session-status session)))
+    (should (equal '(:user)
+                   (mapcar (lambda (m) (plist-get m :role))
+                           (harmless-session-messages session))))
+    (should (cl-find '(:error "The model returned an empty reply.")
+                     events :test #'equal))))
+
 (provide 'harmless-turn-tests)

@@ -52,6 +52,27 @@
                    "HTTP/1.1 302 Found\nHTTP/2 400 \nContent-Type: application/json\n")))
   (should (eq 200 (harmless-http--status-from-headers "HTTP/2 200 OK\n"))))
 
+(ert-deftest harmless-http-error-message-rate-limit ()
+  (should (equal "HTTP 429 rate_limit_error"
+                 (harmless-http-error-message
+                  429
+                  "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Error\"}}"))))
+
+(ert-deftest harmless-http-error-message-keeps-detail ()
+  (should (equal "HTTP 400 invalid_request_error: model not found"
+                 (harmless-http-error-message
+                  400
+                  "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"model not found\"}}"))))
+
+(ert-deftest harmless-http-finish-body-error-is-not-a-message ()
+  (let (events)
+    (should (eq 'error
+                (harmless-http--finish-body
+                 429
+                 "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Error\"}}"
+                 (lambda (type data) (push (cons type data) events)))))
+    (should (equal '((error . "HTTP 429 rate_limit_error")) (nreverse events)))))
+
 (ert-deftest harmless-http-sse-fixture-openai-text ()
   (let* ((raw (with-temp-buffer
                 (insert-file-contents

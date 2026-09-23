@@ -172,17 +172,23 @@
   (let ((calls (harmless-turn--tool-calls acc))
         (text (harmless-turn-acc-text acc))
         (reasoning (harmless-turn-acc-reasoning acc)))
-    (harmless-session-append
-     session
-     (nconc (list :role :assistant :content text)
-            (and (not (string-empty-p reasoning))
-                 (list :reasoning reasoning))
-            (and calls (list :tool-calls calls))))
-    (if calls
-        (harmless-turn--run-tools session calls
-                                  (lambda ()
-                                    (harmless-turn--call session)))
-      (harmless-session-set-status session 'idle))))
+    (if (and (null calls)
+             (string-empty-p (string-trim (or text "")))
+             (string-empty-p (string-trim (or reasoning ""))))
+        (progn
+          (harmless-session-set-status session 'error)
+          (harmless-emit session '(:error "The model returned an empty reply.")))
+      (harmless-session-append
+       session
+       (nconc (list :role :assistant :content text)
+              (and (not (string-empty-p reasoning))
+                   (list :reasoning reasoning))
+              (and calls (list :tool-calls calls))))
+      (if calls
+          (harmless-turn--run-tools session calls
+                                    (lambda ()
+                                      (harmless-turn--call session)))
+        (harmless-session-set-status session 'idle)))))
 
 (defun harmless-turn--run-tools (session calls k)
   "Run CALLS sequentially on SESSION, then call K."

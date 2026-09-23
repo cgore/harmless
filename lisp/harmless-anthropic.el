@@ -107,17 +107,36 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
    ((stringp x) (intern x))
    (t x)))
 
+(defun harmless-anthropic--error-text (payload)
+  "Return a short string for an Anthropic error PAYLOAD."
+  (let ((err (and (harmless-plist-p payload) (plist-get payload :error))))
+    (cond
+     ((harmless-plist-p err)
+      (let ((etype (plist-get err :type))
+            (emsg (plist-get err :message)))
+        (cond
+         ((and etype emsg (not (equal emsg "Error")))
+          (format "%s: %s" etype emsg))
+         (etype (format "%s" etype))
+         ((stringp emsg) emsg)
+         (t "anthropic error"))))
+     ((stringp err) err)
+     ((and (harmless-plist-p payload) (plist-get payload :message))
+      (format "%s" (plist-get payload :message)))
+     (t "anthropic error"))))
+
 (defun harmless-anthropic-handle-event (asm type data emit)
   "Handle one Anthropic SSE event TYPE with JSON DATA string, updating ASM."
   (let ((payload (if (stringp data) (harmless-json-decode-safe data) data)))
     (when payload
-    (let ((etype (harmless-anthropic--sym
-                  (or type (plist-get payload :type) 'message))))
+    (let* ((json-type (harmless-anthropic--sym (plist-get payload :type)))
+           (etype (if (eq json-type 'error)
+                      'error
+                    (harmless-anthropic--sym
+                     (or type json-type 'message)))))
       (pcase etype
         ((or 'error 'message_error)
-         (funcall emit (list :error (or (plist-get payload :error)
-                                        (plist-get payload :message)
-                                        "anthropic error"))))
+         (funcall emit (list :error (harmless-anthropic--error-text payload))))
         ('content_block_start
          (let* ((index (plist-get payload :index))
                 (block (plist-get payload :content_block))
@@ -205,8 +224,26 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
 
 (declare-function harmless-messages-system-text "harmless-instructions")
 
+(defun harmless-anthropic--push-message (out msg)
+  "Push MSG onto reversed OUT, merging adjacent user strings."
+  (if (and out
+           (equal (plist-get msg :role) "user")
+           (equal (plist-get (car out) :role) "user")
+           (stringp (plist-get msg :content))
+           (stringp (plist-get (car out) :content)))
+      (progn
+        (setf (plist-get (car out) :content)
+              (concat (plist-get (car out) :content)
+                      "\n\n"
+                      (plist-get msg :content)))
+        out)
+    (cons msg out)))
+
 (defun harmless-anthropic--format-messages (messages)
-  "Convert canonical MESSAGES to Anthropic messages (no system)."
+  "Convert canonical MESSAGES to Anthropic messages (no system).
+An assistant turn with no text and no tool calls is omitted.  Anthropic
+rejects an empty text block, and that shape is what a failed HTTP
+response used to leave in the transcript."
   (let (out pending-tools)
     (dolist (msg messages)
       (let ((role (plist-get msg :role)))
@@ -219,22 +256,27 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
                  pending-tools))
           (_
            (when pending-tools
-             (push (list :role "user" :content (nreverse pending-tools)) out)
+             (setq out (harmless-anthropic--push-message
+                        out
+                        (list :role "user" :content (nreverse pending-tools))))
              (setq pending-tools nil))
-           (push (harmless-anthropic--format-one msg) out)))))
+           (when-let* ((one (harmless-anthropic--format-one msg)))
+             (setq out (harmless-anthropic--push-message out one)))))))
     (when pending-tools
-      (push (list :role "user" :content (nreverse pending-tools)) out))
+      (setq out (harmless-anthropic--push-message
+                 out
+                 (list :role "user" :content (nreverse pending-tools)))))
     (nreverse out)))
 
 (defun harmless-anthropic--format-one (msg)
-  "Format one non-tool MSG."
+  "Format one non-tool MSG, or nil when there is nothing to send."
   (let ((role (plist-get msg :role)))
     (pcase role
       ((or :assistant 'assistant)
        (let ((content nil)
              (text (plist-get msg :content))
              (calls (plist-get msg :tool-calls)))
-         (when (and text (not (string-empty-p text)))
+         (when (and text (not (string-empty-p (string-trim text))))
            (push (list :type "text" :text text) content))
          (dolist (tc calls)
            (push (list :type "tool_use"
@@ -247,8 +289,8 @@ the provider is named \"Anthropic\".  Keyword ARGS: :host :protocol
                                  (args args)
                                  (t '()))))
                  content))
-         (list :role "assistant" :content (or (nreverse content)
-                                              (list (list :type "text" :text ""))))))
+         (and content
+              (list :role "assistant" :content (nreverse content)))))
       (_
        (list :role "user" :content (or (plist-get msg :content) ""))))))
 

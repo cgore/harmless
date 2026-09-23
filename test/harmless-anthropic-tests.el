@@ -25,6 +25,25 @@
     (should (cl-find '(:text " there") events :test #'equal))
     (should (eq :stop (car (car (last events)))))))
 
+(ert-deftest harmless-anthropic-error-json-is-not-a-stop ()
+  (let ((asm (harmless-anthropic-assembler-create))
+        events)
+    (harmless-anthropic-handle-event
+     asm 'message
+     "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Error\"}}"
+     (lambda (event) (push event events)))
+    (setq events (nreverse events))
+    (should (equal '(:error "rate_limit_error") (car events)))
+    (should-not (cl-find :stop events :key #'car))
+    (should-not (harmless-anthropic-assembler-emitted-stop asm))))
+
+(ert-deftest harmless-anthropic-skips-empty-assistant ()
+  (should (equal '((:role "user" :content "Hi\n\nStill there?"))
+                 (harmless-anthropic--format-messages
+                  '((:role :user :content "Hi")
+                    (:role :assistant :content "")
+                    (:role :user :content "Still there?"))))))
+
 (ert-deftest harmless-anthropic-tool-use-block ()
   (let ((asm (harmless-anthropic-assembler-create))
         events)
