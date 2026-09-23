@@ -286,6 +286,66 @@ Never writes that file.  A refresh is stored in Harmless's own file."
                  :client-id (or (plist-get entry :oidc_client_id)
                                 harmless-xai-client-id))))))))
 
+(defun harmless-xai--get (path token)
+  "GET PATH on the Grok CLI proxy with TOKEN.  Return a plist or nil.
+The token is not written to the log."
+  (let ((url-request-method "GET")
+        (url-request-extra-headers
+         `(("Authorization" . ,(concat "Bearer " token))
+           ("Accept" . "application/json"))))
+    (condition-case err
+        (let ((buf (url-retrieve-synchronously
+                    (concat "https://cli-chat-proxy.grok.com/v1" path)
+                    t t 8)))
+          (when buf
+            (unwind-protect
+                (with-current-buffer buf
+                  (goto-char (point-min))
+                  (when (re-search-forward "\n\n" nil t)
+                    (let ((status (harmless-http--status-from-headers
+                                   (buffer-substring-no-properties
+                                    (point-min) (match-beginning 0))))
+                          (body (buffer-substring-no-properties
+                                 (point) (point-max))))
+                      (when (and (numberp status) (< status 400))
+                        (harmless-json-decode-safe body)))))
+              (kill-buffer buf))))
+      (error
+       (harmless-log "xAI allowance request failed: %s"
+                     (error-message-string err))
+       nil))))
+
+(defun harmless-xai--allowance-plist (billing user)
+  "Return a display plist from BILLING and USER responses."
+  (let* ((cfg (or (plist-get billing :config) billing))
+         (period (or (plist-get cfg :currentPeriod) '()))
+         (ptype (format "%s" (or (plist-get period :type) "")))
+         (products nil))
+    (dolist (item (plist-get cfg :productUsage))
+      (push (list :product (plist-get item :product)
+                  :percent (or (plist-get item :usagePercent) 0))
+            products))
+    (list :used-percent (plist-get cfg :creditUsagePercent)
+          :period-type (replace-regexp-in-string
+                        "\\`USAGE_PERIOD_TYPE_" "" ptype)
+          :period-start (or (plist-get period :start)
+                            (plist-get cfg :billingPeriodStart))
+          :period-end (or (plist-get period :end)
+                          (plist-get cfg :billingPeriodEnd))
+          :tier (and user (plist-get user :subscriptionTier))
+          :products (nreverse products))))
+
+(defun harmless-xai-allowance ()
+  "Return the Grok account allowance, or nil.
+This is the weekly pool Grok Build shows: percent used and when it
+resets.  The endpoint is the one the Grok CLI calls."
+  (when-let* ((token (harmless-xai-token)))
+    (let ((billing (harmless-xai--get "/billing?format=credits" token)))
+      (when billing
+        (harmless-xai--allowance-plist
+         billing
+         (harmless-xai--get "/user?include=subscription" token))))))
+
 (defun harmless-xai-token (&optional provider)
   "Return a live xAI OAuth access token for PROVIDER, or nil.
 Does not fall back to an API key; callers do that.  Grok Build's

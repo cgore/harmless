@@ -48,6 +48,8 @@
 (require 'harmless-session)
 
 (declare-function harmless--context-session "harmless")
+(declare-function harmless-xai-allowance "harmless-xai")
+(declare-function harmless-xai--parse-time "harmless-xai")
 
 (defcustom harmless-usage-context-windows
   '(("grok-4.7" . 500000)
@@ -143,12 +145,60 @@ window minus the last request's prompt size."
      (if reset (format "    reset %s" reset) "")
      "\n")))
 
-(defun harmless-usage--account-block (name entry)
-  "Return the account section for provider NAME and limit ENTRY."
+(defun harmless-usage--bar (percent width)
+  "Return a WIDTH-character bar filled to PERCENT."
+  (let* ((pct (max 0 (min 100 (or percent 0))))
+         (filled (round (* width (/ pct 100.0))))
+         (empty (- width filled)))
+    (concat "["
+            (make-string filled ?#)
+            (make-string empty ?-)
+            "]")))
+
+(defun harmless-usage--reset-line (iso)
+  "Return a reset description for ISO timestamp ISO."
+  (let ((end (and (fboundp 'harmless-xai--parse-time)
+                  (harmless-xai--parse-time iso))))
+    (if (not end)
+        (format "resets %s" iso)
+      (let ((secs (float-time (time-subtract end (current-time)))))
+        (if (<= secs 0)
+            (format "resets now (%s)" iso)
+          (format "resets in %dd %dh (%s)"
+                  (floor (/ secs 86400))
+                  (floor (/ (mod (floor secs) 86400) 3600))
+                  iso))))))
+
+(defun harmless-usage--allowance-lines (info)
+  "Return the Grok allowance lines for INFO, or nil."
+  (when info
+    (let ((pct (plist-get info :used-percent))
+          (end (plist-get info :period-end))
+          (kind (downcase (or (plist-get info :period-type) "usage"))))
+      (concat
+       (when (plist-get info :tier)
+         (format "    plan %s\n" (plist-get info :tier)))
+       (when pct
+         (format "    used %.0f%% of the %s limit\n    %s\n"
+                 pct kind (harmless-usage--bar pct 24)))
+       (when end
+         (format "    %s\n" (harmless-usage--reset-line end)))
+       (mapconcat
+        (lambda (item)
+          (format "    %s %.0f%%\n"
+                  (or (plist-get item :product) "?")
+                  (or (plist-get item :percent) 0)))
+        (plist-get info :products)
+        "")))))
+
+(defun harmless-usage--account-block (name entry &optional allowance)
+  "Return the account section for provider NAME and limit ENTRY.
+ALLOWANCE is the Grok pool text, or nil."
   (concat
    (format "  %s\n" name)
-   (if (not entry)
-       "    no rate-limit report yet\n"
+   (or allowance "")
+   (cond
+    (entry
      (concat
       (harmless-usage--limit-line
        "requests"
@@ -170,7 +220,9 @@ window minus the last request's prompt size."
        (plist-get entry :output-tokens-remaining)
        (plist-get entry :output-tokens-limit)
        (plist-get entry :output-tokens-reset))
-      (format "    updated %s\n" (or (plist-get entry :updated) "?"))))))
+      (format "    updated %s\n" (or (plist-get entry :updated) "?"))))
+    (allowance "")
+    (t "    no allowance report yet\n"))))
 
 (defun harmless-usage--session-block (session)
   "Return the context and this-chat section for SESSION."
@@ -200,7 +252,12 @@ window minus the last request's prompt size."
         (names nil)
         (text (concat (harmless-usage--session-block session) "\nAccounts\n\n")))
     (dolist (provider harmless-providers)
-      (let ((name (harmless-provider-name provider)))
+      (let* ((name (harmless-provider-name provider))
+             (allowance (and (not noninteractive)
+                             (equal name "xAI")
+                             (fboundp 'harmless-xai-allowance)
+                             (harmless-usage--allowance-lines
+                              (harmless-xai-allowance)))))
         (push name names)
         (setq text
               (concat text
@@ -208,7 +265,8 @@ window minus the last request's prompt size."
                        name
                        (cl-find name limits
                                 :key (lambda (entry) (plist-get entry :provider))
-                                :test #'equal))))))
+                                :test #'equal)
+                       allowance)))))
     (dolist (entry limits)
       (let ((name (plist-get entry :provider)))
         (unless (member name names)

@@ -4,6 +4,7 @@
 (require 'harmless-http)
 (require 'harmless-openai)
 (require 'harmless-usage)
+(require 'harmless-xai)
 
 (ert-deftest harmless-http-rate-limit-headers ()
   (let ((limits (harmless-http-rate-limits
@@ -65,4 +66,18 @@
       (should-not (string-match-p "All sessions" report))
       (should (string-match-p "tokens remaining 80 of 100" report))
       (should (string-match-p "requests remaining 9" report))
-      (should (string-match-p "local\n    no rate-limit report yet" report)))))
+      (should (string-match-p "local\n    no allowance report yet" report)))))
+
+(ert-deftest harmless-usage-xai-allowance-bar ()
+  (let* ((info (harmless-xai--allowance-plist
+                (harmless-json-decode
+                 "{\"config\":{\"creditUsagePercent\":46.2,\"currentPeriod\":{\"type\":\"USAGE_PERIOD_TYPE_WEEKLY\",\"end\":\"2026-09-27T16:59:00Z\"},\"productUsage\":[{\"product\":\"Build\",\"usagePercent\":26}]}}")
+                (harmless-json-decode "{\"subscriptionTier\":\"SuperGrok\"}")))
+         (lines (harmless-usage--allowance-lines info)))
+    (should (equal 46.2 (plist-get info :used-percent)))
+    (should (equal "WEEKLY" (plist-get info :period-type)))
+    (should (string-match-p "plan SuperGrok" lines))
+    (should (string-match-p "used 46% of the weekly limit" lines))
+    (should (string-match-p "\\[###########-------------\\]" lines))
+    (should (string-match-p "resets in " lines))
+    (should (string-match-p "Build 26%" lines))))
