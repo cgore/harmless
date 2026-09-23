@@ -40,8 +40,8 @@
 ;; Keys are never written to the log.
 ;;
 ;; Login methods (browser OAuth, device code, …) register here.  `harmless-login'
-;; picks among named connections (several xAI or Anthropic accounts) when
-;; `harmless-providers' has more than one OAuth-capable provider.
+;; asks which one to use.  Named connections are listed alongside the
+;; vendors, so a single configured xAI account does not hide Anthropic.
 
 ;;; Code:
 
@@ -135,21 +135,6 @@ logins keep working.  Other connections use `auth-SLUG.json'."
   "Return the spec plist for login method ID, or nil."
   (cdr (assq (harmless-login--id id) harmless-login-methods)))
 
-(defun harmless-login--read-method (prompt)
-  "Return a login-method id, prompting with PROMPT if more than one exists."
-  (cond
-   ((null harmless-login-methods)
-    (user-error "No login methods registered"))
-   ((null (cdr harmless-login-methods))
-    (caar harmless-login-methods))
-   (t
-    (let* ((names (mapcar (lambda (m) (plist-get (cdr m) :name))
-                          harmless-login-methods))
-           (choice (completing-read prompt names nil t)))
-      (car (cl-find choice harmless-login-methods
-                    :key (lambda (m) (plist-get (cdr m) :name))
-                    :test #'string=))))))
-
 (defun harmless-login--oauth-providers ()
   "Return configured providers that support browser login."
   (and (boundp 'harmless-providers)
@@ -157,18 +142,34 @@ logins keep working.  Other connections use `auth-SLUG.json'."
        (cl-remove-if-not #'harmless-provider-login-vendor
                          harmless-providers)))
 
+(defun harmless-login--choices ()
+  "Return an alist of (LABEL . TARGET) for the login prompt.
+TARGET is a provider object or a vendor symbol.  Every registered
+login method is included.  A configured connection replaces the vendor
+entry that has the same name."
+  (let ((table (make-hash-table :test 'equal))
+        names)
+    (dolist (method harmless-login-methods)
+      (let ((name (plist-get (cdr method) :name)))
+        (when (and name (not (string-empty-p name)))
+          (puthash name (car method) table))))
+    (dolist (conn (harmless-login--oauth-providers))
+      (puthash (harmless-provider-name conn) conn table))
+    (maphash (lambda (name _target) (push name names)) table)
+    (mapcar (lambda (name) (cons name (gethash name table)))
+            (sort names #'string<))))
+
 (defun harmless-login--read-target (prompt)
-  "Return a provider or a vendor symbol, prompting with PROMPT if needed."
-  (let ((conns (harmless-login--oauth-providers)))
+  "Return a provider or a vendor symbol, prompting with PROMPT when needed."
+  (let ((choices (harmless-login--choices)))
     (cond
-     ((null conns)
-      (harmless-login--read-method prompt))
-     ((null (cdr conns))
-      (car conns))
+     ((null choices)
+      (user-error "No login methods registered"))
+     ((null (cdr choices))
+      (cdar choices))
      (t
-      (let* ((names (mapcar #'harmless-provider-name conns))
-             (choice (completing-read prompt names nil t)))
-        (cl-find choice conns :key #'harmless-provider-name :test #'string=))))))
+      (cdr (assoc (completing-read prompt (mapcar #'car choices) nil t)
+                  choices))))))
 
 (defun harmless-login--provider-for-vendor (vendor)
   "Return a provider for VENDOR, or nil to use the default auth file."
@@ -210,8 +211,8 @@ TARGET is a provider object or a vendor symbol."
 ;;;###autoload
 (defun harmless-login (&optional target prefix)
   "Log in to TARGET, a named connection or a vendor symbol.
-If TARGET is nil, prompt.  With several named providers (for example
-two xAI accounts), the prompt lists connection names.
+If TARGET is nil, ask.  The choices are the registered login methods
+and any named connections.
 PREFIX is passed to the vendor login; interactively this is the
 prefix arg (xAI device-code, OpenAI paste-redirect)."
   (interactive

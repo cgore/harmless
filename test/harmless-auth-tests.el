@@ -22,6 +22,16 @@
     (harmless-logout)
     (should (eq 'out got))))
 
+(ert-deftest harmless-login-offers-vendors-beside-one-connection ()
+  (let ((harmless-login-methods nil)
+        (harmless-providers (list (harmless-make-xai))))
+    (harmless-register-login-method
+     'xai :name "xAI" :login #'ignore :logout #'ignore)
+    (harmless-register-login-method
+     'anthropic :name "Anthropic" :login #'ignore :logout #'ignore)
+    (should (equal '("Anthropic" "xAI")
+                   (mapcar #'car (harmless-login--choices))))))
+
 (ert-deftest harmless-login-picks-when-several ()
   (let ((harmless-login-methods nil)
         (got nil))
