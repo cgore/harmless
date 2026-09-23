@@ -52,8 +52,10 @@
 (declare-function gfm-view-mode "markdown-mode")
 (declare-function markdown-get-lang-mode "markdown-mode")
 
-(defcustom harmless-md-use-markdown-mode t
-  "When non-nil, render with `gfm-view-mode' if markdown-mode is available."
+(defcustom harmless-md-use-markdown-mode nil
+  "Obsolete.  Rendering always uses the built-in renderer.
+`gfm-view-mode' font-lock calls `markdown-get-lang-mode' and does not
+return when a fenced block is drawn from a process filter."
   :type 'boolean
   :group 'harmless)
 
@@ -113,27 +115,34 @@
   (harmless-md--insert-document (harmless-ensure-utf8 (or text ""))))
 
 (defun harmless-md--insert-chunk (text)
-  "Insert a non-table, non-fence Markdown chunk."
+  "Insert a non-table, non-fence Markdown chunk.
+The built-in renderer is used on purpose.  `gfm-view-mode' font-lock
+calls `markdown-get-lang-mode' and `markdown-search-until-condition',
+and those do not return on fenced blocks inside the process filter."
   (when (and text (not (string-empty-p text)))
-    (if (and harmless-md-use-markdown-mode
-             (require 'markdown-mode nil t)
-             (fboundp 'gfm-view-mode))
-        (insert (harmless-md--via-markdown-mode text))
-      (harmless-md--insert-prose text))))
+    (harmless-md--insert-prose text)))
 
 (defun harmless-md--bol-p (text pos)
   "Return non-nil if POS is the beginning of a line in TEXT."
   (or (eq pos 0)
       (eq (aref text (1- pos)) ?\n)))
 
+(defconst harmless-md--markdown-modes
+  '(markdown-mode gfm-mode gfm-view-mode markdown-view-mode)
+  "Modes that must not be used to highlight a fenced block.
+`gfm-view-mode' font-lock calls `markdown-get-lang-mode' and then
+fontifies that mode.  A markdown fence, or an unclosed fence, sends
+that search into a loop inside the process filter.")
+
 (defun harmless-md--via-markdown-mode (text)
-  "Return TEXT fontified by `gfm-view-mode', markup hidden."
+  "Return TEXT fontified by `gfm-view-mode', markup hidden.
+Code fences are highlighted by `harmless-md--fontify-lang' instead.
+Leaving native fence fontification on here re-enters markdown-mode."
   (with-temp-buffer
     (insert text)
     (let ((markdown-hide-markup t)
           (markdown-hide-markup-in-view-modes t)
-          (markdown-fontify-code-blocks-natively
-           harmless-md-fontify-code))
+          (markdown-fontify-code-blocks-natively nil))
       (delay-mode-hooks
         (gfm-view-mode))
       (font-lock-ensure)
@@ -167,24 +176,27 @@
                 (propertize code 'face 'harmless-md-code-block)))))
 
 (defun harmless-md--lang-mode (lang)
-  "Return a major mode symbol for LANG, or nil."
+  "Return a major mode symbol for LANG, or nil.
+This does not call `markdown-get-lang-mode'.  That function scans
+`auto-mode-alist' and tree-sitter, and it does not return when a
+fence is being highlighted from a process filter."
   (when (and lang (not (string-empty-p lang)))
-    (or (and (fboundp 'markdown-get-lang-mode)
-             (markdown-get-lang-mode lang))
-        (let ((sym (intern (concat lang "-mode"))))
-          (and (fboundp sym) sym))
-        (pcase lang
-          ((or "elisp" "emacs-lisp" "el") 'emacs-lisp-mode)
-          ((or "js" "javascript") 'js-mode)
-          ((or "ts" "typescript") 'typescript-mode)
-          ((or "py" "python") 'python-mode)
-          ((or "sh" "bash" "shell") 'sh-mode)
-          ((or "c") 'c-mode)
-          ((or "c++" "cpp") 'c++-mode)
-          ((or "json") 'js-json-mode)
-          ((or "yaml" "yml") 'yaml-mode)
-          ((or "html") 'html-mode)
-          (_ nil)))))
+    (let ((mode (or (let ((sym (intern (concat lang "-mode"))))
+                      (and (fboundp sym) sym))
+                    (pcase lang
+                      ((or "elisp" "emacs-lisp" "el") 'emacs-lisp-mode)
+                      ((or "js" "javascript") 'js-mode)
+                      ((or "ts" "typescript") 'typescript-mode)
+                      ((or "py" "python") 'python-mode)
+                      ((or "sh" "bash" "shell") 'sh-mode)
+                      ((or "c") 'c-mode)
+                      ((or "c++" "cpp") 'c++-mode)
+                      ((or "json") 'js-json-mode)
+                      ((or "yaml" "yml") 'yaml-mode)
+                      ((or "html") 'html-mode)
+                      (_ nil)))))
+      (unless (memq mode harmless-md--markdown-modes)
+        mode))))
 
 (defun harmless-md--fontify-lang (lang code)
   "Return CODE with native font-lock for LANG, or nil on failure."
@@ -467,7 +479,9 @@
                (body-beg (match-end 0))
                (close (string-match
                        (concat "^" (regexp-quote fence) "[ \t]*$")
-                       text body-beg)))
+                       text body-beg))
+               ;; insert-code-block runs font-lock, which clobbers match-data.
+               (close-end (and close (match-end 0))))
           (if (not close)
               (progn
                 (harmless-md--insert-chunk (substring text start))
@@ -475,15 +489,18 @@
             (harmless-md--insert-code-block
              (car (split-string info))
              (substring text body-beg close))
-            (setq start (match-end 0))
+            (setq start close-end)
             (when (and (< start len) (eq (aref text start) ?\n))
               (setq start (1+ start))))))
        ((harmless-md--parse-table text start)
-        (let ((parsed (harmless-md--parse-table text start)))
+        (let* ((parsed (harmless-md--parse-table text start))
+               (next (nth 0 parsed)))
           (harmless-md--insert-table (nth 1 parsed) (nth 2 parsed))
-          (setq start (nth 0 parsed))))
+          (setq start (if (> next start) next len))))
        (t
         (let ((next (harmless-md--next-special text start)))
+          (when (<= next start)
+            (setq next len))
           (harmless-md--insert-chunk (substring text start next))
           (setq start next)))))))
 

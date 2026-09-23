@@ -212,6 +212,16 @@ inspected for writes.
 The session header shows `plan` while the mode is on.  The flag is
 saved with the session.
 
+## Usage
+
+`M-x harmless-usage` shows two reports.  The session report is the
+prompt and completion tokens Harmless has counted, for the current
+session and summed across saved sessions by connection and model.  The
+account report is the last rate-limit remainder each provider sent
+(requests and tokens still available in the current window, when the
+response included those headers).  A connection with no such headers
+says so.  This is not an account credit balance.
+
 ## Development
 
 ```shell

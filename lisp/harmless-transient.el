@@ -46,6 +46,7 @@
 (require 'harmless-ui)
 (require 'harmless-dashboard)
 (require 'harmless-memory)
+(require 'harmless-usage)
 
 (declare-function harmless-new "harmless")
 (declare-function harmless-current "harmless")
@@ -66,7 +67,8 @@
     ("s" "Switch" harmless-switch)
     ("d" "Dashboard" harmless-dashboard)
     ("a" "Abort" harmless-abort)
-    ("P" "Plan" harmless-plan)]
+    ("P" "Plan" harmless-plan)
+    ("u" "Usage" harmless-usage)]
    ["Options"
     ("m" "Model" harmless-pick-model)
     ("e" "Effort" harmless-set-reasoning-effort)

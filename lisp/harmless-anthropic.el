@@ -314,7 +314,10 @@ An API key is sent as x-api-key."
             (funcall emit '(:error "http error"))))
          ('ok
           (unless (harmless-anthropic-assembler-emitted-stop asm)
-            (harmless-anthropic-finish asm emit))))))))
+            (harmless-anthropic-finish asm emit)))))
+     (lambda (limits)
+       (when limits
+         (funcall emit (list :limits limits)))))))
 
 (provide 'harmless-anthropic)
 

@@ -108,15 +108,54 @@ DATA is the joined data string, or nil for `done'."
            (string-match-p "\\`[ \t\n]*[{[]" block))
       (funcall emit 'message (string-trim block))))))
 
-(defun harmless-http-post-stream (url headers body on-event on-done)
+(defun harmless-http--limit-key (name)
+  "Return a plist key for rate-limit header NAME, or nil."
+  (setq name (replace-regexp-in-string
+              "\\`\\(x-ratelimit-\\|anthropic-ratelimit-\\|ratelimit-\\)"
+              "" (downcase name)))
+  (pcase name
+    ("remaining-requests" :requests-remaining)
+    ("remaining-tokens" :tokens-remaining)
+    ("requests-remaining" :requests-remaining)
+    ("tokens-remaining" :tokens-remaining)
+    ("limit-requests" :requests-limit)
+    ("limit-tokens" :tokens-limit)
+    ("requests-limit" :requests-limit)
+    ("tokens-limit" :tokens-limit)
+    ("reset-requests" :requests-reset)
+    ("reset-tokens" :tokens-reset)
+    ("requests-reset" :requests-reset)
+    ("tokens-reset" :tokens-reset)
+    ("input-tokens-remaining" :input-tokens-remaining)
+    ("output-tokens-remaining" :output-tokens-remaining)
+    ("input-tokens-limit" :input-tokens-limit)
+    ("output-tokens-limit" :output-tokens-limit)
+    ("input-tokens-reset" :input-tokens-reset)
+    ("output-tokens-reset" :output-tokens-reset)
+    (_ nil)))
+
+(defun harmless-http-rate-limits (text)
+  "Return rate-limit headers in TEXT as a plist, or nil."
+  (let (plist)
+    (dolist (line (split-string (or text "") "\n"))
+      (when (string-match "\\`\\([^:]+\\):[ \t]*\\(.*\\)" line)
+        (let ((key (harmless-http--limit-key (string-trim (match-string 1 line))))
+              (value (string-trim (match-string 2 line))))
+          (when (and key (not (string-empty-p value)))
+            (setq plist (plist-put plist key value))))))
+    plist))
+
+(defun harmless-http-post-stream (url headers body on-event on-done &optional on-limits)
   "POST BODY to URL as JSON and stream SSE events.
 HEADERS is an alist of extra header names to values.  ON-EVENT is
 (TYPE DATA) as in `harmless-http-sse-push'.  ON-DONE is called with
-`ok', `error', or `abort'.  Returns the process, or nil if curl is
-unavailable (then `url-retrieve' is used and ON-DONE runs later)."
+`ok', `error', or `abort'.  ON-LIMITS, if given, is called with a
+plist of rate-limit headers when the response includes any.  Returns
+the process, or nil if curl is unavailable (then `url-retrieve' is
+used and ON-DONE runs later)."
   (if (harmless-http-use-curl-p)
-      (harmless-http--curl-stream url headers body on-event on-done)
-    (harmless-http--url-post url headers body on-event on-done)
+      (harmless-http--curl-stream url headers body on-event on-done on-limits)
+    (harmless-http--url-post url headers body on-event on-done on-limits)
     nil))
 
 (defun harmless-http-abort (process)
@@ -133,7 +172,7 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
         (setq code (string-to-number (match-string 1 line)))))
     code))
 
-(defun harmless-http--curl-stream (url headers body on-event on-done)
+(defun harmless-http--curl-stream (url headers body on-event on-done &optional on-limits)
   "Start a curl process for URL.  Return the process."
   (let* ((header-file (make-temp-file "harmless-http-hdr-"))
          (args (append (list harmless-curl-program
@@ -158,6 +197,7 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
     (process-put proc 'harmless-sse (harmless-sse-state-create))
     (process-put proc 'harmless-on-event on-event)
     (process-put proc 'harmless-on-done on-done)
+    (process-put proc 'harmless-on-limits on-limits)
     (process-put proc 'harmless-aborted nil)
     (process-put proc 'harmless-header-file header-file)
     (process-send-string proc body)
@@ -180,12 +220,16 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
            (aborted (process-get proc 'harmless-aborted))
            (status (process-exit-status proc))
            (header-file (process-get proc 'harmless-header-file))
-           (http (and header-file (file-readable-p header-file)
-                      (harmless-http--status-from-headers
-                       (with-temp-buffer
-                         (insert-file-contents header-file)
-                         (buffer-string)))))
+           (header-text (and header-file (file-readable-p header-file)
+                             (with-temp-buffer
+                               (insert-file-contents header-file)
+                               (buffer-string))))
+           (http (and header-text (harmless-http--status-from-headers header-text)))
+           (limits (and header-text (harmless-http-rate-limits header-text)))
+           (on-limits (process-get proc 'harmless-on-limits))
            (http-err (and (numberp http) (>= http 400))))
+      (when (and limits on-limits)
+        (funcall on-limits limits))
       (when (and header-file (file-exists-p header-file))
         (ignore-errors (delete-file header-file)))
       (when (and state on-event)
@@ -201,7 +245,7 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
                   ((eq status 0) 'ok)
                   (t 'error)))))))
 
-(defun harmless-http--url-post (url headers body on-event on-done)
+(defun harmless-http--url-post (url headers body on-event on-done &optional on-limits)
   "Non-streaming POST via `url-retrieve'."
   (let ((url-request-method "POST")
         (url-request-extra-headers
@@ -216,9 +260,16 @@ unavailable (then `url-retrieve' is used and ON-DONE runs later)."
                (funcall on-event 'error (format "%s" err))
                (funcall on-done 'error))
            (goto-char (point-min))
-           (when (re-search-forward "\n\n" nil t)
-             (let ((payload (buffer-substring-no-properties (point) (point-max))))
-               (funcall on-event 'message (string-trim payload))))
+           (let ((header-end (point)))
+             (when (re-search-forward "\n\n" nil t)
+               (setq header-end (match-beginning 0))
+               (let ((payload (buffer-substring-no-properties (point) (point-max))))
+                 (funcall on-event 'message (string-trim payload))))
+             (when on-limits
+               (let ((limits (harmless-http-rate-limits
+                              (buffer-substring-no-properties (point-min) header-end))))
+                 (when limits
+                   (funcall on-limits limits)))))
            (funcall on-done 'ok))))
      nil t t)))
 

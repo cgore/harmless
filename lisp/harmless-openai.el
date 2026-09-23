@@ -590,7 +590,10 @@ Browser-login OAuth tokens win over an API key."
             (unless stopped
               (if codex
                   (harmless-openai-responses-finish resp-asm emit)
-                (harmless-openai-finish chat-asm emit))))))))))
+                (harmless-openai-finish chat-asm emit))))))
+     (lambda (limits)
+       (when limits
+         (funcall emit (list :limits limits))))))))
 
 (provide 'harmless-openai)
 

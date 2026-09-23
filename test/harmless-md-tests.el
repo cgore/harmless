@@ -33,6 +33,25 @@
         (should (string-match-p "before" plain))
         (should (string-match-p "after" plain))))))
 
+(ert-deftest harmless-md-fence-after-prose-finishes ()
+  (with-temp-buffer
+    (harmless-md-insert
+     "See **SBCL** in `utilities.lisp`.\n\n```lisp\n(sum (loop for i from 1 to 100 collect i))\n```\n\nDone.\n")
+    (let ((plain (buffer-substring-no-properties (point-min) (point-max))))
+      (should (string-match-p "SBCL" plain))
+      (should (string-match-p "(sum (loop" plain))
+      (should (string-match-p "Done" plain)))))
+
+(ert-deftest harmless-md-refuses-markdown-lang-mode ()
+  (let ((markdown-get-lang-mode (lambda (_lang) 'gfm-mode)))
+    (should-not (harmless-md--lang-mode "markdown"))
+    (should-not (harmless-md--lang-mode "md")))
+  (with-temp-buffer
+    (harmless-md-insert "```markdown\n# Nested\n```\n")
+    (should (string-match-p "Nested"
+                            (buffer-substring-no-properties
+                             (point-min) (point-max))))))
+
 (ert-deftest harmless-md-link ()
   (let ((harmless-md-use-markdown-mode nil))
     (with-temp-buffer

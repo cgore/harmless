@@ -89,6 +89,8 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
   allow-classes
   prompt-tokens
   completion-tokens
+  last-prompt-tokens
+  last-completion-tokens
   created-at
   updated-at
   directory
@@ -200,6 +202,8 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
                    :allow-classes nil
                    :prompt-tokens 0
                    :completion-tokens 0
+                   :last-prompt-tokens 0
+                   :last-completion-tokens 0
                    :created-at now
                    :updated-at now
                    :title-locked (and (plist-get args :title) t))))
@@ -249,6 +253,8 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
         :permission-mode (format "%s" (harmless-session-permission-mode session))
         :prompt-tokens (harmless-session-prompt-tokens session)
         :completion-tokens (harmless-session-completion-tokens session)
+        :last-prompt-tokens (or (harmless-session-last-prompt-tokens session) 0)
+        :last-completion-tokens (or (harmless-session-last-completion-tokens session) 0)
         :created-at (harmless-session-created-at session)
         :updated-at (harmless-session-updated-at session)
         :title-locked (and (harmless-session-title-locked session) t)
@@ -337,6 +343,8 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
                      :allow-classes nil
                      :prompt-tokens (or (plist-get summary :prompt-tokens) 0)
                      :completion-tokens (or (plist-get summary :completion-tokens) 0)
+                     :last-prompt-tokens (or (plist-get summary :last-prompt-tokens) 0)
+                     :last-completion-tokens (or (plist-get summary :last-completion-tokens) 0)
                      :created-at (plist-get summary :created-at)
                      :updated-at (plist-get summary :updated-at)
                      :directory dir

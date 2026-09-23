@@ -53,6 +53,7 @@
 (require 'harmless-plan)
 (require 'harmless-tools)
 (require 'harmless-perm)
+(require 'harmless-usage)
 
 (declare-function harmless-tools-shell-kill "harmless-tools-shell")
 
@@ -140,8 +141,11 @@
     (`(:usage ,p ,c)
      (setf (harmless-turn-acc-prompt-tokens acc) p
            (harmless-turn-acc-completion-tokens acc) c)
-     (cl-incf (harmless-session-prompt-tokens session) (or p 0))
-     (cl-incf (harmless-session-completion-tokens session) (or c 0)))
+     (harmless-usage-note-turn session p c))
+    (`(:limits ,plist)
+     (harmless-usage-record-limits
+      (harmless-session-provider-name session)
+      plist))
     (`(:error ,err)
      (setf (harmless-turn-acc-finished acc) t)
      (harmless-session-set-status session 'error)

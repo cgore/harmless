@@ -1,0 +1,65 @@
+;;; harmless-usage-tests.el --- Tests for Harmless usage -*- lexical-binding: t; -*-
+
+(require 'ert)
+(require 'harmless-http)
+(require 'harmless-openai)
+(require 'harmless-usage)
+
+(ert-deftest harmless-http-rate-limit-headers ()
+  (let ((limits (harmless-http-rate-limits
+                 (concat "HTTP/1.1 200 OK\n"
+                         "content-type: text/event-stream\n"
+                         "x-ratelimit-remaining-tokens: 80\n"
+                         "x-ratelimit-limit-tokens: 100\n"
+                         "x-ratelimit-remaining-requests: 9\n"
+                         "anthropic-ratelimit-input-tokens-remaining: 1000\n"
+                         "anthropic-ratelimit-output-tokens-remaining: 200\n"))))
+    (should (equal "80" (plist-get limits :tokens-remaining)))
+    (should (equal "100" (plist-get limits :tokens-limit)))
+    (should (equal "9" (plist-get limits :requests-remaining)))
+    (should (equal "1000" (plist-get limits :input-tokens-remaining)))
+    (should (equal "200" (plist-get limits :output-tokens-remaining)))
+    (should-not (plist-get limits :content-type))))
+
+(ert-deftest harmless-usage-note-turn-sets-last-and-total ()
+  (let* ((harmless-directory (make-temp-file "harmless-usage-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-make-openai-compat
+                    "local" :host "127.0.0.1:9" :protocol "http"
+                    :key "none" :models '("m")))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd harmless-directory
+                                        :provider provider
+                                        :model "m")))
+    (harmless-usage-note-turn session 10 4)
+    (harmless-usage-note-turn session 3 1)
+    (should (= 13 (harmless-session-prompt-tokens session)))
+    (should (= 5 (harmless-session-completion-tokens session)))
+    (should (= 3 (harmless-session-last-prompt-tokens session)))
+    (should (= 1 (harmless-session-last-completion-tokens session)))))
+
+(ert-deftest harmless-usage-report-splits-sessions-and-accounts ()
+  (let* ((harmless-directory (make-temp-file "harmless-usage-report-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (xai (harmless-make-openai-compat
+               "xAI" :host "api.x.ai" :protocol "https"
+               :key "none" :models '("grok-4.6")))
+         (local (harmless-make-openai-compat
+                 "local" :host "127.0.0.1:9" :protocol "http"
+                 :key "none" :models '("m")))
+         (harmless-providers (list xai local))
+         (a (harmless-session-new :cwd "/proj/a" :provider xai :model "grok-4.6"))
+         (b (harmless-session-new :cwd "/proj/b" :provider local :model "m")))
+    (harmless-usage-note-turn a 100 20)
+    (harmless-usage-note-turn b 5 1)
+    (harmless-usage-record-limits
+     "xAI" '(:tokens-remaining "80" :tokens-limit "100" :requests-remaining "9"))
+    (let ((report (harmless-usage-report a)))
+      (should (string-match-p "xAI / grok-4.6" report))
+      (should (string-match-p "prompt 100   completion 20   total 120" report))
+      (should (string-match-p "last turn prompt 100   completion 20" report))
+      (should (string-match-p "local / m    1 session    prompt 5   completion 1" report))
+      (should (string-match-p "total prompt 105   completion 21" report))
+      (should (string-match-p "tokens remaining 80 of 100" report))
+      (should (string-match-p "requests remaining 9" report))
+      (should (string-match-p "local\n    no rate-limit report yet" report)))))
