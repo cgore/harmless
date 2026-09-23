@@ -130,10 +130,9 @@ This is the unit-tested core of the OpenAI backend."
     (when-let* ((err (plist-get payload :error)))
       (funcall emit (list :error (or (plist-get err :message)
                                      (format "%s" err)))))
-    (when-let* ((usage (plist-get payload :usage)))
-      (funcall emit (list :usage
-                          (or (plist-get usage :prompt_tokens) 0)
-                          (or (plist-get usage :completion_tokens) 0))))
+    (when-let* ((counts (harmless-openai--usage-counts
+                         (plist-get payload :usage))))
+      (funcall emit (list :usage (car counts) (cdr counts))))
     (when-let* ((choice (car (plist-get payload :choices))))
       (when-let* ((reason (plist-get choice :finish_reason)))
         (unless (eq reason :null)
@@ -228,11 +227,26 @@ This is the unit-tested core of the OpenAI backend."
                             (args (harmless-json-encode args))
                             (t "{}"))))))
 
+(defun harmless-openai--usage-counts (usage)
+  "Return (PROMPT . COMPLETION) from a usage object USAGE.
+Accepts both Chat Completions and Responses field names.  Returns nil
+when USAGE is not an object, which is how streaming chunks say \"no
+usage yet.\""
+  (when (consp usage)
+    (cons (or (plist-get usage :prompt_tokens)
+              (plist-get usage :input_tokens)
+              0)
+          (or (plist-get usage :completion_tokens)
+              (plist-get usage :output_tokens)
+              0))))
+
 (defun harmless-openai--payload (_provider model messages tools stream &optional effort)
   "Build the Chat Completions request body."
   (let ((body (list :model model
                     :messages (harmless-openai--format-messages messages)
                     :stream (and stream t))))
+    (when stream
+      (setq body (append body (list :stream_options '(:include_usage t)))))
     (when tools
       (setq body (append body
                          (list :tools (mapcar #'harmless-openai--format-tool

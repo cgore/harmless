@@ -60,6 +60,31 @@
                          (harmless-session-messages session))))
       (should (equal '(:user :assistant :tool :assistant) roles)))))
 
+(ert-deftest harmless-turn-counts-latest-usage-once ()
+  (let* ((dir (make-temp-file "harmless-usage-turn-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider
+          (harmless-make-fake
+           :name "xAI"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (funcall callback '(:usage 41 1))
+             (funcall callback '(:usage 41 12))
+             (funcall callback '(:limits (:tokens-remaining "80"
+                                           :tokens-limit "100")))
+             (funcall callback '(:text "ok"))
+             (funcall callback '(:stop "stop")))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "grok-4.6")))
+    (harmless-turn-run session "hi")
+    (should (= 41 (harmless-session-prompt-tokens session)))
+    (should (= 12 (harmless-session-completion-tokens session)))
+    (should (= 41 (harmless-session-last-prompt-tokens session)))
+    (let ((limits (harmless-usage-load-limits)))
+      (should (equal "80" (plist-get (car limits) :tokens-remaining))))))
+
 (ert-deftest harmless-turn-denied-tool ()
   (let* ((dir (make-temp-file "harmless-proj-" t))
          (harmless-directory (expand-file-name ".harmless" dir))

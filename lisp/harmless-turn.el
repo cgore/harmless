@@ -139,9 +139,9 @@
          (setf (plist-get entry :args)
                (concat (plist-get entry :args) delta)))))
     (`(:usage ,p ,c)
+     ;; Keep the latest snapshot.  A stream can repeat a running total.
      (setf (harmless-turn-acc-prompt-tokens acc) p
-           (harmless-turn-acc-completion-tokens acc) c)
-     (harmless-usage-note-turn session p c))
+           (harmless-turn-acc-completion-tokens acc) c))
     (`(:limits ,plist)
      (harmless-usage-record-limits
       (harmless-session-provider-name session)
@@ -154,6 +154,12 @@
      (setf (harmless-turn-acc-stop-reason acc) reason
            (harmless-turn-acc-finished acc) t)
      (setf (harmless-session-process session) nil)
+     (when (or (harmless-turn-acc-prompt-tokens acc)
+               (harmless-turn-acc-completion-tokens acc))
+       (harmless-usage-note-turn
+        session
+        (or (harmless-turn-acc-prompt-tokens acc) 0)
+        (or (harmless-turn-acc-completion-tokens acc) 0)))
      (harmless-turn--after-stop session acc)))))
 
 (defun harmless-turn--tool-calls (acc)

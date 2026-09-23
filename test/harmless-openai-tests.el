@@ -26,7 +26,22 @@
 (ert-deftest harmless-openai-payload-includes-effort ()
   (let ((json (harmless-openai--payload nil "grok-4.6" nil nil t "xhigh")))
     (should (string-match-p "\"reasoning_effort\":\"xhigh\"" json))
-    (should (string-match-p "\"model\":\"grok-4.6\"" json))))
+    (should (string-match-p "\"model\":\"grok-4.6\"" json))
+    (should (string-match-p "\"include_usage\":true" json)))
+  (let ((json (harmless-openai--payload nil "grok-4.6" nil nil nil)))
+    (should-not (string-match-p "include_usage" json))))
+
+(ert-deftest harmless-openai-chat-usage-chunk ()
+  (let ((asm (harmless-openai-assembler-create))
+        events)
+    (harmless-openai-handle-payload
+     asm "{\"choices\":[],\"usage\":null}"
+     (lambda (event) (push event events)))
+    (harmless-openai-handle-payload
+     asm "{\"choices\":[],\"usage\":{\"prompt_tokens\":41,\"completion_tokens\":12}}"
+     (lambda (event) (push event events)))
+    (should (equal '(:usage 41 12) (car events)))
+    (should (= 1 (length events)))))
 
 (ert-deftest harmless-openai-responses-detail-error ()
   (let ((asm (harmless-openai-responses-assembler-create))

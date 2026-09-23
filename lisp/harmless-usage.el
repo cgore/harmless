@@ -49,6 +49,30 @@
 
 (declare-function harmless--context-session "harmless")
 
+(defcustom harmless-usage-context-windows
+  '(("grok-4.7" . 500000)
+    ("grok-4.6" . 500000)
+    ("grok-4.5" . 500000)
+    ("grok-4.3" . 1000000))
+  "Context window size in tokens, by model name.
+The provider does not send this on a reply.  Remaining context is the
+window minus the last request's prompt size."
+  :type '(alist :key-type string :value-type integer)
+  :group 'harmless)
+
+(defun harmless-usage--commas (n)
+  "Return N grouped with thousands separators."
+  (let ((s (number-to-string n))
+        (out ""))
+    (while (> (length s) 3)
+      (setq out (concat "," (substring s -3) out)
+            s (substring s 0 -3)))
+    (concat s out)))
+
+(defun harmless-usage-context-window (model)
+  "Return the context window for MODEL, or nil if it is unknown."
+  (cdr (assoc model harmless-usage-context-windows)))
+
 (defvar harmless-usage-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") #'harmless-usage-refresh)
@@ -109,39 +133,6 @@
                 "\n"))
       merged)))
 
-(defun harmless-usage--rows ()
-  "Return usage plists for live sessions and saved sessions not already live."
-  (let ((seen (make-hash-table :test 'equal))
-        rows)
-    (dolist (session (harmless-session-list))
-      (puthash (harmless-session-id session) t seen)
-      (push (list :id (harmless-session-id session)
-                  :title (or (harmless-session-title session)
-                             (harmless-session-project-name session))
-                  :provider (or (harmless-session-provider-name session) "?")
-                  :model (or (harmless-session-model session) "?")
-                  :prompt (or (harmless-session-prompt-tokens session) 0)
-                  :completion (or (harmless-session-completion-tokens session) 0)
-                  :last-prompt (or (harmless-session-last-prompt-tokens session) 0)
-                  :last-completion (or (harmless-session-last-completion-tokens session) 0))
-            rows))
-    (dolist (pair (harmless-session-list-on-disk))
-      (let* ((summary (cdr pair))
-             (id (plist-get summary :id)))
-        (unless (gethash id seen)
-          (push (list :id id
-                      :title (or (plist-get summary :title)
-                                 (plist-get summary :cwd)
-                                 id)
-                      :provider (or (plist-get summary :provider) "?")
-                      :model (or (plist-get summary :model) "?")
-                      :prompt (or (plist-get summary :prompt-tokens) 0)
-                      :completion (or (plist-get summary :completion-tokens) 0)
-                      :last-prompt (or (plist-get summary :last-prompt-tokens) 0)
-                      :last-completion (or (plist-get summary :last-completion-tokens) 0))
-                rows))))
-    (nreverse rows)))
-
 (defun harmless-usage--limit-line (label remaining limit reset)
   "Return one rate-limit line, or an empty string when REMAINING is nil."
   (if (not remaining)
@@ -181,71 +172,33 @@
        (plist-get entry :output-tokens-reset))
       (format "    updated %s\n" (or (plist-get entry :updated) "?"))))))
 
+(defun harmless-usage--session-block (session)
+  "Return the context and this-chat section for SESSION."
+  (if (not session)
+      "No session selected.\n"
+    (let* ((model (or (harmless-session-model session) "?"))
+           (window (harmless-usage-context-window model))
+           (last-prompt (or (harmless-session-last-prompt-tokens session) 0))
+           (prompt (or (harmless-session-prompt-tokens session) 0))
+           (completion (or (harmless-session-completion-tokens session) 0)))
+      (format "%s\n%s    %s\n\nContext\n  window        %s\n  last prompt   %s\n  remaining     %s\n\nThis chat\n  prompt        %s\n  completion    %s\n"
+              (or (harmless-session-title session)
+                  (harmless-session-project-name session))
+              (or (harmless-session-provider-name session) "?")
+              model
+              (if window (harmless-usage--commas window) "unknown")
+              (if (> last-prompt 0) (harmless-usage--commas last-prompt) "—")
+              (if (and window (> last-prompt 0))
+                  (harmless-usage--commas (max 0 (- window last-prompt)))
+                "—")
+              (harmless-usage--commas prompt)
+              (harmless-usage--commas completion)))))
+
 (defun harmless-usage-report (&optional session)
-  "Return the usage report, highlighting SESSION when given."
-  (let* ((rows (harmless-usage--rows))
-         (groups (make-hash-table :test 'equal))
-         (prompt-total 0)
-         (completion-total 0)
-         (limits (harmless-usage-load-limits))
-         (names nil)
-         (text ""))
-    (dolist (row rows)
-      (let* ((provider (plist-get row :provider))
-             (model (plist-get row :model))
-             (key (concat provider "\0" model))
-             (slot (or (gethash key groups)
-                       (list :provider provider :model model
-                             :sessions 0 :prompt 0 :completion 0))))
-        (setq slot (plist-put slot :sessions (1+ (plist-get slot :sessions))))
-        (setq slot (plist-put slot :prompt
-                              (+ (plist-get slot :prompt) (plist-get row :prompt))))
-        (setq slot (plist-put slot :completion
-                              (+ (plist-get slot :completion)
-                                 (plist-get row :completion))))
-        (puthash key slot groups)
-        (cl-incf prompt-total (plist-get row :prompt))
-        (cl-incf completion-total (plist-get row :completion))))
-    (setq text
-          (concat
-           "Session\n\n"
-           (if (not session)
-               "  No session selected.\n"
-             (format "  %s\n  %s / %s\n  prompt %s   completion %s   total %s\n%s"
-                     (or (harmless-session-title session)
-                         (harmless-session-project-name session))
-                     (or (harmless-session-provider-name session) "?")
-                     (or (harmless-session-model session) "?")
-                     (or (harmless-session-prompt-tokens session) 0)
-                     (or (harmless-session-completion-tokens session) 0)
-                     (+ (or (harmless-session-prompt-tokens session) 0)
-                        (or (harmless-session-completion-tokens session) 0))
-                     (if (> (or (harmless-session-last-prompt-tokens session) 0) 0)
-                         (format "  last turn prompt %s   completion %s\n"
-                                 (harmless-session-last-prompt-tokens session)
-                                 (or (harmless-session-last-completion-tokens session) 0))
-                       "")))
-           "\nAll sessions\n\n"))
-    (if (= (hash-table-count groups) 0)
-        (setq text (concat text "  No saved sessions.\n"))
-      (let (keys)
-        (maphash (lambda (key _slot) (push key keys)) groups)
-        (dolist (key (sort keys #'string<))
-          (let ((slot (gethash key groups)))
-            (setq text
-                  (concat text
-                          (format "  %s / %s    %d session%s    prompt %s   completion %s\n"
-                                  (plist-get slot :provider)
-                                  (plist-get slot :model)
-                                  (plist-get slot :sessions)
-                                  (if (= (plist-get slot :sessions) 1) "" "s")
-                                  (plist-get slot :prompt)
-                                  (plist-get slot :completion))))))
-        (setq text
-              (concat text
-                      (format "\n  total prompt %s   completion %s\n"
-                              prompt-total completion-total)))))
-    (setq text (concat text "\nAccounts\n\n"))
+  "Return the usage report for SESSION and the configured accounts."
+  (let ((limits (harmless-usage-load-limits))
+        (names nil)
+        (text (concat (harmless-usage--session-block session) "\nAccounts\n\n")))
     (dolist (provider harmless-providers)
       (let ((name (harmless-provider-name provider)))
         (push name names)

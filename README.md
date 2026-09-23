@@ -214,13 +214,13 @@ saved with the session.
 
 ## Usage
 
-`M-x harmless-usage` shows two reports.  The session report is the
-prompt and completion tokens Harmless has counted, for the current
-session and summed across saved sessions by connection and model.  The
-account report is the last rate-limit remainder each provider sent
-(requests and tokens still available in the current window, when the
-response included those headers).  A connection with no such headers
-says so.  This is not an account credit balance.
+`M-x harmless-usage` shows the current session and one row per
+connection.  The session block is the model's context window, the last
+request's prompt size, and what remains in the window, then the running
+prompt and completion totals for this chat.  Window sizes live in
+`harmless-usage-context-windows`.  The account block is the last
+rate-limit remainder each provider sent.  A connection with no such
+headers says so.  This is not an account credit balance.
 
 ## Development
 
