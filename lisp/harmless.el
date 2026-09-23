@@ -56,6 +56,7 @@
 ;;   M-x harmless-login        ; sign in (picks a provider when several exist)
 ;;   M-x harmless-dashboard    ; all sessions
 ;;   M-x harmless-menu         ; transient
+;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
 
@@ -379,6 +380,38 @@ Empty input clears the session override so the default is used."
     (setf (harmless-session-permission-mode session) mode)
     (harmless-session-save session)
     (message "Harmless permissions: %s" mode)))
+
+(defun harmless--lisp-directory ()
+  "Return the directory holding the Harmless `.el' sources.
+This is the directory of `harmless.el' on `load-path', so a reload
+picks up the checkout Emacs actually loaded."
+  (let ((lib (locate-library "harmless.el" t)))
+    (unless lib
+      (error "Cannot find harmless.el on `load-path'"))
+    (file-name-directory (file-truename lib))))
+
+(defun harmless--source-files ()
+  "Return absolute paths of Harmless `.el' sources, in name order."
+  (cl-remove-if
+   (lambda (file)
+     (string= (file-name-nondirectory file) "harmless-autoloads.el"))
+   (directory-files (harmless--lisp-directory) t "\\.el\\'")))
+
+;;;###autoload
+(defun harmless-reload-all-harmless ()
+  "Reload every Harmless Lisp source file into this Emacs.
+Loads each `.el' file beside `harmless.el' and sets `load-prefer-newer'
+so a newer source file wins over a byte-compiled copy.  Restart Emacs
+when a live session object was created before a struct slot was added."
+  (interactive)
+  (setq load-prefer-newer t)
+  (let ((files (harmless--source-files)))
+    (unless files
+      (error "No Harmless source files in %s" (harmless--lisp-directory)))
+    (dolist (file files)
+      (load file nil t))
+    (message "Harmless reloaded (%d files)" (length files))
+    files))
 
 (provide 'harmless)
 
