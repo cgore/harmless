@@ -72,8 +72,12 @@ window minus the last request's prompt size."
     (concat s out)))
 
 (defun harmless-usage-context-window (model)
-  "Return the context window for MODEL, or nil if it is unknown."
-  (cdr (assoc model harmless-usage-context-windows)))
+  "Return the context window for MODEL, or nil if it is unknown.
+A length learned from the provider's model catalog wins over
+`harmless-usage-context-windows'."
+  (or (and (boundp 'harmless-openai--context-windows)
+           (cdr (assoc model harmless-openai--context-windows)))
+      (cdr (assoc model harmless-usage-context-windows))))
 
 (defvar harmless-usage-mode-map
   (let ((map (make-sparse-keymap)))

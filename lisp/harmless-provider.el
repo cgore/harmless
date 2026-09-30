@@ -48,6 +48,8 @@
 (require 'harmless-auth)
 (require 'harmless-http)
 
+(declare-function harmless-openai-discovered-models "harmless-openai" (provider))
+
 (cl-defstruct (harmless-provider
                (:constructor nil)
                (:copier nil))
@@ -175,7 +177,8 @@ Accepts \"grok-4.6\", \"grok-4.6 (xhigh)\", or \"grok-4.6-xhigh\"."
 
 (defun harmless-provider-model-list (provider)
   "Return model ids currently offered by PROVIDER.
-ChatGPT OAuth uses the Codex catalog rather than api.openai.com ids."
+ChatGPT OAuth uses the Codex catalog rather than api.openai.com ids.
+An xAI connection with no explicit :models list uses GET /v1/models."
   (cond
    ((and provider
          (fboundp 'harmless-openai-official-p)
@@ -184,6 +187,9 @@ ChatGPT OAuth uses the Codex catalog rather than api.openai.com ids."
          (harmless-openai-token provider)
          (boundp 'harmless-openai-codex-models))
     harmless-openai-codex-models)
+   ((and provider
+         (fboundp 'harmless-openai-discovered-models)
+         (harmless-openai-discovered-models provider)))
    (t (and provider (harmless-provider-models provider)))))
 
 (defun harmless-model-candidates (provider)

@@ -23,6 +23,24 @@
     (should (string-match-p "output_config" json))
     (should (string-match-p "\"effort\":\"high\"" json))))
 
+(ert-deftest harmless-openai-models-from-payload-keeps-chat-models ()
+  (let ((parsed (harmless-openai--models-from-payload
+                 '(:object "list"
+                   :data ((:id "grok-4.5" :created 100
+                           :completion_text_token_price 1
+                           :context_length 500000)
+                          (:id "grok-imagine-image" :created 300
+                           :image_price 1 :context_length 1024)
+                          (:id "grok-4.7" :created 200
+                           :completion_text_token_price 1
+                           :context_length 500000))))))
+    (should (equal '("grok-4.7" "grok-4.5") (car parsed)))
+    (should (equal 500000 (cdr (assoc "grok-4.7" (cdr parsed)))))))
+
+(ert-deftest harmless-xai-explicit-models-skip-discovery ()
+  (let ((p (harmless-make-xai :key "none" :models '("only-this"))))
+    (should (equal '("only-this") (harmless-provider-model-list p)))))
+
 (ert-deftest harmless-openai-payload-includes-effort ()
   (let ((json (harmless-openai--payload nil "grok-4.6" nil nil t "xhigh")))
     (should (string-match-p "\"reasoning_effort\":\"xhigh\"" json))

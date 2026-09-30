@@ -40,6 +40,8 @@
                  (harmless-parse-model-spec "grok-4.6")))
   (should (equal '("grok-4.6" . "xhigh")
                  (harmless-parse-model-label "grok-4.6 (xhigh)")))
+  (should (member "grok-4.7" (harmless-provider-model-list
+                                 (harmless-make-xai :key "none"))))
   (should (member "grok-4.6 (xhigh)"
                   (harmless-model-candidates
                    (harmless-make-xai :key "none"))))

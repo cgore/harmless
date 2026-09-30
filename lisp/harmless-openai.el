@@ -99,19 +99,148 @@ Remaining ARGS are keyword arguments as in `harmless-make-openai-compat'."
                          "gpt-5.2" "gpt-5" "gpt-4o"))
            args)))
 
+(defconst harmless-xai-fallback-models
+  '("grok-4.7" "grok-4.6" "grok-4.5" "grok-4" "grok-3" "grok-3-mini")
+  "Model ids used when the xAI catalog cannot be fetched.")
+
+(defconst harmless-xai--baked-model-lists
+  '(("grok-4.7" "grok-4.6" "grok-4.5" "grok-4" "grok-3" "grok-3-mini")
+    ("grok-4.6" "grok-4.5" "grok-4" "grok-3" "grok-3-mini"))
+  "Catalogs Harmless used to store on the provider at creation.")
+
+(defvar harmless-openai--explicit-models
+  (make-hash-table :test 'eq :weakness 'key)
+  "Providers whose :models list must not be replaced by a fetch.")
+
+(defvar harmless-openai--model-cache nil
+  "Alist of (HOST TIME IDS WINDOWS) from a recent GET /v1/models.")
+
+(defvar harmless-openai--context-windows nil
+  "Alist of model id to context length learned from GET /v1/models.")
+
+(defun harmless-xai--baked-models-p (models)
+  "Return non-nil if MODELS is a catalog Harmless used to hard-code."
+  (cl-some (lambda (baked) (equal models baked))
+           harmless-xai--baked-model-lists))
+
+(defun harmless-openai--chat-model-p (item)
+  "Return non-nil if a /v1/models ITEM is a text chat model."
+  (let ((id (plist-get item :id)))
+    (and (stringp id)
+         (not (string-match-p
+               "imagine\\|video\\|\\btts\\b\\|embed\\|whisper"
+               id))
+         (or (numberp (plist-get item :completion_text_token_price))
+             (and (not (plist-get item :image_price))
+                  (numberp (or (plist-get item :context_length)
+                               (plist-get item :context_window))))))))
+
+(defun harmless-openai--models-from-payload (payload)
+  "Return (IDS . WINDOWS) from a /v1/models PAYLOAD.
+IDS are chat models, newest first.  WINDOWS is an alist of id to
+context length."
+  (let (rows)
+    (dolist (item (and (harmless-plist-p payload) (plist-get payload :data)))
+      (when (harmless-openai--chat-model-p item)
+        (push (list (plist-get item :id)
+                    (or (plist-get item :created) 0)
+                    (or (plist-get item :context_length)
+                        (plist-get item :context_window)))
+              rows)))
+    (setq rows (sort rows (lambda (a b) (> (nth 1 a) (nth 1 b)))))
+    (cons (mapcar #'car rows)
+          (cl-loop for row in rows
+                   when (numberp (nth 2 row))
+                   collect (cons (car row) (nth 2 row))))))
+
+(defun harmless-openai--models-url (provider)
+  "Return the /v1/models URL for PROVIDER."
+  (format "%s://%s/v1/models"
+          (or (harmless-provider-protocol provider) "https")
+          (harmless-provider-host provider)))
+
+(defun harmless-openai--fetch-models (provider)
+  "GET PROVIDER's model catalog.  Return (IDS . WINDOWS), or nil.
+The access token is not written to the log."
+  (let ((url-request-method "GET")
+        (url-request-data nil)
+        (url-request-extra-headers (harmless-openai--auth-headers provider)))
+    (condition-case err
+        (let ((buf (url-retrieve-synchronously
+                    (harmless-openai--models-url provider) t t 8)))
+          (when buf
+            (unwind-protect
+                (with-current-buffer buf
+                  (goto-char (point-min))
+                  (when (re-search-forward "\n\n" nil t)
+                    (let* ((status (harmless-http--status-from-headers
+                                    (buffer-substring-no-properties
+                                     (point-min) (match-beginning 0))))
+                           (body (buffer-substring-no-properties
+                                  (point) (point-max))))
+                      (if (and (numberp status) (< status 400))
+                          (harmless-openai--models-from-payload
+                           (harmless-json-decode-safe body))
+                        (harmless-log "model catalog HTTP %s from %s"
+                                      status (harmless-provider-host provider))
+                        nil))))
+              (kill-buffer buf))))
+      (error
+       (harmless-log "model catalog failed: %s" (error-message-string err))
+       nil))))
+
+(defun harmless-openai--cached-models (host)
+  "Return a fresh cached catalog for HOST, or nil."
+  (let ((hit (assoc host harmless-openai--model-cache)))
+    (when (and hit (< (- (float-time) (nth 1 hit)) 600))
+      (cons (nth 2 hit) (nth 3 hit)))))
+
+(defun harmless-xai-discover-p (provider)
+  "Return non-nil if PROVIDER should take its catalog from the API."
+  (and provider
+       (harmless-xai-provider-p provider)
+       (not (gethash provider harmless-openai--explicit-models))
+       (or (null (harmless-provider-models provider))
+           (harmless-xai--baked-models-p (harmless-provider-models provider)))))
+
+(defun harmless-openai-discovered-models (provider)
+  "Return live xAI model ids for PROVIDER, or nil when not discovering.
+Batch Emacs uses `harmless-xai-fallback-models' and does not call
+the network.  A fetched list is reused for ten minutes."
+  (when (harmless-xai-discover-p provider)
+    (if noninteractive
+        harmless-xai-fallback-models
+      (let* ((host (harmless-provider-host provider))
+             (cached (harmless-openai--cached-models host))
+             (fetched (unless cached
+                        (message "Harmless: fetching xAI models…")
+                        (harmless-openai--fetch-models provider)))
+             (found (or cached fetched)))
+        (when (and fetched (car fetched))
+          (setq harmless-openai--model-cache
+                (cons (list host (float-time) (car fetched) (cdr fetched))
+                      (assoc-delete-all host harmless-openai--model-cache)))
+          (setq harmless-openai--context-windows
+                (append (cdr fetched) harmless-openai--context-windows)))
+        (or (car found) harmless-xai-fallback-models)))))
+
 (defun harmless-make-xai (&rest args)
   "Return an xAI / Grok provider.
 The first argument may be a connection NAME (default \"xAI\").
-Remaining ARGS are keyword arguments as in `harmless-make-openai-compat'."
-  (let ((name "xAI"))
+Remaining ARGS are keyword arguments as in `harmless-make-openai-compat'.
+With no :models argument the catalog is read from GET /v1/models."
+  (let ((name "xAI")
+        (explicit (plist-member args :models)))
     (when (and args (not (keywordp (car args))))
-      (setq name (pop args)))
-    (apply #'harmless-make-openai-compat name
-           :host "api.x.ai"
-           :key-env "XAI_API_KEY"
-           :models (or (plist-get args :models)
-                       '("grok-4.6" "grok-4.5" "grok-4" "grok-3" "grok-3-mini"))
-           args)))
+      (setq name (pop args)
+            explicit (plist-member args :models)))
+    (let ((provider (apply #'harmless-make-openai-compat name
+                           :host "api.x.ai"
+                           :key-env "XAI_API_KEY"
+                           args)))
+      (when explicit
+        (puthash provider t harmless-openai--explicit-models))
+      provider)))
 
 (defun harmless-openai--tool-entry (asm index)
   "Return the tool-call plist for INDEX in ASM, creating it if needed."
