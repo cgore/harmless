@@ -95,14 +95,22 @@
                 :type 'error)))
       (should (string-match-p "not attached to a project"
                               (error-message-string err))))
-    (let ((scanned nil))
+    (let ((scanned nil)
+          (spawned nil))
       (cl-letf (((symbol-function 'directory-files-recursively)
-                 (lambda (&rest _) (setq scanned t) nil)))
+                 (lambda (&rest _) (setq scanned t) nil))
+                ((symbol-function 'call-process)
+                 (lambda (&rest _) (setq spawned t) 1)))
         (let ((err (should-error (harmless-tools-fs--glob session '(:pattern "*"))
                                  :type 'error)))
           (should (string-match-p "not attached to a project"
                                   (error-message-string err))))
-        (should-not scanned)))
+        (let ((err (should-error (harmless-tools-fs--grep session '(:pattern "x"))
+                                 :type 'error)))
+          (should (string-match-p "not attached to a project"
+                                  (error-message-string err))))
+        (should-not scanned)
+        (should-not spawned)))
     (should-not (file-exists-p "/a.txt"))))
 
 (ert-deftest harmless-tools-do-not-search-filesystem-root ()
@@ -113,9 +121,12 @@
                     :key "none" :models '("m")))
          (session (harmless-session-new :cwd "/" :provider provider :model "m"))
          (scanned nil)
+         (spawned nil)
          (wrote nil))
     (cl-letf (((symbol-function 'directory-files-recursively)
                (lambda (&rest _) (setq scanned t) nil))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (setq spawned t) 1))
               ((symbol-function 'write-region)
                (lambda (_content _start file &rest _)
                  (setq wrote file))))
@@ -128,11 +139,226 @@
         (should (string-match-p "Refusing to search the filesystem root"
                                 (error-message-string err))))
       (should-not scanned)
+      (should-not spawned)
       (should (string-match-p "Wrote"
                               (harmless-tools-fs--write
                                session '(:path "readme" :contents "hi\n"))))
       (should (equal "/readme" wrote))
       (should-not (file-exists-p "/readme"))
       (should-not (file-exists-p "/a.txt")))))
+
+(ert-deftest harmless-tools-grep-engine-choice ()
+  (should (equal (harmless-tools-fs-grep-engine " RG ") "rg"))
+  (should (equal (harmless-tools-fs-grep-engine "elisp") "elisp"))
+  (let ((err (should-error (harmless-tools-fs-grep-engine "ack") :type 'error)))
+    (should (string-match-p "Unknown grep engine: ack"
+                            (error-message-string err))))
+  (cl-letf (((symbol-function 'executable-find)
+             (lambda (cmd &rest _) (equal cmd "rg"))))
+    (should (equal (harmless-tools-fs-grep-engine nil) "rg"))
+    (should (equal (harmless-tools-fs-grep-engine "") "rg")))
+  (cl-letf (((symbol-function 'executable-find)
+             (lambda (cmd &rest _) (equal cmd "ag"))))
+    (should (equal (harmless-tools-fs-grep-engine nil) "ag")))
+  (cl-letf (((symbol-function 'executable-find) (lambda (&rest _) nil)))
+    (should (equal (harmless-tools-fs-grep-engine nil) "elisp"))))
+
+(ert-deftest harmless-tools-grep-command-args ()
+  (should (equal (harmless-tools-fs-rg-args "needle" "." 0 nil nil)
+                 '("--line-number" "--no-heading" "--color" "never"
+                   "--hidden" "--glob" "!.git/**"
+                   "--" "needle" ".")))
+  (should (equal (harmless-tools-fs-rg-args "needle" "sub" 2 "elisp" t)
+                 '("--line-number" "--no-heading" "--color" "never"
+                   "--hidden" "--glob" "!.git/**"
+                   "--context" "2"
+                   "--multiline" "--multiline-dotall"
+                   "--type" "elisp"
+                   "--" "needle" "sub")))
+  (should (equal (harmless-tools-fs-ag-args "needle" "." 0 nil)
+                 '("-s" "--nocolor" "--nogroup" "--numbers" "--filename"
+                   "--hidden" "--ignore-dir" ".git"
+                   "needle" ".")))
+  (should (equal (harmless-tools-fs-ag-args "needle" "sub/" 1 "html")
+                 '("-s" "--nocolor" "--nogroup" "--numbers" "--filename"
+                   "--hidden" "--ignore-dir" ".git"
+                   "-C" "1"
+                   "--html"
+                   "needle" "sub/"))))
+
+(ert-deftest harmless-tools-grep-normalize-output ()
+  (should (equal (harmless-tools-fs-grep-normalize
+                  "./n.txt:2:needle here\n--\n./.hidden/h.txt:1:dot needle\n"
+                  nil)
+                 "n.txt:2:needle here\n--\n.hidden/h.txt:1:dot needle"))
+  (should (equal (harmless-tools-fs-grep-normalize
+                  "n.txt:1-alpha\nn.txt:2:needle here\nn.txt:3-omega\n"
+                  nil)
+                 "n.txt-1-alpha\nn.txt:2:needle here\nn.txt-3-omega"))
+  (should (equal (harmless-tools-fs-grep-normalize
+                  "a.txt:1:needle\nb.el:1:needle\n"
+                  "*.txt")
+                 "a.txt:1:needle"))
+  (should (equal (harmless-tools-fs-grep-normalize "" nil) "")))
+
+(ert-deftest harmless-tools-grep-parse-file-types ()
+  (should (equal (harmless-tools-fs--parse-rg-types "elisp: *.el\ntxt: *.txt\n")
+                 '("elisp" "txt")))
+  (should (equal (harmless-tools-fs--parse-ag-types
+                  "The following file types are supported:\n  --html\n      .html\n  --lisp\n      .lisp\n")
+                 '("html" "lisp"))))
+
+(defun harmless-tools-test-refuse (session args pattern)
+  "Search SESSION with ARGS and require an error matching PATTERN."
+  (let ((err (should-error (harmless-tools-fs--grep session args) :type 'error)))
+    (should (string-match-p pattern (error-message-string err)))))
+
+(ert-deftest harmless-tools-grep-refuses-bad-requests ()
+  (let* ((dir (make-temp-file "harmless-grep-" t))
+         (session (harmless-test--session dir))
+         (spawned nil))
+    (with-temp-file (expand-file-name "a.txt" dir) (insert "needle\n"))
+    (with-temp-file (expand-file-name "top.txt" dir) (insert "needle\n"))
+    (make-directory (expand-file-name "sub" dir))
+    (harmless-tools-test-refuse session '(:engine "rg") "pattern is required")
+    (harmless-tools-test-refuse session '(:pattern "" :engine "elisp")
+                               "pattern is required")
+    (harmless-tools-test-refuse session '(:pattern "n" :context -1 :engine "elisp")
+                               "context must be a non-negative integer")
+    (harmless-tools-test-refuse session '(:pattern "n" :context "1" :engine "elisp")
+                               "context must be a non-negative integer")
+    (harmless-tools-test-refuse session '(:pattern "n" :path "")
+                               "Path is empty")
+    (harmless-tools-test-refuse session '(:pattern "n" :path "../outside")
+                               "Path escapes project")
+    (harmless-tools-test-refuse session '(:pattern "n" :path "top.txt" :engine "elisp")
+                               "Not a directory")
+    (harmless-tools-test-refuse session '(:pattern "n" :engine "nope")
+                               "Unknown grep engine: nope")
+    (harmless-tools-test-refuse session '(:pattern "a" :engine "ag" :multiline t)
+                               "ag does not support multiline search")
+    (harmless-tools-test-refuse session '(:pattern "-n" :engine "ag")
+                               "ag patterns cannot start with -")
+    (harmless-tools-test-refuse session '(:pattern "a" :engine "elisp" :multiline t)
+                               "multiline search requires ripgrep")
+    (harmless-tools-test-refuse session '(:pattern "a" :engine "elisp" :type "elisp")
+                               "file types require ripgrep or ag")
+    (cl-letf (((symbol-function 'executable-find) (lambda (&rest _) nil))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (setq spawned t) 1)))
+      (harmless-tools-test-refuse session '(:pattern "a" :engine "rg")
+                                 "ripgrep is not installed")
+      (harmless-tools-test-refuse session '(:pattern "a" :engine "ag")
+                                 "ag is not installed")
+      (should-not spawned))
+    (should (string-match-p "No matches"
+                            (harmless-tools-fs--grep
+                             session '(:pattern "Needle" :engine "elisp"))))))
+
+(ert-deftest harmless-tools-grep-elisp-context-glob-and-truncation ()
+  (let* ((dir (make-temp-file "harmless-grep-elisp-" t))
+         (session (harmless-test--session (file-name-as-directory dir))))
+    (with-temp-file (expand-file-name "n.txt" dir)
+      (insert "alpha\nneedle one\nomega\ngap\ngap\nneedle two\ntail\n"))
+    (make-directory (expand-file-name "sub" dir))
+    (with-temp-file (expand-file-name "sub/c.txt" dir) (insert "needle sub\n"))
+    (with-temp-file (expand-file-name "b.el" dir) (insert "needle el\n"))
+    (should (equal (harmless-tools-fs--grep
+                    session '(:pattern "needle" :engine "elisp" :context 1
+                              :glob "n.txt"))
+                   (concat "n.txt-1-alpha\n"
+                           "n.txt:2:needle one\n"
+                           "n.txt-3-omega\n"
+                           "--\n"
+                           "n.txt-5-gap\n"
+                           "n.txt:6:needle two\n"
+                           "n.txt-7-tail")))
+    (should (equal (harmless-tools-fs--grep
+                    session '(:pattern "needle" :engine "elisp" :glob "*.txt"
+                              :path "sub/"))
+                   "sub/c.txt:1:needle sub"))
+    (let ((harmless-read-file-max-bytes 8))
+      (should (string-suffix-p
+               "[truncated]"
+               (harmless-tools-fs--grep
+                session '(:pattern "needle" :engine "elisp")))))))
+
+(ert-deftest harmless-tools-grep-rg-and-ag ()
+  (let* ((dir (make-temp-file "harmless-grep-ext-" t))
+         (session (harmless-test--session dir))
+         (context "n.txt-1-alpha\nn.txt:2:needle here\nn.txt-3-omega"))
+    (with-temp-file (expand-file-name "n.txt" dir)
+      (insert "alpha\nneedle here\nomega\n"))
+    (with-temp-file (expand-file-name "b.el" dir) (insert "needle el\n"))
+    (with-temp-file (expand-file-name "a.html" dir) (insert "needle html\n"))
+    (with-temp-file (expand-file-name ".hidden.txt" dir) (insert "needle hidden\n"))
+    (make-directory (expand-file-name "sub" dir))
+    (with-temp-file (expand-file-name "sub/keep.txt" dir) (insert "needle sub\n"))
+    (make-directory (expand-file-name "multi" dir))
+    (with-temp-file (expand-file-name "multi/span.txt" dir)
+      (insert "before\nstart middle\nend after\n"))
+    (let ((default-directory dir))
+      (should (eq 0 (call-process "git" nil nil nil "init" "-q"))))
+    (with-temp-file (expand-file-name ".gitignore" dir) (insert "skip.txt\n"))
+    (with-temp-file (expand-file-name "skip.txt" dir) (insert "needle ignored\n"))
+    (with-temp-file (expand-file-name ".git/secret.txt" dir)
+      (insert "needle git\n"))
+    (dolist (engine '("rg" "ag"))
+      (let ((found (harmless-tools-fs--grep
+                    session (list :pattern "needle" :engine engine))))
+        (should (string-match-p "n.txt:2:needle here" found))
+        (should (string-match-p "\\.hidden.txt:1:needle hidden" found))
+        (should (string-match-p "sub/keep.txt:1:needle sub" found))
+        (should-not (string-match-p "needle ignored" found))
+        (should-not (string-match-p "needle git" found)))
+      (should (equal (harmless-tools-fs--grep
+                      session (list :pattern "needle here" :engine engine
+                                    :context 1 :glob "n.txt"))
+                     context))
+      (should (equal (harmless-tools-fs--grep
+                      session (list :pattern "needle" :engine engine
+                                    :glob "*.txt" :path "sub/"))
+                     "sub/keep.txt:1:needle sub"))
+      (should (equal (harmless-tools-fs--grep
+                      session (list :pattern "Needle" :engine engine))
+                     "No matches")))
+    (should (string-match-p "a.html:1:needle html"
+                            (harmless-tools-fs--grep
+                             session '(:pattern "needle" :engine "ag" :type "html"))))
+    (should-not (string-match-p "b.el"
+                                (harmless-tools-fs--grep
+                                 session '(:pattern "needle" :engine "ag" :type "html"))))
+    (should (string-match-p "b.el:1:needle el"
+                            (harmless-tools-fs--grep
+                             session '(:pattern "needle" :engine "rg" :type "elisp"))))
+    (should-not (string-match-p "a.html"
+                                (harmless-tools-fs--grep
+                                 session '(:pattern "needle" :engine "rg" :type "elisp"))))
+    (harmless-tools-test-refuse session '(:pattern "needle" :engine "rg" :type "notatype")
+                               "Unknown file type for rg: notatype")
+    (harmless-tools-test-refuse session '(:pattern "needle" :engine "ag" :type "notatype")
+                               "Unknown file type for ag: notatype")
+    (let ((span (harmless-tools-fs--grep
+                 session '(:pattern "start.*end" :engine "rg" :multiline t
+                           :path "multi"))))
+      (should (string-match-p "multi/span.txt:2:start middle" span))
+      (should (string-match-p "multi/span.txt:3:end after" span)))
+    (should (equal (harmless-tools-fs--grep
+                    session '(:pattern "start.*end" :engine "rg" :multiline :false
+                              :path "multi"))
+                   "No matches"))
+    (let ((err (should-error
+                (harmless-tools-fs--grep session '(:pattern "(" :engine "rg"))
+                :type 'error)))
+      (should (string-match-p "unclosed group" (error-message-string err))))
+    (let ((err (should-error
+                (harmless-tools-fs--grep session '(:pattern "(" :engine "ag"))
+                :type 'error)))
+      (should (string-match-p "missing closing parenthesis"
+                              (error-message-string err))))
+    (let ((elisp (harmless-tools-fs--grep
+                  session '(:pattern "needle" :engine "elisp"))))
+      (should (string-match-p "skip.txt:1:needle ignored" elisp))
+      (should (string-match-p "\\.git/secret.txt:1:needle git" elisp)))))
 
 (provide 'harmless-tools-tests)

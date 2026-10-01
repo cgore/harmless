@@ -37,7 +37,7 @@
 ;;; Commentary:
 ;;
 ;; read_file, write_file, replace, list_dir, grep, glob.  Paths must stay
-;; inside the session cwd.
+;; inside the session cwd.  grep uses ripgrep, then ag, then an Elisp scan.
 
 ;;; Code:
 
@@ -221,44 +221,362 @@
                   files)
                  "\n"))))
 
+(defvar harmless-tools-fs--file-type-cache (make-hash-table :test 'equal)
+  "File type names keyed by search program, \"rg\" or \"ag\".")
+
+(defun harmless-tools-fs-grep-engine (name)
+  "Return a grep engine for NAME.
+NAME is \"rg\", \"ag\", \"elisp\", or nil.  Nil selects ripgrep, then
+ag, then the Elisp scan."
+  (let ((name (if (stringp name) (downcase (string-trim name)) name)))
+    (cond
+     ((or (null name) (equal name ""))
+      (cond ((executable-find "rg") "rg")
+            ((executable-find "ag") "ag")
+            (t "elisp")))
+     ((member name '("rg" "ag" "elisp")) name)
+     (t (error "Unknown grep engine: %s" name)))))
+
+(defun harmless-tools-fs-grep-pattern (args)
+  "Return the required pattern string from ARGS."
+  (let ((pattern (or (harmless-tool-arg args :pattern)
+                     (harmless-tool-arg args :query))))
+    (unless (and (stringp pattern) (not (string-empty-p pattern)))
+      (error "pattern is required"))
+    pattern))
+
+(defun harmless-tools-fs-grep-context (value)
+  "Return a non-negative context count for VALUE."
+  (cond
+   ((null value) 0)
+   ((and (integerp value) (>= value 0)) value)
+   (t (error "context must be a non-negative integer"))))
+
+(defun harmless-tools-fs-rg-args (pattern path context type multiline)
+  "Return ripgrep arguments for PATTERN under relative PATH.
+CONTEXT is a non-negative integer.  TYPE is a file type or nil.
+MULTILINE enables a match across lines."
+  (append
+   (list "--line-number" "--no-heading" "--color" "never"
+         "--hidden" "--glob" "!.git/**")
+   (when (and context (> context 0))
+     (list "--context" (number-to-string context)))
+   (when multiline
+     (list "--multiline" "--multiline-dotall"))
+   (when (and type (not (string-empty-p type)))
+     (list "--type" type))
+   (list "--" pattern (or path "."))))
+
+(defun harmless-tools-fs-ag-args (pattern path context type)
+  "Return ag arguments for PATTERN under relative PATH.
+CONTEXT is a non-negative integer.  TYPE is a file type or nil.
+ag does not treat \"--\" as the end of options, and its long
+context option does not take a separate argument, so context is -C."
+  (append
+   (list "-s" "--nocolor" "--nogroup" "--numbers" "--filename"
+         "--hidden" "--ignore-dir" ".git")
+   (when (and context (> context 0))
+     (list "-C" (number-to-string context)))
+   (when (and type (not (string-empty-p type)))
+     (list (concat "--" type)))
+   (list pattern (or path "."))))
+
+(defun harmless-tools-fs--parse-rg-types (text)
+  "Return ripgrep file type names listed in TEXT."
+  (let (types)
+    (dolist (line (split-string text "\n" t))
+      (when (string-match "^\\([A-Za-z0-9_+-]+\\):" line)
+        (push (match-string 1 line) types)))
+    (nreverse types)))
+
+(defun harmless-tools-fs--parse-ag-types (text)
+  "Return ag file type names listed in TEXT."
+  (let (types)
+    (dolist (line (split-string text "\n" t))
+      (when (string-match
+             "^[[:space:]]*--\\([A-Za-z0-9_+-]+\\)[[:space:]]*$"
+             line)
+        (push (match-string 1 line) types)))
+    (nreverse types)))
+
+(defun harmless-tools-fs--read-program (program args)
+  "Return stdout from PROGRAM with ARGS.  Signal when it fails."
+  (with-temp-buffer
+    (let* ((coding-system-for-read 'utf-8-unix)
+           (coding-system-for-write 'utf-8-unix)
+           (status (apply #'call-process program nil t nil args)))
+      (unless (eq status 0)
+        (error "Cannot list file types for %s" program))
+      (harmless-ensure-utf8 (buffer-string)))))
+
+(defun harmless-tools-fs-file-types (program)
+  "Return file type names for PROGRAM, \"rg\" or \"ag\"."
+  (or (gethash program harmless-tools-fs--file-type-cache)
+      (let* ((text (harmless-tools-fs--read-program
+                    program
+                    (if (equal program "ag")
+                        '("--list-file-types")
+                      '("--type-list"))))
+             (types (if (equal program "ag")
+                        (harmless-tools-fs--parse-ag-types text)
+                      (harmless-tools-fs--parse-rg-types text))))
+        (unless types
+          (error "Cannot list file types for %s" program))
+        (puthash program types harmless-tools-fs--file-type-cache)
+        types)))
+
+(defun harmless-tools-fs-grep-require-program (engine)
+  "Return the program for ENGINE, or nil for the Elisp scan.
+Signal when the named program is not installed."
+  (pcase engine
+    ("rg" (unless (executable-find "rg")
+            (error "ripgrep is not installed"))
+          "rg")
+    ("ag" (unless (executable-find "ag")
+            (error "ag is not installed"))
+          "ag")
+    (_ nil)))
+
+(defun harmless-tools-fs-grep-check-type (engine type)
+  "Signal when TYPE is set and ENGINE cannot apply it."
+  (when (and (stringp type) (not (string-empty-p type)))
+    (if (equal engine "elisp")
+        (error "file types require ripgrep or ag")
+      (unless (member type (harmless-tools-fs-file-types engine))
+        (error "Unknown file type for %s: %s" engine type)))))
+
+(defun harmless-tools-fs-grep-glob-p (glob relative-path)
+  "Return non-nil if RELATIVE-PATH's basename matches GLOB.
+A nil or empty GLOB matches every name."
+  (or (null glob)
+      (not (stringp glob))
+      (string-empty-p glob)
+      (string-match-p (wildcard-to-regexp (file-name-nondirectory glob))
+                      (file-name-nondirectory relative-path))))
+
+(defun harmless-tools-fs-grep-normalize-line (line)
+  "Return LINE with a leading ./ removed and ag context rewritten.
+A match stays path:line:text.  An ag context line path:line-text
+becomes path-line-text, which is ripgrep's context form."
+  (let ((line (if (string-prefix-p "./" line) (substring line 2) line)))
+    (if (and (not (string-match "^\\(.*\\):\\([0-9]+\\):\\(.*\\)$" line))
+             (string-match "^\\(.*\\):\\([0-9]+\\)-\\(.*\\)$" line))
+        (format "%s-%s-%s"
+                (match-string 1 line)
+                (match-string 2 line)
+                (match-string 3 line))
+      line)))
+
+(defun harmless-tools-fs-grep-line-path (line)
+  "Return the relative path at the start of grep LINE, or nil."
+  (cond
+   ((string-match "^\\(.*\\):\\([0-9]+\\):" line) (match-string 1 line))
+   ((string-match "^\\(.*\\):\\([0-9]+\\)-" line) (match-string 1 line))
+   ((string-match "^\\(.*\\)-\\([0-9]+\\)-" line) (match-string 1 line))
+   (t nil)))
+
+(defun harmless-tools-fs-grep-collapse (lines)
+  "Join grep LINES, dropping a leading, trailing, or repeated \"--\"."
+  (let (out prev)
+    (dolist (line lines)
+      (unless (and (string= line "--")
+                   (or (null prev) (string= prev "--")))
+        (push line out)
+        (setq prev line)))
+    (while (and out (string= (car out) "--"))
+      (setq out (cdr out)))
+    (if out
+        (mapconcat #'identity (nreverse out) "\n")
+      "")))
+
+(defun harmless-tools-fs-grep-normalize (text glob)
+  "Normalize ripgrep or ag TEXT and keep lines whose path matches GLOB."
+  (let (lines)
+    (dolist (line (split-string text "\n" t))
+      (let* ((norm (harmless-tools-fs-grep-normalize-line line))
+             (path (unless (string= norm "--")
+                     (harmless-tools-fs-grep-line-path norm))))
+        (when (or (string= norm "--")
+                  (null path)
+                  (harmless-tools-fs-grep-glob-p glob path))
+          (push norm lines))))
+    (harmless-tools-fs-grep-collapse (nreverse lines))))
+
+(defun harmless-tools-fs-grep-finish (text)
+  "Return TEXT to the model, or \"No matches\" when it is empty.
+Long output is cut to `harmless-read-file-max-bytes'."
+  (let ((text (or text "")))
+    (when (string-suffix-p "\n" text)
+      (setq text (substring text 0 -1)))
+    (cond
+     ((string-empty-p text) "No matches")
+     ((> (string-bytes text) harmless-read-file-max-bytes)
+      (concat (substring text 0 (min (length text)
+                                     harmless-read-file-max-bytes))
+              "\n[truncated]"))
+     (t text))))
+
+(defun harmless-tools-fs--search-external (program args directory)
+  "Run PROGRAM with ARGS in DIRECTORY.  Return stdout.
+Exit status 1 with empty stderr means there were no matches.
+Stderr goes to a temporary file: this Emacs accepts a file name
+there, not a buffer."
+  (let ((errfile (make-temp-file "harmless-grep-err")))
+    (unwind-protect
+        (with-temp-buffer
+          (let* ((default-directory directory)
+                 (coding-system-for-read 'utf-8-unix)
+                 (coding-system-for-write 'utf-8-unix)
+                 (status (apply #'call-process program nil
+                                (list (current-buffer) errfile) nil args))
+                 (out (harmless-ensure-utf8 (buffer-string)))
+                 (err (with-temp-buffer
+                        (let ((coding-system-for-read 'utf-8-unix))
+                          (insert-file-contents errfile))
+                        (harmless-ensure-utf8 (buffer-string)))))
+            (cond
+             ((not (integerp status))
+              (error "%s" status))
+             ((and (eq status 1) (string-empty-p (string-trim err)))
+              "")
+             ((eq status 0) out)
+             (t
+              (let ((msg (string-trim err)))
+                (when (> (length msg) 400)
+                  (setq msg (substring msg 0 400)))
+                (error "%s failed (%s): %s" program status
+                       (if (string-empty-p msg) "no error output" msg)))))))
+      (when (file-exists-p errfile)
+        (delete-file errfile)))))
+
+(defun harmless-tools-fs-grep-directory (session cwd path)
+  "Return (absolute . relative) for PATH inside SESSION's CWD.
+A nil PATH is CWD.  An empty PATH is refused."
+  (let ((abs (if (null path)
+                 cwd
+               (harmless-tools-fs-resolve session path))))
+    (unless (file-directory-p abs)
+      (error "Not a directory: %s" (or path abs)))
+    (cons abs
+          (if (harmless-same-directory-p abs cwd)
+              "."
+            (file-relative-name (directory-file-name abs)
+                                (directory-file-name cwd))))))
+
+(defun harmless-tools-fs--grep-format (rel lines matches context)
+  "Format MATCHES in LINES of REL.
+CONTEXT includes neighboring lines.  Match lines are path:line:text
+and context lines are path-line-text."
+  (let* ((n (length lines))
+         (show (make-vector n nil)))
+    (dolist (m matches)
+      (let ((start (max 1 (- m context)))
+            (end (min n (+ m context)))
+            (i nil))
+        (setq i start)
+        (while (<= i end)
+          (aset show (1- i)
+                (if (= i m)
+                    'match
+                  (or (aref show (1- i)) 'context)))
+          (setq i (1+ i)))))
+    (let (out any gap)
+      (dotimes (idx n)
+        (let* ((i (1+ idx))
+               (kind (aref show idx)))
+          (if (null kind)
+              (setq gap any)
+            (when gap
+              (push "--" out)
+              (setq gap nil))
+            (setq any t)
+            (push (format (if (eq kind 'match) "%s:%d:%s" "%s-%d-%s")
+                          rel i (nth idx lines))
+                  out))))
+      (nreverse out))))
+
+(defun harmless-tools-fs--grep-file (file cwd pattern context)
+  "Return formatted grep lines for FILE, or nil when it has no match."
+  (let ((rel (file-relative-name file (directory-file-name cwd)))
+        (lines nil)
+        (matches nil)
+        (n 0))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (while (not (eobp))
+        (setq n (1+ n))
+        (let ((text (buffer-substring (line-beginning-position)
+                                     (line-end-position))))
+          (push text lines)
+          (when (let ((case-fold-search nil))
+                  (string-match-p pattern text))
+            (push n matches)))
+        (forward-line 1)))
+    (when matches
+      (harmless-tools-fs--grep-format
+       rel (nreverse lines) (nreverse matches) context))))
+
+(defun harmless-tools-fs--grep-elisp (root scan pattern glob context)
+  "Search SCAN, which is inside ROOT, with an Elisp line scan.
+Result paths are relative to ROOT."
+  (let (parts)
+    (dolist (file (directory-files-recursively scan ".*" nil))
+      (when (and (file-regular-p file)
+                 (harmless-tools-fs-inside-p root file)
+                 (harmless-tools-fs-grep-glob-p
+                  glob (file-relative-name file (directory-file-name root))))
+        (let ((lines (harmless-tools-fs--grep-file file root pattern context)))
+          (when lines
+            (setq parts (append parts
+                                (when (and parts (> context 0))
+                                  (list "--"))
+                                lines))))))
+    (mapconcat #'identity parts "\n")))
+
 (defun harmless-tools-fs--grep (session args)
-  "grep implementation, Elisp so tests do not need ripgrep."
+  "grep implementation.
+ENGINE selects ripgrep, ag, or the Elisp scan.  With no engine, use
+the first installed program, and otherwise scan in Elisp.  Ripgrep
+and ag skip ignored files and .git, and they read hidden files.
+MULTILINE is ripgrep only."
   (let* ((cwd (harmless-session-require-project session))
-         (pattern (or (harmless-tool-arg args :pattern)
-                      (harmless-tool-arg args :query)))
+         (pattern (harmless-tools-fs-grep-pattern args))
          (glob (harmless-tool-arg args :glob))
-         (re (or pattern (error "pattern is required")))
-         (hits nil)
-         (count 0))
+         (engine (harmless-tools-fs-grep-engine
+                  (harmless-tool-arg args :engine)))
+         (context (harmless-tools-fs-grep-context
+                   (harmless-tool-arg args :context)))
+         (type (harmless-tool-arg args :type))
+         (multiline (harmless-json-true-p
+                     (harmless-tool-arg args :multiline))))
     (when (harmless-filesystem-root-p cwd)
       (error "Refusing to search the filesystem root"))
-    (dolist (file (directory-files-recursively cwd ".*" nil))
-      (when (and (file-regular-p file)
-                 (harmless-tools-fs-inside-p cwd file)
-                 (or (null glob)
-                     (string-match-p (wildcard-to-regexp
-                                      (file-name-nondirectory glob))
-                                     (file-name-nondirectory file))))
-        (let ((line-no 0))
-          (with-temp-buffer
-            (insert-file-contents file)
-            (goto-char (point-min))
-            (while (not (eobp))
-              (setq line-no (1+ line-no))
-              (when (string-match-p re (buffer-substring
-                                        (line-beginning-position)
-                                        (line-end-position)))
-                (push (format "%s:%d:%s"
-                              (file-relative-name file cwd)
-                              line-no
-                              (buffer-substring (line-beginning-position)
-                                                (line-end-position)))
-                      hits)
-                (setq count (1+ count)))
-              (forward-line 1))))))
-    (if hits
-        (mapconcat #'identity (nreverse hits) "\n")
-      "No matches")))
+    (when (and multiline (equal engine "ag"))
+      (error "ag does not support multiline search"))
+    (when (and (equal engine "ag") (string-prefix-p "-" pattern))
+      (error "ag patterns cannot start with -"))
+    (when (and multiline (equal engine "elisp"))
+      (error "multiline search requires ripgrep"))
+    (let* ((program (harmless-tools-fs-grep-require-program engine))
+           (place (progn
+                    (harmless-tools-fs-grep-check-type engine type)
+                    (harmless-tools-fs-grep-directory
+                     session cwd (harmless-tool-arg args :path))))
+           (text (if (null program)
+                     (harmless-tools-fs--grep-elisp
+                      cwd (car place) pattern glob context)
+                   (harmless-tools-fs-grep-normalize
+                    (harmless-tools-fs--search-external
+                     program
+                     (if (equal engine "ag")
+                         (harmless-tools-fs-ag-args
+                          pattern (cdr place) context type)
+                       (harmless-tools-fs-rg-args
+                        pattern (cdr place) context type multiline))
+                     cwd)
+                    glob))))
+      (harmless-tools-fs-grep-finish text))))
 
 (defun harmless-tools-fs-register ()
   "Register filesystem tools."
@@ -316,11 +634,22 @@
   (harmless-register-tool
    (harmless-tool-create
     :name "grep"
-    :description "Search project files for a regular expression PATTERN. Optional GLOB limits by filename."
+    :description "Search project files for a regular expression PATTERN. ENGINE is rg, ag, or elisp. With no engine, use ripgrep, then ag, then an Elisp scan. rg and ag skip ignored files and .git, and they search hidden files. The Elisp scan reads every file. CONTEXT is the number of context lines. TYPE is a file type name from that engine. MULTILINE matches across lines and requires ripgrep. GLOB limits basenames. PATH is a directory inside the project."
     :class 'read
     :schema '(:type "object"
               :properties (:pattern (:type "string")
-                           :glob (:type "string"))
+                           :glob (:type "string"
+                                  :description "Basename glob, such as *.el")
+                           :path (:type "string"
+                                  :description "Directory relative to the project root")
+                           :engine (:type "string"
+                                    :description "rg, ag, or elisp")
+                           :context (:type "integer"
+                                     :description "Lines of context around each match")
+                           :type (:type "string"
+                                  :description "File type known to the selected engine")
+                           :multiline (:type "boolean"
+                                       :description "Match across lines. Ripgrep only."))
               :required ["pattern"])
     :fn #'harmless-tools-fs--grep)))
 
