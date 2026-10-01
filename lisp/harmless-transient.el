@@ -49,6 +49,7 @@
 (require 'harmless-usage)
 
 (declare-function harmless-new "harmless")
+(declare-function harmless-chat "harmless")
 (declare-function harmless-current "harmless")
 (declare-function harmless-switch "harmless")
 (declare-function harmless-set-model "harmless")
@@ -63,6 +64,7 @@
   "Harmless commands."
   [["Session"
     ("n" "New" harmless-new)
+    ("C" "Chat" harmless-chat)
     ("c" "Current project" harmless-current)
     ("s" "Switch" harmless-switch)
     ("d" "Dashboard" harmless-dashboard)

@@ -166,14 +166,20 @@
        (format "%s" (harmless-session-status s))
        (if (harmless-session-plan-mode s) "  plan" "")))))
 
+(defun harmless-ui--short-id (session)
+  "Return a short prefix of SESSION's id."
+  (let ((id (harmless-session-id session)))
+    (substring id 0 (min 8 (length id)))))
+
 (defun harmless-ui--session-buffer-name (session)
-  "Buffer name for SESSION's transcript."
-  (let* ((proj (harmless-session-project-name session))
-         (peers (harmless-session-for-cwd (harmless-session-cwd session))))
-    (if (> (length peers) 1)
-        (format "*harmless: %s %s*"
-                proj
-                (substring (harmless-session-id session) 0 8))
+  "Buffer name for SESSION's transcript.
+A detached chat always includes its id, so two chats do not share a buffer."
+  (let ((proj (harmless-session-project-name session)))
+    (if (or (harmless-session-detached-p session)
+            (> (length (harmless-session-for-cwd
+                        (harmless-session-cwd session)))
+               1))
+        (format "*harmless: %s %s*" proj (harmless-ui--short-id session))
       (format "*harmless: %s*" proj))))
 
 (defun harmless-ui--prompt-buffer-name (session)
@@ -181,13 +187,18 @@
   (concat (harmless-ui--session-buffer-name session) " prompt"))
 
 (defun harmless-ui--apply-directory (session)
-  "Set `default-directory' from SESSION when that cwd is absolute.
-A missing cwd is left alone.  Setting it to nil would make Emacs use /."
-  (let ((cwd (harmless-session-cwd session)))
-    (when (and (stringp cwd)
-               (not (string-empty-p cwd))
-               (file-name-absolute-p cwd))
-      (setq default-directory cwd))))
+  "Set `default-directory' from SESSION.
+A project session uses its cwd.  A detached chat uses its storage
+directory, which lives under the Harmless data directory.  Setting
+`default-directory' to nil would make Emacs use /."
+  (cond
+   ((harmless-session-detached-p session)
+    (setq default-directory (harmless-session-dir session)))
+   ((let ((cwd (harmless-session-cwd session)))
+      (and (stringp cwd)
+           (not (string-empty-p cwd))
+           (file-name-absolute-p cwd)))
+    (setq default-directory (harmless-session-cwd session)))))
 
 (defun harmless-ui-ensure-session-buffer (session)
   "Return SESSION's transcript buffer, creating it if needed."

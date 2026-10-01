@@ -88,11 +88,21 @@
         (session (harmless-session--create :id "abcdef0123456789" :cwd nil)))
     (let ((err (should-error (harmless-tools-fs-resolve session "a.txt")
                              :type 'error)))
-      (should (string-match-p "must be absolute" (error-message-string err))))
+      (should (string-match-p "not attached to a project"
+                              (error-message-string err))))
     (let ((err (should-error
                 (harmless-tools-shell--run session '(:command "pwd") #'ignore)
                 :type 'error)))
-      (should (string-match-p "must be absolute" (error-message-string err))))
+      (should (string-match-p "not attached to a project"
+                              (error-message-string err))))
+    (let ((scanned nil))
+      (cl-letf (((symbol-function 'directory-files-recursively)
+                 (lambda (&rest _) (setq scanned t) nil)))
+        (let ((err (should-error (harmless-tools-fs--glob session '(:pattern "*"))
+                                 :type 'error)))
+          (should (string-match-p "not attached to a project"
+                                  (error-message-string err))))
+        (should-not scanned)))
     (should-not (file-exists-p "/a.txt"))))
 
 (ert-deftest harmless-tools-do-not-search-filesystem-root ()

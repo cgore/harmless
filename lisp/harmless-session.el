@@ -116,13 +116,35 @@ location.  A relative path or the filesystem root is refused."
   (harmless-model-label (harmless-session-model session)
                         (harmless-session-effective-reasoning-effort session)))
 
+(defconst harmless-session-detached-component "_detached"
+  "Directory component for chats that have no project.
+An encoded project directory always contains a percent sign, so this
+name cannot be one.")
+
+(defun harmless-session-detached-p (session)
+  "Return non-nil if SESSION is a chat with no project directory.
+Only a nil cwd counts.  An empty string is not a detached chat."
+  (null (harmless-session-cwd session)))
+
+(defun harmless-place-name (cwd)
+  "Return a short label for a session CWD.
+Nil is a detached chat.  An empty string stays unlabeled."
+  (cond
+   ((null cwd) "chat")
+   ((not (and (stringp cwd) (not (string-empty-p cwd)))) "?")
+   (t (let ((name (file-name-nondirectory (directory-file-name cwd))))
+        (if (string-empty-p name) cwd name)))))
+
 (defun harmless-session-project-name (session)
   "Return a short project label for SESSION."
-  (let ((cwd (harmless-session-cwd session)))
-    (cond
-     ((not (and (stringp cwd) (not (string-empty-p cwd)))) "?")
-     (t (let ((name (file-name-nondirectory (directory-file-name cwd))))
-          (if (string-empty-p name) cwd name))))))
+  (harmless-place-name (harmless-session-cwd session)))
+
+(defun harmless-session-require-project (session)
+  "Return SESSION's absolute project directory.
+A detached chat has none.  A missing directory is not replaced with /."
+  (if (harmless-session-detached-p session)
+      (error "This chat is not attached to a project")
+    (harmless-absolute-directory (harmless-session-cwd session))))
 
 (defun harmless-data-directory ()
   "Return the absolute Harmless data directory.
@@ -171,8 +193,10 @@ Never returns the filesystem root."
                      (expand-file-name
                       id
                       (expand-file-name
-                       (harmless-session-encode-cwd
-                        (harmless-session-cwd session))
+                       (if (harmless-session-detached-p session)
+                           harmless-session-detached-component
+                         (harmless-session-encode-cwd
+                          (harmless-session-cwd session)))
                        root))))))
         (unless (harmless-directory-strictly-under-p dir root)
           (error "Refusing to store a Harmless session at %s" dir))
@@ -220,11 +244,19 @@ A missing or relative directory is an error.  It is not replaced with /."
 
 (defun harmless-session-new (&rest args)
   "Create, register, and persist a new session.
-Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
-:permission-mode :title."
+Keyword ARGS: :cwd :detached :provider :model :reasoning-effort
+:parent-id :source :permission-mode :title.
+:detached starts a chat with no project directory.  It cannot be
+combined with :cwd."
   (let* ((provider (or (plist-get args :provider) (harmless-default-provider)))
-         (cwd (harmless-absolute-directory
-               (or (plist-get args :cwd) (harmless-current-cwd))))
+         (detached (plist-get args :detached))
+         (cwd (cond
+               (detached
+                (when (plist-member args :cwd)
+                  (error "A detached chat has no project directory"))
+                nil)
+               (t (harmless-absolute-directory
+                   (or (plist-get args :cwd) (harmless-current-cwd))))))
          (now (harmless-now-iso))
          (parsed (harmless-parse-model-spec
                   (or (plist-get args :model)

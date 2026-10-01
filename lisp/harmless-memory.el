@@ -62,9 +62,14 @@
   "Return the directory for SCOPE, using CWD for workspace memory."
   (if (harmless-memory--global-p scope)
       (expand-file-name "global" (harmless-memory-root))
-    (expand-file-name
-     (harmless-session-encode-cwd (harmless-absolute-directory cwd))
-     (expand-file-name "workspaces" (harmless-memory-root)))))
+    (progn
+      (unless (and (stringp cwd)
+                   (not (string-empty-p cwd))
+                   (file-name-absolute-p cwd))
+        (error "This chat is not attached to a project"))
+      (expand-file-name
+       (harmless-session-encode-cwd (harmless-absolute-directory cwd))
+       (expand-file-name "workspaces" (harmless-memory-root))))))
 
 (defun harmless-memory--ensure (scope cwd)
   "Create the directory layout for SCOPE and return it."
@@ -291,7 +296,10 @@ TOPIC is an optional slug hint.  Return the path relative to the scope."
   "Return the memory index for CWD, or nil when memory is empty."
   (let ((parts (delq nil
                      (list (harmless-memory--scope-index "global" cwd)
-                           (harmless-memory--scope-index "workspace" cwd)))))
+                           (and (stringp cwd)
+                                (not (string-empty-p cwd))
+                                (file-name-absolute-p cwd)
+                                (harmless-memory--scope-index "workspace" cwd))))))
     (when parts
       (concat
        "Memory from earlier sessions.  This index is a map.  Read a note with memory_read before relying on it.  Record a durable fact with memory_remember.  Replace a curated topic with memory_write_topic.  Do not edit MEMORY.md.  Do not store secrets, credentials, or one-off task state.  Use workspace for this project and global for a preference that applies everywhere.\n\n"

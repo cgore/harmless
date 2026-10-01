@@ -220,6 +220,25 @@ With a prefix argument, open the dashboard instead."
     (harmless-ui-open-session session)))
 
 ;;;###autoload
+(defun harmless-chat ()
+  "Start a new Harmless chat with no project and no working directory."
+  (interactive)
+  (harmless-ensure-configured)
+  (let* ((choice (and (not noninteractive)
+                      (called-interactively-p 'interactive)
+                      (harmless--read-provider-model-effort)))
+         (provider (or (nth 2 choice) (harmless-default-provider)))
+         (model (or (nth 0 choice)
+                    harmless-default-model
+                    (harmless-provider-default-model provider)))
+         (effort (nth 1 choice))
+         (session (harmless-session-new :detached t
+                                        :provider provider
+                                        :model model
+                                        :reasoning-effort effort)))
+    (harmless-ui-open-session session)))
+
+;;;###autoload
 (defun harmless-switch ()
   "Switch to a live or saved Harmless session."
   (interactive)
@@ -236,9 +255,8 @@ With a prefix argument, open the dashboard instead."
                           for id = (plist-get summary :id)
                           unless (harmless-session-get id)
                           collect (cons (format "%s %s [%s]"
-                                                (file-name-nondirectory
-                                                 (directory-file-name
-                                                  (or (plist-get summary :cwd) "?")))
+                                                (harmless-place-name
+                                                 (plist-get summary :cwd))
                                                 (or (plist-get summary :title) "(untitled)")
                                                 id)
                                         id))))

@@ -98,6 +98,17 @@
   (harmless-session-append-user session text)
   (harmless-turn--call session))
 
+(defun harmless-tools-for-session (session)
+  "Return the tools offered to SESSION.
+A detached chat can use global memory.  It is not offered project
+files, a shell, or plan mode."
+  (if (not (harmless-session-detached-p session))
+      (harmless-tools-enabled)
+    (let ((allowed '("memory_read" "memory_remember" "memory_write_topic")))
+      (seq-filter (lambda (tool)
+                    (member (harmless-tool-name tool) allowed))
+                  (harmless-tools-enabled)))))
+
 (defun harmless-turn--call (session)
   "Send SESSION messages to the provider."
   (let ((acc (harmless-turn-acc-create))
@@ -113,7 +124,7 @@
                    (harmless-session-messages session))
                   (when (harmless-session-plan-mode session)
                     (harmless-plan-instructions)))
-                 (harmless-tools-enabled)
+                 (harmless-tools-for-session session)
                  (lambda (event)
                    (harmless-turn--on-event session acc event)))))
       (setf (harmless-session-process session) proc)

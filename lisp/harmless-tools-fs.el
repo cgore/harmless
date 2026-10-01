@@ -65,7 +65,7 @@
   "Resolve PATH against SESSION cwd, or signal if it escapes the project."
   (unless (and path (not (string-empty-p path)))
     (error "Path is empty"))
-  (let* ((cwd (harmless-absolute-directory (harmless-session-cwd session)))
+  (let* ((cwd (harmless-session-require-project session))
          (full (expand-file-name path cwd)))
     (unless (harmless-tools-fs-inside-p cwd full)
       (error "Path escapes project: %s" path))
@@ -198,7 +198,7 @@
 
 (defun harmless-tools-fs--glob (session args)
   "glob implementation."
-  (let* ((cwd (harmless-absolute-directory (harmless-session-cwd session)))
+  (let* ((cwd (harmless-session-require-project session))
          (pattern (or (harmless-tool-arg args :pattern)
                       (harmless-tool-arg args :glob)
                       "*")))
@@ -223,7 +223,7 @@
 
 (defun harmless-tools-fs--grep (session args)
   "grep implementation, Elisp so tests do not need ripgrep."
-  (let* ((cwd (harmless-absolute-directory (harmless-session-cwd session)))
+  (let* ((cwd (harmless-session-require-project session))
          (pattern (or (harmless-tool-arg args :pattern)
                       (harmless-tool-arg args :query)))
          (glob (harmless-tool-arg args :glob))

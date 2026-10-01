@@ -89,9 +89,7 @@
   (ignore dir)
   (let ((cwd (plist-get summary :cwd)))
     (list (plist-get summary :id)
-          (vector (if cwd
-                      (file-name-nondirectory (directory-file-name cwd))
-                    "?")
+          (vector (harmless-place-name cwd)
                   (or (plist-get summary :title) "(untitled)")
                   (harmless-model-label (plist-get summary :model)
                                         (or (plist-get summary :reasoning-effort)

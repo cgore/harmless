@@ -124,6 +124,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 |---|---|
 | `M-x harmless` | Open or resume this project's session |
 | `M-x harmless-new` | Start a new session (picks a model) |
+| `M-x harmless-chat` | Start a chat with no project and no working directory |
 | `M-x harmless-dashboard` | All sessions, grouped by project |
 | `M-x harmless-switch` | Jump to a live or saved session |
 | `M-x harmless-menu` | Transient: new / switch / model / effort / permissions / abort |

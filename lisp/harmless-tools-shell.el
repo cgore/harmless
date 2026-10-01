@@ -74,7 +74,7 @@ The UI can still show the full buffer contents."
     (if (not (and command (not (string-empty-p command))))
         (funcall callback "Error: command is empty")
     (let* ((buf (generate-new-buffer " *harmless-shell*"))
-           (cwd (harmless-absolute-directory (harmless-session-cwd session)))
+           (cwd (harmless-session-require-project session))
            (timed-out nil)
            (timer nil)
            (proc nil))
