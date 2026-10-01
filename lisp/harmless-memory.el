@@ -52,7 +52,7 @@
 
 (defun harmless-memory-root ()
   "Return the root directory for Harmless memory."
-  (expand-file-name "memory" harmless-directory))
+  (expand-file-name "memory" (harmless-data-directory)))
 
 (defun harmless-memory--global-p (scope)
   "Return non-nil if SCOPE names the global memory."
@@ -63,7 +63,7 @@
   (if (harmless-memory--global-p scope)
       (expand-file-name "global" (harmless-memory-root))
     (expand-file-name
-     (harmless-session-encode-cwd (or cwd default-directory))
+     (harmless-session-encode-cwd (harmless-absolute-directory cwd))
      (expand-file-name "workspaces" (harmless-memory-root)))))
 
 (defun harmless-memory--ensure (scope cwd)

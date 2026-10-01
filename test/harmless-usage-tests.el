@@ -22,6 +22,15 @@
     (should (equal "200" (plist-get limits :output-tokens-remaining)))
     (should-not (plist-get limits :content-type))))
 
+(ert-deftest harmless-usage-limits-refuse-filesystem-root ()
+  (let ((harmless-directory "/")
+        (default-directory "/"))
+    (should-error (harmless-usage-limits-file))
+    (should-error
+     (harmless-usage-record-limits "xAI" '(:tokens-remaining "1")))
+    (should-not (file-exists-p "/limits.json"))
+    (should-not (file-exists-p "/summary.json"))))
+
 (ert-deftest harmless-usage-note-turn-sets-last-and-total ()
   (let* ((harmless-directory (make-temp-file "harmless-usage-" t))
          (harmless--sessions (make-hash-table :test 'equal))
@@ -71,7 +80,7 @@
 (ert-deftest harmless-usage-xai-allowance-bar ()
   (let* ((info (harmless-xai--allowance-plist
                 (harmless-json-decode
-                 "{\"config\":{\"creditUsagePercent\":46.2,\"currentPeriod\":{\"type\":\"USAGE_PERIOD_TYPE_WEEKLY\",\"end\":\"2026-09-27T16:59:00Z\"},\"productUsage\":[{\"product\":\"Build\",\"usagePercent\":26}]}}")
+                 "{\"config\":{\"creditUsagePercent\":46.2,\"currentPeriod\":{\"type\":\"USAGE_PERIOD_TYPE_WEEKLY\",\"end\":\"2099-01-01T00:00:00Z\"},\"productUsage\":[{\"product\":\"Build\",\"usagePercent\":26}]}}")
                 (harmless-json-decode "{\"subscriptionTier\":\"SuperGrok\"}")))
          (lines (harmless-usage--allowance-lines info)))
     (should (equal 46.2 (plist-get info :used-percent)))

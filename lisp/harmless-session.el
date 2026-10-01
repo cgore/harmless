@@ -53,7 +53,8 @@
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
 Defaults to `harmless/' under `user-emacs-directory' (for example
-`~/.emacs.d/harmless/')."
+`~/.emacs.d/harmless/').  Nil and the empty string use that same
+location.  A relative path or the filesystem root is refused."
   :type 'directory
   :group 'harmless)
 
@@ -117,24 +118,67 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
 
 (defun harmless-session-project-name (session)
   "Return a short project label for SESSION."
-  (file-name-nondirectory
-   (directory-file-name (or (harmless-session-cwd session) default-directory))))
+  (let ((cwd (harmless-session-cwd session)))
+    (cond
+     ((not (and (stringp cwd) (not (string-empty-p cwd)))) "?")
+     (t (let ((name (file-name-nondirectory (directory-file-name cwd))))
+          (if (string-empty-p name) cwd name))))))
+
+(defun harmless-data-directory ()
+  "Return the absolute Harmless data directory.
+See `harmless-resolve-data-directory'."
+  (harmless-resolve-data-directory harmless-directory))
+
+(defun harmless-sessions-root ()
+  "Return the absolute directory that holds saved sessions."
+  (file-name-as-directory
+   (expand-file-name "sessions" (harmless-data-directory))))
 
 (defun harmless-session-encode-cwd (cwd)
-  "Return a filesystem-safe encoding of CWD."
-  (harmless-url-encode (expand-file-name cwd)))
+  "Return one relative filename component encoding absolute CWD.
+A relative CWD is not expanded against `default-directory'.  Emacs
+uses / when that variable is missing."
+  (let ((enc (harmless-url-encode
+              (directory-file-name (harmless-absolute-directory cwd)))))
+    (unless (harmless-safe-path-component-p enc)
+      (error "Encoded session cwd is not a safe filename: %S" enc))
+    enc))
+
+(defun harmless-session-dir-acceptable-p (dir)
+  "Return non-nil if DIR is a session directory under the sessions root.
+Empty and root directories are rejected.  An empty string is truthy in
+Emacs Lisp and must not be kept as a stored directory."
+  (and (stringp dir)
+       (not (string-empty-p dir))
+       (file-name-absolute-p dir)
+       (not (harmless-filesystem-root-p dir))
+       (harmless-directory-strictly-under-p dir (harmless-sessions-root))))
 
 (defun harmless-session-dir (session)
-  "Return the on-disk directory for SESSION, creating it if needed."
-  (or (harmless-session-directory session)
-      (let ((dir (expand-file-name
-                  (harmless-session-id session)
-                  (expand-file-name
-                   (harmless-session-encode-cwd (harmless-session-cwd session))
-                   (expand-file-name "sessions" harmless-directory)))))
+  "Return the on-disk directory for SESSION, creating it if needed.
+Never returns the filesystem root."
+  (let ((stored (harmless-session-directory session))
+        (root (harmless-sessions-root)))
+    (if (harmless-session-dir-acceptable-p stored)
+        (progn
+          (harmless-ensure-directory stored)
+          stored)
+      (let* ((id (harmless-session-id session))
+             (dir (progn
+                    (unless (harmless-safe-path-component-p id)
+                      (error "Harmless session id is not a safe filename: %S" id))
+                    (harmless-collapse-path
+                     (expand-file-name
+                      id
+                      (expand-file-name
+                       (harmless-session-encode-cwd
+                        (harmless-session-cwd session))
+                       root))))))
+        (unless (harmless-directory-strictly-under-p dir root)
+          (error "Refusing to store a Harmless session at %s" dir))
         (harmless-ensure-directory dir)
         (setf (harmless-session-directory session) dir)
-        dir)))
+        dir))))
 
 (defun harmless-session-register (session)
   "Add SESSION to the live registry."
@@ -159,25 +203,35 @@ Defaults to `harmless/' under `user-emacs-directory' (for example
               acc)))
 
 (defun harmless-session-for-cwd (cwd)
-  "Return live sessions whose cwd is CWD."
-  (let ((root (expand-file-name cwd)))
-    (seq-filter (lambda (s)
-                  (string= (expand-file-name (harmless-session-cwd s)) root))
-                (harmless-session-list))))
+  "Return live sessions whose cwd is CWD.
+A missing or relative CWD matches nothing.  It is not expanded to /."
+  (if (not (and (stringp cwd)
+                (not (string-empty-p cwd))
+                (file-name-absolute-p cwd)))
+      nil
+    (let ((root (expand-file-name cwd)))
+      (seq-filter (lambda (s)
+                    (let ((other (harmless-session-cwd s)))
+                      (and (stringp other)
+                           (file-name-absolute-p other)
+                           (string= (expand-file-name other) root))))
+                  (harmless-session-list)))))
 
 (defun harmless-current-cwd ()
-  "Return the project root of the current buffer, or `default-directory'."
-  (if-let* ((proj (project-current)))
-      (expand-file-name (project-root proj))
-    (expand-file-name default-directory)))
+  "Return the project root of the current buffer, or `default-directory'.
+A missing or relative directory is an error.  It is not replaced with /."
+  (let ((dir (if-let* ((proj (project-current)))
+                 (project-root proj)
+               default-directory)))
+    (harmless-absolute-directory dir)))
 
 (defun harmless-session-new (&rest args)
   "Create, register, and persist a new session.
 Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
 :permission-mode :title."
   (let* ((provider (or (plist-get args :provider) (harmless-default-provider)))
-         (cwd (expand-file-name (or (plist-get args :cwd)
-                                    (harmless-current-cwd))))
+         (cwd (harmless-absolute-directory
+               (or (plist-get args :cwd) (harmless-current-cwd))))
          (now (harmless-now-iso))
          (parsed (harmless-parse-model-spec
                   (or (plist-get args :model)
@@ -260,16 +314,25 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
         :title-locked (and (harmless-session-title-locked session) t)
         :plan-mode (and (harmless-session-plan-mode session) t)))
 
+(defun harmless-session--file (session name)
+  "Return the path of NAME inside SESSION's directory.
+Signal when that path would be /NAME or outside the sessions root."
+  (let* ((dir (harmless-session-dir session))
+         (file (expand-file-name name dir)))
+    (unless (and (harmless-directory-strictly-under-p dir (harmless-sessions-root))
+                 (not (harmless-filesystem-root-p (file-name-directory file))))
+      (error "Refusing to write %s" file))
+    file))
+
 (defun harmless-session-save (session)
   "Write SESSION to disk."
-  (let ((dir (harmless-session-dir session))
-        (coding-system-for-write 'utf-8-unix)
+  (let ((coding-system-for-write 'utf-8-unix)
         (buffer-file-coding-system 'utf-8-unix))
-    (with-temp-file (expand-file-name "summary.json" dir)
+    (with-temp-file (harmless-session--file session "summary.json")
       (setq buffer-file-coding-system 'utf-8-unix)
       (insert (harmless-json-text (harmless-session-summary-plist session))
               "\n"))
-    (with-temp-file (expand-file-name "messages.jsonl" dir)
+    (with-temp-file (harmless-session--file session "messages.jsonl")
       (setq buffer-file-coding-system 'utf-8-unix)
       (dolist (msg (harmless-session-messages session))
         (insert (harmless-json-text msg) "\n")))))
@@ -303,6 +366,8 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
 
 (defun harmless-session-load (dir)
   "Load a session from DIR and register it.  Return the session."
+  (unless (harmless-session-dir-acceptable-p dir)
+    (error "Refusing to load a Harmless session from %S" dir))
   (let* ((summary (harmless-json-decode
                    (with-temp-buffer
                      (insert-file-contents (expand-file-name "summary.json" dir))
@@ -356,7 +421,7 @@ Keyword ARGS: :cwd :provider :model :reasoning-effort :parent-id :source
 
 (defun harmless-session-list-on-disk ()
   "Return summary plists for every saved session."
-  (let ((root (expand-file-name "sessions" harmless-directory))
+  (let ((root (harmless-sessions-root))
         acc)
     (when (file-directory-p root)
       (dolist (cwd-dir (directory-files root t directory-files-no-dot-files-regexp))

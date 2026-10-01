@@ -49,6 +49,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'harmless-util)
+(require 'harmless-util)
 
 (declare-function harmless-provider-p "harmless-provider")
 (declare-function harmless-provider-name "harmless-provider")
@@ -108,9 +109,8 @@ logins keep working.  Other connections use `auth-SLUG.json'."
                (harmless-connection-slug
                 (and p (fboundp 'harmless-provider-name)
                      (harmless-provider-name p)))))
-     (if (boundp 'harmless-directory)
-         harmless-directory
-       (locate-user-emacs-file "harmless/")))))
+     (harmless-resolve-data-directory
+      (and (boundp 'harmless-directory) harmless-directory)))))
 
 (defun harmless-login--id (id)
   "Normalize ID to a symbol."

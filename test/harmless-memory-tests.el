@@ -9,6 +9,22 @@
   `(let ((harmless-directory (make-temp-file "harmless-memory-" t)))
      ,@body))
 
+(ert-deftest harmless-memory-does-not-store-at-filesystem-root ()
+  (let ((default-directory "/"))
+    (let ((harmless-directory "/"))
+      (should-error (harmless-memory-root))
+      (should-not (file-directory-p "/memory")))
+    (let ((harmless-directory (make-temp-file "harmless-memory-" t)))
+      (should-error (harmless-memory-remember "workspace" nil "Title" "Body"))
+      (should-error (harmless-memory-remember "workspace" "" "Title" "Body"))
+      (should-error (harmless-memory-scope-dir "workspace" nil))
+      (let ((dir (harmless-memory-scope-dir "workspace" "/proj/demo")))
+        (should (string-prefix-p
+                 (file-name-as-directory harmless-directory) dir))
+        (should (string-search "%2Fproj%2Fdemo" dir))
+        (should-not (harmless-filesystem-root-p dir)))
+      (should-not (file-exists-p "/summary.json")))))
+
 (ert-deftest harmless-memory-remember-read-and-index ()
   (harmless-memory-test-with-root
    (let ((cwd "/proj/harmless"))

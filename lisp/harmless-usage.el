@@ -105,7 +105,7 @@ A length learned from the provider's model catalog wins over
 
 (defun harmless-usage-limits-file ()
   "Return the path of the saved rate-limit report."
-  (expand-file-name "limits.json" harmless-directory))
+  (expand-file-name "limits.json" (harmless-data-directory)))
 
 (defun harmless-usage-load-limits ()
   "Return saved rate-limit plists, one per provider."
@@ -128,7 +128,7 @@ A length learned from the provider's model catalog wins over
                do (setq merged (plist-put merged key value)))
       (setq merged (plist-put merged :provider provider-name))
       (setq merged (plist-put merged :updated (harmless-now-iso)))
-      (harmless-ensure-directory harmless-directory)
+      (harmless-ensure-directory (harmless-data-directory))
       (with-temp-file (harmless-usage-limits-file)
         (setq buffer-file-coding-system 'utf-8-unix)
         (insert (harmless-json-text

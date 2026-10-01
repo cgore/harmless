@@ -205,8 +205,89 @@ undecoded process), interpret those bytes as UTF-8."
       string
     (concat (substring string 0 (max 0 (- n 1))) "…")))
 
+(defun harmless-collapse-path (path)
+  "Return absolute PATH with \".\" and \"..\" removed.
+PATH must already be absolute.  This does not read `default-directory'."
+  (unless (and (stringp path) (file-name-absolute-p path))
+    (error "Not an absolute path: %S" path))
+  (let (parts)
+    (dolist (part (split-string path "/" t))
+      (cond
+       ((string= part "."))
+       ((string= part "..") (setq parts (cdr parts)))
+       (t (push part parts))))
+    (if parts
+        (concat "/" (mapconcat #'identity (nreverse parts) "/"))
+      "/")))
+
+(defun harmless-filesystem-root-p (path)
+  "Return non-nil if PATH is the filesystem root.
+Relative paths, nil, and the empty string are not the root."
+  (and (stringp path)
+       (not (string-empty-p path))
+       (file-name-absolute-p path)
+       (equal (harmless-collapse-path
+               (if (string-prefix-p "~" path)
+                   (expand-file-name path)
+                 path))
+              "/")))
+
+(defun harmless-safe-path-component-p (name)
+  "Return non-nil if NAME is one relative filename component."
+  (and (stringp name)
+       (not (string-empty-p name))
+       (not (member name '("." "..")))
+       (not (file-name-absolute-p name))
+       (not (string-search "/" name))
+       (not (string-search "\\" name))))
+
+(defun harmless-absolute-directory (dir)
+  "Return DIR expanded, requiring it to already be absolute.
+Nil, \"\", and relative names signal instead of using `default-directory'."
+  (unless (and (stringp dir)
+               (not (string-empty-p dir))
+               (file-name-absolute-p dir))
+    (error "Directory must be absolute, not %S" dir))
+  (expand-file-name dir))
+
+(defun harmless-directory-strictly-under-p (dir parent)
+  "Return non-nil if DIR is strictly inside PARENT.
+Both must be absolute.  A match against the filesystem root does not
+make DIR acceptable."
+  (when (and (stringp dir) (stringp parent)
+             (file-name-absolute-p dir) (file-name-absolute-p parent)
+             (not (harmless-filesystem-root-p parent)))
+    (let ((child (file-name-as-directory
+                  (harmless-collapse-path (expand-file-name dir))))
+          (root (file-name-as-directory
+                 (harmless-collapse-path (expand-file-name parent)))))
+      (and (string-prefix-p root child)
+           (not (string= root child))))))
+
+(defun harmless-resolve-data-directory (raw)
+  "Return an absolute directory for Harmless state given RAW.
+Nil and the empty string use `locate-user-emacs-file'.
+A relative directory or the filesystem root is an error."
+  (let ((chosen (cond
+                 ((and (stringp raw) (not (string-empty-p raw))) raw)
+                 (t (locate-user-emacs-file "harmless/")))))
+    (unless (and (stringp chosen) (file-name-absolute-p chosen))
+      (error "Harmless data directory must be absolute, not %S" chosen))
+    (let ((dir (file-name-as-directory
+                (harmless-collapse-path (expand-file-name chosen)))))
+      (when (harmless-filesystem-root-p dir)
+        (error "Refusing to store Harmless data at %s" dir))
+      dir)))
+
 (defun harmless-ensure-directory (dir)
-  "Create DIR and parents if they do not exist.  Return DIR."
+  "Create DIR and parents if they do not exist.  Return DIR.
+Signal instead of creating the filesystem root.  `make-directory' on
+/ succeeds, and a missing directory must not land there."
+  (cond
+   ((or (not (stringp dir)) (string-empty-p dir))
+    (error "Refusing to create Harmless directory %S" dir))
+   ((harmless-filesystem-root-p dir)
+    (error "Refusing to create Harmless directory %s" dir)))
   (make-directory dir t)
   dir)
 

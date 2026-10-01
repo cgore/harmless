@@ -180,6 +180,15 @@
   "Buffer name for SESSION's prompt."
   (concat (harmless-ui--session-buffer-name session) " prompt"))
 
+(defun harmless-ui--apply-directory (session)
+  "Set `default-directory' from SESSION when that cwd is absolute.
+A missing cwd is left alone.  Setting it to nil would make Emacs use /."
+  (let ((cwd (harmless-session-cwd session)))
+    (when (and (stringp cwd)
+               (not (string-empty-p cwd))
+               (file-name-absolute-p cwd))
+      (setq default-directory cwd))))
+
 (defun harmless-ui-ensure-session-buffer (session)
   "Return SESSION's transcript buffer, creating it if needed."
   (or (and (buffer-live-p (harmless-session-buffer session))
@@ -188,8 +197,8 @@
         (setf (harmless-session-buffer session) buf)
         (with-current-buffer buf
           (harmless-session-mode)
-          (setq harmless--session session
-                default-directory (harmless-session-cwd session)))
+          (setq harmless--session session)
+          (harmless-ui--apply-directory session))
         buf)))
 
 (defun harmless-ui-ensure-prompt-buffer (session)
@@ -199,8 +208,8 @@
       (let ((buf (get-buffer-create (harmless-ui--prompt-buffer-name session))))
         (with-current-buffer buf
           (harmless-prompt-mode)
-          (setq harmless--session session
-                default-directory (harmless-session-cwd session)))
+          (setq harmless--session session)
+          (harmless-ui--apply-directory session))
         (setf (harmless-session-prompt-buffer session) buf)
         buf)))
 

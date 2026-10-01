@@ -92,7 +92,7 @@
 (defun harmless-config-file ()
   "Return the path of the optional Harmless config file.
 This is `config.el' under `harmless-directory'."
-  (expand-file-name "config.el" harmless-directory))
+  (expand-file-name "config.el" (harmless-data-directory)))
 
 (defun harmless-load-config ()
   "Load `config.el' from `harmless-directory' once."
