@@ -25,11 +25,26 @@
 (ert-deftest harmless-usage-limits-refuse-filesystem-root ()
   (let ((harmless-directory "/")
         (default-directory "/"))
-    (should-error (harmless-usage-limits-file))
-    (should-error
-     (harmless-usage-record-limits "xAI" '(:tokens-remaining "1")))
+    (let ((err (should-error (harmless-usage-limits-file) :type 'error)))
+      (should (string-match-p "Refusing to store Harmless data"
+                              (error-message-string err))))
+    (let ((err (should-error
+                (harmless-usage-record-limits "xAI" '(:tokens-remaining "1"))
+                :type 'error)))
+      (should (string-match-p "Refusing to store Harmless data"
+                              (error-message-string err))))
     (should-not (file-exists-p "/limits.json"))
-    (should-not (file-exists-p "/summary.json"))))
+    (should-not (file-exists-p "/summary.json")))
+  (let* ((fallback (make-temp-file "harmless-usage-fallback-" t))
+         (harmless-directory nil)
+         (default-directory "/"))
+    (cl-letf (((symbol-function 'locate-user-emacs-file)
+               (lambda (&rest _) fallback)))
+      (harmless-usage-record-limits "xAI" '(:tokens-remaining "1"))
+      (should (file-exists-p (harmless-usage-limits-file)))
+      (should (string-prefix-p (file-name-as-directory fallback)
+                               (harmless-usage-limits-file)))
+      (should-not (file-exists-p "/limits.json")))))
 
 (ert-deftest harmless-usage-note-turn-sets-last-and-total ()
   (let* ((harmless-directory (make-temp-file "harmless-usage-" t))

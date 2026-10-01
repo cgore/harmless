@@ -6,6 +6,7 @@
 (require 'harmless-session)
 (require 'harmless-util)
 (require 'harmless-ui)
+(require 'harmless)
 
 (ert-deftest harmless-json-ellipsis-roundtrip ()
   (let ((s "hello…world"))
@@ -140,6 +141,12 @@
     (let ((loaded (harmless-session-resume id)))
       (should (string= "xhigh" (harmless-session-reasoning-effort loaded))))))
 
+(defun harmless-test-error (pattern thunk)
+  "Signal from THUNK must be an error whose text matches PATTERN."
+  (let ((err (should-error (funcall thunk) :type 'error)))
+    (should (string-match-p pattern (error-message-string err)))
+    err))
+
 (defun harmless-test-provider ()
   "Return a local provider for session tests."
   (harmless-make-openai-compat
@@ -160,19 +167,55 @@
   (should (equal "/" (harmless-collapse-path "/sessions/..")))
   (should (equal "/tmp/sessions/%2F/uuid"
                  (harmless-collapse-path "/tmp/sessions/%2F/uuid")))
-  (should-error (harmless-collapse-path "relative"))
-  (should-error (harmless-ensure-directory nil))
-  (should-error (harmless-ensure-directory ""))
-  (should-error (harmless-ensure-directory "/"))
-  (should-error (harmless-ensure-directory "/sessions/.."))
+  (should-not (harmless-filesystem-root-p (expand-file-name "~")))
+  (should (harmless-filesystem-root-p "/../.."))
+  (harmless-test-error "Not an absolute path"
+                       (lambda () (harmless-collapse-path "relative")))
+  (harmless-test-error "Refusing to create"
+                       (lambda () (harmless-ensure-directory nil)))
+  (harmless-test-error "Refusing to create"
+                       (lambda () (harmless-ensure-directory "")))
+  (harmless-test-error "Refusing to create"
+                       (lambda () (harmless-ensure-directory "/")))
+  (harmless-test-error "Refusing to create"
+                       (lambda () (harmless-ensure-directory "/sessions/..")))
+  (should (harmless-safe-path-component-p "..foo"))
+  (should (harmless-safe-path-component-p "%2Fproj"))
+  (should-not (harmless-safe-path-component-p nil))
+  (should-not (harmless-safe-path-component-p ""))
+  (should-not (harmless-safe-path-component-p "."))
+  (should-not (harmless-safe-path-component-p ".."))
+  (should-not (harmless-safe-path-component-p "/tmp"))
+  (should-not (harmless-safe-path-component-p "foo/bar"))
+  (should-not (harmless-safe-path-component-p "foo\\bar"))
+  (should (harmless-directory-strictly-under-p
+           "/tmp/harmless/sessions/a" "/tmp/harmless/sessions"))
+  (should (harmless-directory-strictly-under-p
+           "/tmp/harmless/sessions/a/" "/tmp/harmless/sessions"))
+  (should-not (harmless-directory-strictly-under-p
+               "/tmp/harmless/sessions" "/tmp/harmless/sessions"))
+  (should-not (harmless-directory-strictly-under-p
+               "/tmp/harmless-evil/sessions/a" "/tmp/harmless/sessions"))
+  (should-not (harmless-directory-strictly-under-p "/tmp/a" "/"))
+  (should-not (harmless-directory-strictly-under-p "relative" "/tmp"))
+  (should-not (harmless-directory-strictly-under-p nil "/tmp"))
+  (should (harmless-same-directory-p "/proj/demo" "/proj/demo/"))
+  (should (harmless-same-directory-p "/proj/demo/" "/proj/demo"))
+  (should-not (harmless-same-directory-p "/proj/demo" "/proj/demo-evil"))
+  (should-not (harmless-same-directory-p nil "/"))
+  (should-not (harmless-same-directory-p "" "/"))
+  (should-not (harmless-same-directory-p "relative" "/relative"))
   (let ((dir (expand-file-name "nested" (make-temp-file "harmless-mkdir-" t))))
     (should (file-directory-p (harmless-ensure-directory dir)))))
 
 (ert-deftest harmless-data-directory-refuses-root ()
   (let ((default-directory "/"))
-    (should-error (harmless-resolve-data-directory "/"))
-    (should-error (harmless-resolve-data-directory "/sessions/.."))
-    (should-error (harmless-resolve-data-directory "relative"))
+    (harmless-test-error "Refusing to store Harmless data"
+                         (lambda () (harmless-resolve-data-directory "/")))
+    (harmless-test-error "Refusing to store Harmless data"
+                         (lambda () (harmless-resolve-data-directory "/sessions/..")))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-resolve-data-directory "relative")))
     (let* ((fallback (make-temp-file "harmless-fallback-" t))
            (resolved nil))
       (cl-letf (((symbol-function 'locate-user-emacs-file)
@@ -190,11 +233,20 @@
     (should (equal "%2F" (harmless-session-encode-cwd "/")))
     (should (equal "%2Fproj%2Fdemo" (harmless-session-encode-cwd "/proj/demo/")))
     (should-not (string-search "/" (harmless-session-encode-cwd "/proj/demo")))
-    (should-error (harmless-session-encode-cwd nil))
-    (should-error (harmless-session-encode-cwd ""))
-    (should-error (harmless-session-encode-cwd "relative"))
-    (should-error (harmless-session-encode-cwd ".."))
-    (should-error (harmless-absolute-directory nil))
+    (should (equal "%2Fproj%2Fmy..notes"
+                   (harmless-session-encode-cwd "/proj/my..notes")))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-session-encode-cwd nil)))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-session-encode-cwd "")))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-session-encode-cwd "relative")))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-session-encode-cwd "..")))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-absolute-directory nil)))
+    (harmless-test-error "must be absolute"
+                         (lambda () (harmless-absolute-directory "")))
     (should-not (file-exists-p "/summary.json"))))
 
 (ert-deftest harmless-current-cwd-requires-an-absolute-directory ()
@@ -204,7 +256,8 @@
       (should (equal "/tmp/" (harmless-current-cwd))))
     (with-temp-buffer
       (setq default-directory "relative")
-      (should-error (harmless-current-cwd)))
+      (harmless-test-error "must be absolute"
+                           (lambda () (harmless-current-cwd))))
     (should-not (harmless-session-for-cwd nil))
     (should-not (harmless-session-for-cwd ""))
     (should-not (harmless-session-for-cwd "relative"))))
@@ -242,9 +295,16 @@
         (should (string-search "/sessions/%2F/"
                                (file-name-as-directory
                                 (harmless-session-directory session)))))
-      (should-error (harmless-session-new :cwd "" :provider provider :model "m"))
-      (should-error (harmless-session-new :cwd "relative"
-                                          :provider provider :model "m")))
+      (harmless-test-error "must be absolute"
+                           (lambda ()
+                             (harmless-session-new :cwd ""
+                                                   :provider provider
+                                                   :model "m")))
+      (harmless-test-error "must be absolute"
+                           (lambda ()
+                             (harmless-session-new :cwd "relative"
+                                                   :provider provider
+                                                   :model "m"))))
     (should-not (file-exists-p "/summary.json"))))
 
 (ert-deftest harmless-session-root-cwd-stays-under-data-directory ()
@@ -294,8 +354,10 @@
         (default-directory "/"))
     (dolist (id '("" "." ".." "/" "/tmp" "foo/bar" "foo\\bar"))
       (let ((session (harmless-session--create :id id :cwd "/proj/demo")))
-        (should-error (harmless-session-dir session))
-        (should-error (harmless-session-save session))))
+        (harmless-test-error "not a safe filename"
+                             (lambda () (harmless-session-dir session)))
+        (harmless-test-error "not a safe filename"
+                             (lambda () (harmless-session-save session)))))
     (should-not (file-exists-p "/summary.json"))
     (should-not (file-exists-p "/messages.jsonl"))))
 
@@ -319,13 +381,18 @@
 (ert-deftest harmless-session-load-and-list-refuse-root ()
   (let ((harmless-directory (make-temp-file "harmless-test-" t))
         (default-directory "/"))
-    (should-error (harmless-session-load "/"))
-    (should-error (harmless-session-load ""))
-    (should-error (harmless-session-load "/tmp")))
+    (harmless-test-error "Refusing to load"
+                         (lambda () (harmless-session-load "/")))
+    (harmless-test-error "Refusing to load"
+                         (lambda () (harmless-session-load "")))
+    (harmless-test-error "Refusing to load"
+                         (lambda () (harmless-session-load "/tmp"))))
   (let ((harmless-directory "/")
         (default-directory "/"))
-    (should-error (harmless-session-list-on-disk))
-    (should-error (harmless-data-directory))
+    (harmless-test-error "Refusing to store Harmless data"
+                         (lambda () (harmless-session-list-on-disk)))
+    (harmless-test-error "Refusing to store Harmless data"
+                         (lambda () (harmless-data-directory)))
     (should-not (file-exists-p "/summary.json"))))
 
 (ert-deftest harmless-ui-missing-cwd-does-not-become-root ()
@@ -351,5 +418,104 @@
           (should (equal (buffer-local-value 'default-directory kpbuf) "/proj/demo")))
       (dolist (b (list buf pbuf kbuf kpbuf))
         (when (buffer-live-p b) (kill-buffer b))))))
+
+(ert-deftest harmless-session-outside-stored-directory-is-recomputed ()
+  (let* ((harmless-directory (make-temp-file "harmless-test-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (default-directory "/")
+         (provider (harmless-test-provider))
+         (session (harmless-session-new :cwd "/proj/demo"
+                                        :provider provider
+                                        :model "m"))
+         (root (harmless-sessions-root))
+         (outside (make-temp-file "harmless-outside-" t)))
+    (dolist (bad (list outside root (directory-file-name root)))
+      (setf (harmless-session-directory session) bad)
+      (harmless-session-append-user session "recomputed")
+      (harmless-test--assert-session-not-at-root session harmless-directory)
+      (should (harmless-directory-strictly-under-p
+               (harmless-session-directory session) root))
+      (should-not (harmless-same-directory-p
+                   (harmless-session-directory session) bad)))
+    (should-not (file-exists-p (expand-file-name "summary.json" outside)))
+    (should-not (file-exists-p (expand-file-name "summary.json" root)))))
+
+(ert-deftest harmless-session-keeps-an-acceptable-stored-directory ()
+  (let* ((harmless-directory (make-temp-file "harmless-test-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (default-directory "/")
+         (provider (harmless-test-provider))
+         (session (harmless-session-new :cwd "/proj/demo"
+                                        :provider provider
+                                        :model "m"))
+         (alt (expand-file-name
+               "alt-id"
+               (expand-file-name "%2Fproj%2Fdemo" (harmless-sessions-root)))))
+    (harmless-ensure-directory alt)
+    (setf (harmless-session-directory session) alt)
+    (harmless-session-append-user session "stayed put")
+    (should (harmless-same-directory-p alt (harmless-session-directory session)))
+    (should (string-match-p "stayed put"
+                            (with-temp-buffer
+                              (insert-file-contents
+                               (expand-file-name "messages.jsonl" alt))
+                              (buffer-string))))))
+
+(ert-deftest harmless-session-for-cwd-ignores-trailing-slash ()
+  (let* ((harmless-directory (make-temp-file "harmless-test-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-test-provider))
+         (session (harmless-session-new :cwd "/proj/demo/"
+                                        :provider provider
+                                        :model "m")))
+    (should (equal (list session) (harmless-session-for-cwd "/proj/demo")))
+    (should (equal (list session) (harmless-session-for-cwd "/proj/demo/")))
+    (should-not (harmless-session-for-cwd "/proj/demo-evil"))
+    (should-not (harmless-session-for-cwd nil))
+    (should-not (harmless-session-for-cwd ""))))
+
+(ert-deftest harmless-current-matches-directory-without-expanding-empty ()
+  (let* ((harmless-directory (make-temp-file "harmless-test-" t))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless--config-loaded t)
+         (provider (harmless-test-provider))
+         (harmless-providers (list provider))
+         (kept (harmless-session-new :cwd "/proj/demo/"
+                                     :provider provider
+                                     :model "m"))
+         (blank (harmless-session-new :cwd "/proj/other"
+                                      :provider provider
+                                      :model "m")))
+    (setf (harmless-session-cwd blank) "")
+    (harmless-session-save blank)
+    (cl-letf (((symbol-function 'project-current) (lambda (&rest _) nil))
+              ((symbol-function 'harmless-ui-open-session) (lambda (s) s)))
+      (with-temp-buffer
+        (setq default-directory "/proj/demo")
+        (let ((found (harmless-current)))
+          (should (string= (harmless-session-id kept)
+                           (harmless-session-id found)))
+          (should (harmless-same-directory-p "/proj/demo"
+                                             (harmless-session-cwd found)))))
+      (with-temp-buffer
+        (setq default-directory "/")
+        (let ((found (harmless-current)))
+          (should-not (string= (harmless-session-id blank)
+                               (harmless-session-id found)))
+          (should (equal "/" (harmless-session-cwd found)))
+          (harmless-test--assert-session-not-at-root found harmless-directory))))
+    (cl-letf (((symbol-function 'project-current) (lambda (&rest _) nil))
+              ((symbol-function 'harmless-ui-open-session) (lambda (s) s)))
+      (with-temp-buffer
+        (setq default-directory "/proj/demo/")
+        (let ((created (harmless-new "")))
+          (should (harmless-same-directory-p "/proj/demo"
+                                             (harmless-session-cwd created)))
+          (harmless-test--assert-session-not-at-root
+           created harmless-directory)))
+      (with-temp-buffer
+        (setq default-directory "relative")
+        (harmless-test-error "must be absolute" (lambda () (harmless-new "")))))
+    (should-not (file-exists-p "/summary.json"))))
 
 (provide 'harmless-session-tests)

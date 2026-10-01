@@ -190,9 +190,8 @@ With a prefix argument, open the dashboard instead."
          (session (or (car (harmless-session-for-cwd cwd))
                       (let ((id (cl-loop
                                  for (_dir . summary) in (harmless-session-list-on-disk)
-                                 when (string= (expand-file-name
-                                                (or (plist-get summary :cwd) ""))
-                                               cwd)
+                                 when (harmless-same-directory-p
+                                       (plist-get summary :cwd) cwd)
                                  return (plist-get summary :id))))
                         (and id (harmless-session-resume id)))
                       (harmless-session-new :cwd cwd))))
@@ -203,7 +202,10 @@ With a prefix argument, open the dashboard instead."
   "Start a new Harmless session in CWD (default: current project)."
   (interactive)
   (harmless-ensure-configured)
-  (let* ((cwd (expand-file-name (or cwd (harmless-current-cwd))))
+  (let* ((cwd (harmless-absolute-directory
+               (if (and (stringp cwd) (not (string-empty-p cwd)))
+                   cwd
+                 (harmless-current-cwd))))
          (choice (and (not noninteractive)
                       (called-interactively-p 'interactive)
                       (harmless--read-provider-model-effort)))

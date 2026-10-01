@@ -3,6 +3,9 @@
 (require 'ert)
 (require 'harmless)
 
+(defvar harmless-config-test-loaded nil
+  "Set by a temporary config.el in `harmless-config-file-refuses-filesystem-root'.")
+
 (ert-deftest harmless-load-provides ()
   (should (featurep 'harmless))
   (should (fboundp 'harmless))
@@ -33,5 +36,29 @@
             (should (fboundp 'harmless-pick-model))
             (should (featurep 'harmless))))
       (setq load-prefer-newer previous))))
+
+(ert-deftest harmless-config-file-refuses-filesystem-root ()
+  (let ((harmless-directory "/")
+        (default-directory "/")
+        (harmless--config-loaded nil))
+    (let ((err (should-error (harmless-config-file) :type 'error)))
+      (should (string-match-p "Refusing to store Harmless data"
+                              (error-message-string err))))
+    (should-not (file-exists-p "/config.el")))
+  (let* ((fallback (make-temp-file "harmless-cfg-" t))
+         (harmless-directory nil)
+         (default-directory "/")
+         (harmless--config-loaded nil))
+    (cl-letf (((symbol-function 'locate-user-emacs-file)
+               (lambda (&rest _) fallback)))
+      (should (equal (expand-file-name "config.el" (harmless-data-directory))
+                     (harmless-config-file)))
+      (with-temp-file (harmless-config-file)
+        (insert ";;; -*- lexical-binding: t; -*-\n"
+                "(setq harmless-config-test-loaded t)\n"))
+      (setq harmless-config-test-loaded nil)
+      (harmless-load-config)
+      (should harmless-config-test-loaded))
+    (should-not (file-exists-p "/config.el"))))
 
 (provide 'harmless-load-tests)

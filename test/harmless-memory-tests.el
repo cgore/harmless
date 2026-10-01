@@ -23,7 +23,24 @@
                  (file-name-as-directory harmless-directory) dir))
         (should (string-search "%2Fproj%2Fdemo" dir))
         (should-not (harmless-filesystem-root-p dir)))
-      (should-not (file-exists-p "/summary.json")))))
+      (should-not (file-exists-p "/summary.json"))
+      (let ((global (harmless-memory-scope-dir "global" nil)))
+        (should (string-prefix-p (file-name-as-directory harmless-directory)
+                                 global))
+        (should (string-search "/memory/global" global))
+        (should-not (harmless-filesystem-root-p global)))
+      (should (string-prefix-p "observations/_inbox/"
+                               (harmless-memory-remember
+                                "global" nil "Global" "Applies everywhere."))))
+  (let* ((fallback (make-temp-file "harmless-memory-fallback-" t))
+         (harmless-directory nil)
+         (default-directory "/"))
+    (cl-letf (((symbol-function 'locate-user-emacs-file)
+               (lambda (&rest _) fallback)))
+      (let ((root (harmless-memory-root)))
+        (should (string-prefix-p (file-name-as-directory fallback) root))
+        (should-not (harmless-filesystem-root-p root))
+        (should-not (file-directory-p "/memory")))))))
 
 (ert-deftest harmless-memory-remember-read-and-index ()
   (harmless-memory-test-with-root

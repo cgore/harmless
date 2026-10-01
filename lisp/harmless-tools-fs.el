@@ -65,7 +65,7 @@
   "Resolve PATH against SESSION cwd, or signal if it escapes the project."
   (unless (and path (not (string-empty-p path)))
     (error "Path is empty"))
-  (let* ((cwd (harmless-session-cwd session))
+  (let* ((cwd (harmless-absolute-directory (harmless-session-cwd session)))
          (full (expand-file-name path cwd)))
     (unless (harmless-tools-fs-inside-p cwd full)
       (error "Path escapes project: %s" path))
@@ -135,7 +135,11 @@
          (contents (or (harmless-tool-arg args :contents)
                        (harmless-tool-arg args :content)
                        "")))
-    (harmless-ensure-directory (file-name-directory path))
+    (let ((parent (file-name-directory path)))
+      ;; / already exists.  Refusing to create it must not block a file
+      ;; whose project really is the filesystem root.
+      (unless (and parent (file-directory-p parent))
+        (harmless-ensure-directory parent)))
     (write-region contents nil path nil 'silent)
     (harmless-tools-fs-revert-visiting path)
     (format "Wrote %s (%d bytes)" path (string-bytes contents))))
@@ -194,36 +198,40 @@
 
 (defun harmless-tools-fs--glob (session args)
   "glob implementation."
-  (let* ((cwd (harmless-session-cwd session))
+  (let* ((cwd (harmless-absolute-directory (harmless-session-cwd session)))
          (pattern (or (harmless-tool-arg args :pattern)
                       (harmless-tool-arg args :glob)
-                      "*"))
-         (files (directory-files-recursively cwd ".*" t)))
-    (mapconcat (lambda (f)
-                 (file-relative-name f cwd))
-               (seq-filter
-                (lambda (f)
-                  (and (harmless-tools-fs-inside-p cwd f)
-                       (not (file-directory-p f))
-                       (string-match-p
-                        (wildcard-to-regexp (file-name-nondirectory pattern))
-                        (file-name-nondirectory f))
-                       (or (not (string-search "/" pattern))
-                           (string-match-p
-                            (wildcard-to-regexp pattern)
-                            (file-relative-name f cwd)))))
-                files)
-               "\n")))
+                      "*")))
+    (when (harmless-filesystem-root-p cwd)
+      (error "Refusing to search the filesystem root"))
+    (let ((files (directory-files-recursively cwd ".*" t)))
+      (mapconcat (lambda (f)
+                   (file-relative-name f cwd))
+                 (seq-filter
+                  (lambda (f)
+                    (and (harmless-tools-fs-inside-p cwd f)
+                         (not (file-directory-p f))
+                         (string-match-p
+                          (wildcard-to-regexp (file-name-nondirectory pattern))
+                          (file-name-nondirectory f))
+                         (or (not (string-search "/" pattern))
+                             (string-match-p
+                              (wildcard-to-regexp pattern)
+                              (file-relative-name f cwd)))))
+                  files)
+                 "\n"))))
 
 (defun harmless-tools-fs--grep (session args)
   "grep implementation, Elisp so tests do not need ripgrep."
-  (let* ((cwd (harmless-session-cwd session))
+  (let* ((cwd (harmless-absolute-directory (harmless-session-cwd session)))
          (pattern (or (harmless-tool-arg args :pattern)
                       (harmless-tool-arg args :query)))
          (glob (harmless-tool-arg args :glob))
          (re (or pattern (error "pattern is required")))
          (hits nil)
          (count 0))
+    (when (harmless-filesystem-root-p cwd)
+      (error "Refusing to search the filesystem root"))
     (dolist (file (directory-files-recursively cwd ".*" nil))
       (when (and (file-regular-p file)
                  (harmless-tools-fs-inside-p cwd file)

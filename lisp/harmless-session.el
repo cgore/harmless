@@ -204,18 +204,11 @@ Never returns the filesystem root."
 
 (defun harmless-session-for-cwd (cwd)
   "Return live sessions whose cwd is CWD.
-A missing or relative CWD matches nothing.  It is not expanded to /."
-  (if (not (and (stringp cwd)
-                (not (string-empty-p cwd))
-                (file-name-absolute-p cwd)))
-      nil
-    (let ((root (expand-file-name cwd)))
-      (seq-filter (lambda (s)
-                    (let ((other (harmless-session-cwd s)))
-                      (and (stringp other)
-                           (file-name-absolute-p other)
-                           (string= (expand-file-name other) root))))
-                  (harmless-session-list)))))
+A missing or relative CWD matches nothing.  It is not expanded to /.
+A trailing slash does not keep two names for one directory apart."
+  (seq-filter (lambda (s)
+                (harmless-same-directory-p (harmless-session-cwd s) cwd))
+              (harmless-session-list)))
 
 (defun harmless-current-cwd ()
   "Return the project root of the current buffer, or `default-directory'.

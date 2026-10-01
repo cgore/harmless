@@ -250,6 +250,16 @@ Nil, \"\", and relative names signal instead of using `default-directory'."
     (error "Directory must be absolute, not %S" dir))
   (expand-file-name dir))
 
+(defun harmless-same-directory-p (a b)
+  "Return non-nil if absolute directories A and B are the same.
+A trailing slash does not matter.  Nil, \"\", and relative names do
+not match, so they are not compared by expanding them against /."
+  (and (stringp a) (stringp b)
+       (not (string-empty-p a)) (not (string-empty-p b))
+       (file-name-absolute-p a) (file-name-absolute-p b)
+       (string= (directory-file-name (expand-file-name a))
+                (directory-file-name (expand-file-name b)))))
+
 (defun harmless-directory-strictly-under-p (dir parent)
   "Return non-nil if DIR is strictly inside PARENT.
 Both must be absolute.  A match against the filesystem root does not

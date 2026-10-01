@@ -73,3 +73,32 @@
                               (plist-get (car messages) :content)))
       (should (string-match-p "exit_plan_mode"
                               (plist-get (car messages) :content))))))
+
+(ert-deftest harmless-plan-file-stays-out-of-filesystem-root ()
+  (let* ((dir (make-temp-file "harmless-plan-root-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (session (harmless-plan-test-session dir))
+         (default-directory "/"))
+    (harmless-plan-enter session)
+    (setf (harmless-session-directory session) "/")
+    (should (string-match-p "Wrote plan.md"
+                            (harmless-plan--tool-write
+                             session '(:contents "# Plan\n\nStay put.\n"))))
+    (let ((file (harmless-plan-file session)))
+      (should (string-prefix-p (file-name-as-directory harmless-directory) file))
+      (should (file-exists-p file))
+      (should-not (equal file "/plan.md"))
+      (should (string-match-p "Stay put"
+                              (with-temp-buffer
+                                (insert-file-contents file)
+                                (buffer-string)))))
+    (should-not (file-exists-p "/plan.md"))
+    (setf (harmless-session-directory session) nil)
+    (let ((harmless-directory "/"))
+      (let ((err (should-error (harmless-plan-file session) :type 'error)))
+        (should (string-match-p "Refusing to store Harmless data"
+                                (error-message-string err)))))
+    (should-not (file-exists-p "/plan.md"))))
+
+(provide 'harmless-plan-tests)
