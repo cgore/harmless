@@ -15,7 +15,8 @@
   (should (fboundp 'harmless-make-openai))
   (should (harmless-login-method 'openai))
   (should (harmless-tool-by-name "read_file"))
-  (should (harmless-tool-by-name "run_shell")))
+  (should (harmless-tool-by-name "run_shell"))
+  (should (harmless-tool-by-name "ask_user")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

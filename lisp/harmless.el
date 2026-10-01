@@ -83,6 +83,7 @@
 (require 'harmless-perm)
 (require 'harmless-turn)
 (require 'harmless-plan)
+(require 'harmless-ask)
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-dashboard)

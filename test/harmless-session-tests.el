@@ -608,7 +608,10 @@
       (should-not (string-match-p "PROJECT-SECRET" (or text ""))))
     (let ((names (mapcar #'harmless-tool-name
                          (harmless-tools-for-session b))))
-      (should (equal '("memory_read" "memory_remember" "memory_write_topic")
+      (should (equal '("ask_user"
+                       "memory_read"
+                       "memory_remember"
+                       "memory_write_topic")
                      (sort names #'string<)))
       (should-not (member "read_file" names))
       (should-not (member "run_shell" names)))

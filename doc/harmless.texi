@@ -171,8 +171,8 @@ choice exists.
 
 @item M-x harmless-chat
 Start a chat with no project and no working directory.  This is a
-detached chat.  It can use global memory.  It cannot read project
-files, run a shell, or enter plan mode.
+detached chat.  It can use global memory and ask you a question.  It
+cannot read project files, run a shell, or enter plan mode.
 
 @item M-x harmless-switch
 Jump to a live or saved session.  Completion shows the project, the
@@ -415,14 +415,15 @@ is refused.  An empty path is refused.  The filesystem root is not a
 project: a search there is refused, and Harmless will not store its
 own state there.
 
-A detached chat is offered only @code{memory_read},
-@code{memory_remember}, and @code{memory_write_topic}.
-@xref{Memory}.
+A detached chat is offered @code{memory_read},
+@code{memory_remember}, @code{memory_write_topic}, and
+@code{ask_user}.  @xref{Memory}.  @xref{Questions}.
 
 @menu
 * File tools::  Read, list, write, and replace.
 * Search::      Find files and lines.
 * Shell::       Run a command.
+* Questions::   Ask one question with choices.
 @end menu
 
 @node File tools
@@ -513,6 +514,24 @@ is an error, followed by whatever output was captured.
 
 Plan mode does not inspect the command.  A shell command can still
 write files while a plan is being written.  @xref{Plan mode}.
+
+@node Questions
+@section Questions
+
+@cindex question
+@code{ask_user} asks one question.  @code{question} is the prompt.
+@code{choices} are the answers.  Emacs asks with completion, and the
+answer must be one of those choices.  The tool returns
+@samp{The user chose: } followed by that answer.
+
+A missing or blank question is refused.  A missing choice list, an
+empty list, a blank choice, a choice that spans lines, and a repeated
+choice are refused.  A choice is text.  A value such as @code{/} or
+@code{lisp/} is returned as that text.  Cancelling the prompt returns
+@samp{The user cancelled the question.}
+
+The tool does not ask for permission first.  A detached chat can use
+it.  Plan mode can use it.
 
 @node Instructions
 @chapter Instructions
@@ -650,6 +669,7 @@ While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with @code{write_plan}, and to call
 @code{exit_plan_mode} when the plan is ready.  @code{write_file} and
 @code{replace} fail.  The header line shows @samp{plan}.
+@code{ask_user} can still ask a question.  @xref{Questions}.
 
 @code{write_plan} writes @file{plan.md} in the session directory.  The
 contents replace the whole file.  An empty plan is refused.

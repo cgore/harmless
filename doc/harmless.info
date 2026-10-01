@@ -144,8 +144,8 @@ File: harmless.info,  Node: Sessions,  Next: Transcript,  Prev: Starting,  Up: T
 
 ‘M-x harmless-chat’
      Start a chat with no project and no working directory.  This is a
-     detached chat.  It can use global memory.  It cannot read project
-     files, run a shell, or enter plan mode.
+     detached chat.  It can use global memory and ask you a question.
+     It cannot read project files, run a shell, or enter plan mode.
 
 ‘M-x harmless-switch’
      Jump to a live or saved session.  Completion shows the project, the
@@ -368,14 +368,16 @@ refused.  An empty path is refused.  The filesystem root is not a
 project: a search there is refused, and Harmless will not store its own
 state there.
 
-   A detached chat is offered only ‘memory_read’, ‘memory_remember’, and
-‘memory_write_topic’.  *Note Memory::.
+   A detached chat is offered ‘memory_read’, ‘memory_remember’,
+‘memory_write_topic’, and ‘ask_user’.  *Note Memory::.  *Note
+Questions::.
 
 * Menu:
 
 * File tools::  Read, list, write, and replace.
 * Search::      Find files and lines.
 * Shell::       Run a command.
+* Questions::   Ask one question with choices.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -447,7 +449,7 @@ cannot start with a hyphen.  A long result is cut at the same byte cap
 as ‘read_file’.
 
 
-File: harmless.info,  Node: Shell,  Prev: Search,  Up: Tools
+File: harmless.info,  Node: Shell,  Next: Questions,  Prev: Search,  Up: Tools
 
 10.3 Shell
 ==========
@@ -463,6 +465,26 @@ followed by whatever output was captured.
 
    Plan mode does not inspect the command.  A shell command can still
 write files while a plan is being written.  *Note Plan mode::.
+
+
+File: harmless.info,  Node: Questions,  Prev: Shell,  Up: Tools
+
+10.4 Questions
+==============
+
+‘ask_user’ asks one question.  ‘question’ is the prompt.  ‘choices’ are
+the answers.  Emacs asks with completion, and the answer must be one of
+those choices.  The tool returns ‘The user chose: ’ followed by that
+answer.
+
+   A missing or blank question is refused.  A missing choice list, an
+empty list, a blank choice, a choice that spans lines, and a repeated
+choice are refused.  A choice is text.  A value such as ‘/’ or ‘lisp/’
+is returned as that text.  Cancelling the prompt returns ‘The user
+cancelled the question.’
+
+   The tool does not ask for permission first.  A detached chat can use
+it.  Plan mode can use it.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -584,7 +606,8 @@ call ‘enter_plan_mode’, which asks you before it switches.
    While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with ‘write_plan’, and to call
 ‘exit_plan_mode’ when the plan is ready.  ‘write_file’ and ‘replace’
-fail.  The header line shows ‘plan’.
+fail.  The header line shows ‘plan’.  ‘ask_user’ can still ask a
+question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -869,26 +892,27 @@ Node: Introduction1770
 Node: Installation2501
 Node: Starting4105
 Node: Sessions4644
-Node: Transcript6119
-Node: Prompt6757
-Node: Permissions7279
-Node: Accounts8526
-Node: Models10771
-Node: Tools11867
-Node: File tools12675
-Node: Search13576
-Node: Shell15217
-Node: Instructions15860
-Node: Skills16605
-Node: Memory17754
-Node: Plan mode19019
-Node: Usage20350
-Node: Files21200
-Node: Keys22433
-Node: Trouble23468
-Node: Manual24455
-Node: Command Index25160
-Node: Key Index27562
+Node: Transcript6141
+Node: Prompt6779
+Node: Permissions7301
+Node: Accounts8548
+Node: Models10793
+Node: Tools11889
+Node: File tools12775
+Node: Search13676
+Node: Shell15317
+Node: Questions15978
+Node: Instructions16730
+Node: Skills17475
+Node: Memory18624
+Node: Plan mode19889
+Node: Usage21282
+Node: Files22132
+Node: Keys23365
+Node: Trouble24400
+Node: Manual25387
+Node: Command Index26092
+Node: Key Index28494
 
 End Tag Table
 

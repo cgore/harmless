@@ -271,6 +271,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("write_plan" "plan")
     ("exit_plan_mode" "plan")
     ("enter_plan_mode" "plan")
+    ("ask_user" "ask")
     (_ (or name "?"))))
 
 (defun harmless-ui--tool-groupable-p (name)
@@ -294,6 +295,7 @@ directory, which lives under the Harmless data directory.  Setting
                                    (harmless-tool-arg args :topic)
                                    ""))
             ("memory_write_topic" (or (harmless-tool-arg args :topic) ""))
+            ("ask_user" (or (harmless-tool-arg args :question) ""))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

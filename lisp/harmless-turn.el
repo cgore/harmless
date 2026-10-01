@@ -100,11 +100,14 @@
 
 (defun harmless-tools-for-session (session)
   "Return the tools offered to SESSION.
-A detached chat can use global memory.  It is not offered project
-files, a shell, or plan mode."
+A detached chat can use global memory and ask the user a question.
+It is not offered project files, a shell, or plan mode."
   (if (not (harmless-session-detached-p session))
       (harmless-tools-enabled)
-    (let ((allowed '("memory_read" "memory_remember" "memory_write_topic")))
+    (let ((allowed '("ask_user"
+                     "memory_read"
+                     "memory_remember"
+                     "memory_write_topic")))
       (seq-filter (lambda (tool)
                     (member (harmless-tool-name tool) allowed))
                   (harmless-tools-enabled)))))
