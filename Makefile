@@ -7,7 +7,7 @@ TEST_FILES := $(wildcard $(TESTDIR)/*-tests.el)
 
 BATCH := $(EMACS) -Q --batch --eval "(setq load-prefer-newer t)"
 
-.PHONY: all compile test autoloads clean version-check
+.PHONY: all compile test autoloads clean version-check manual
 
 all: test
 
@@ -27,6 +27,9 @@ test: compile
 	$(BATCH) -L $(LISPDIR) -L $(TESTDIR) \
 	  $(foreach f,$(TEST_FILES),-l $(notdir $(f))) \
 	  -f ert-run-tests-batch-and-exit
+
+manual:
+	makeinfo --no-split -o doc/harmless.info doc/harmless.texi
 
 clean:
 	rm -f $(LISPDIR)/*.elc $(TESTDIR)/*.elc $(LISPDIR)/harmless-autoloads.el

@@ -48,6 +48,7 @@
 (require 'harmless-session)
 
 (declare-function harmless--context-session "harmless")
+(declare-function harmless-info "harmless")
 (declare-function harmless-xai-allowance "harmless-xai")
 (declare-function harmless-xai--parse-time "harmless-xai")
 
@@ -83,6 +84,7 @@ A length learned from the provider's model catalog wins over
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "g") #'harmless-usage-refresh)
     (define-key map (kbd "q") #'quit-window)
+    (define-key map (kbd "h") #'harmless-info)
     map)
   "Keymap for `harmless-usage-mode'.")
 

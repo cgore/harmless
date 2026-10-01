@@ -58,6 +58,7 @@
 (declare-function harmless-set-permission-mode "harmless")
 (declare-function harmless-login "harmless-auth")
 (declare-function harmless-logout "harmless-auth")
+(declare-function harmless-info "harmless")
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -70,7 +71,8 @@
     ("d" "Dashboard" harmless-dashboard)
     ("a" "Abort" harmless-abort)
     ("P" "Plan" harmless-plan)
-    ("u" "Usage" harmless-usage)]
+    ("u" "Usage" harmless-usage)
+    ("h" "Manual" harmless-info)]
    ["Options"
     ("m" "Model" harmless-pick-model)
     ("e" "Effort" harmless-set-reasoning-effort)

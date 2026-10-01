@@ -1,0 +1,889 @@
+\input texinfo
+@setfilename harmless.info
+@settitle Harmless
+@documentencoding UTF-8
+@documentlanguage en
+
+@copying
+Copyright @copyright{} 2026 Christopher Mark Gore.
+
+Harmless is released under the 3-clause BSD license.  The terms are
+in the file @file{LICENSE} at the root of the source tree.
+@end copying
+
+@dircategory Emacs
+@direntry
+* Harmless: (harmless).       Coding harness inside Emacs.
+@end direntry
+
+@titlepage
+@title Harmless
+@subtitle A coding harness inside Emacs
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@node Top
+@top Harmless
+
+Harmless runs a coding agent inside Emacs.  This manual describes the
+commands, keys, and files a user needs.
+
+@insertcopying
+
+@menu
+* Introduction::        What Harmless does.
+* Installation::        Load the Lisp and choose a provider.
+* Starting::            Open the first session.
+* Sessions::            Several chats at once.
+* Transcript::          Read the session buffer.
+* Prompt::              Send a turn.
+* Permissions::         Allow or refuse a tool.
+* Accounts::            Sign in to a provider.
+* Models::              Choose a model and a reasoning effort.
+* Tools::               What the model can do to the project.
+* Instructions::        Project text sent on every turn.
+* Skills::              Task instructions the model can open.
+* Memory::              Notes that outlive one session.
+* Plan mode::           Agree on a plan before editing.
+* Usage::               Tokens and rate limits.
+* Files::               Where Harmless stores state.
+* Keys::                Keys by buffer.
+* Trouble::             Abort a turn and read the log.
+* Manual::              Open this book from Emacs.
+* Command Index::
+* Key Index::
+@end menu
+
+@node Introduction
+@chapter Introduction
+
+@cindex what Harmless is
+Harmless is a coding harness written in Emacs Lisp.  It is not gptel.
+It does not wrap Grok Build, Claude Code, or the Codex CLI.  It talks
+to a model provider itself, keeps the transcript in Emacs, and runs
+tools in the project directory.
+
+A session is one conversation.  It is pinned to one connection and one
+model.  Several sessions can run in one Emacs.  One can use Grok,
+another a local model, and a third Claude, each in its own project.
+
+The transcript buffer is a view.  The saved session on disk is the
+record.  Closing the buffer does not delete the session.
+
+Harmless requires GNU Emacs 31.
+
+@node Installation
+@chapter Installation
+
+@findex harmless-setup
+Put the @file{lisp} directory on @code{load-path} and load the package.
+
+@example
+(add-to-list 'load-path "~/programming/emacs/harmless/lisp")
+(require 'harmless)
+@end example
+
+@vindex harmless-providers
+@vindex harmless-default-model
+@vindex harmless-default-reasoning-effort
+@vindex harmless-default-provider-name
+Choose the connections Harmless may use.  Most people need one.
+
+@example
+(setq harmless-providers (list (harmless-make-xai))
+      harmless-default-model "grok-4.6"
+      harmless-default-reasoning-effort "xhigh")
+@end example
+
+@findex harmless-make-xai
+@findex harmless-make-openai
+@findex harmless-make-anthropic
+@findex harmless-make-openai-compat
+The constructors are @code{harmless-make-xai},
+@code{harmless-make-openai}, @code{harmless-make-anthropic}, and
+@code{harmless-make-openai-compat}.  Each takes an optional connection
+name.  The default names are @samp{xAI}, @samp{OpenAI}, and
+@samp{Anthropic}.  A second account needs its own name, such as
+@samp{xAI work}.
+
+@vindex harmless-directory
+Settings can live in your init file or in @file{config.el} under
+@code{harmless-directory}.  That directory defaults to @file{harmless}
+inside @code{user-emacs-directory}, so a typical path is
+@file{~/.emacs.d/harmless/config.el}.  Harmless loads @file{config.el}
+once, the first time a command needs it.
+
+If @code{harmless-providers} is empty, @kbd{M-x harmless} asks you to
+pick a provider and a connection name.
+
+A local OpenAI-compatible server looks like this:
+
+@example
+(setq harmless-providers
+      (list (harmless-make-openai-compat
+             "local"
+             :host "127.0.0.1:11434"
+             :protocol "http"
+             :endpoint "/v1/chat/completions"
+             :key "none"
+             :models '("llama3.2"))))
+@end example
+
+@node Starting
+@chapter Starting
+
+@findex harmless
+@kindex M-x harmless
+@kbd{M-x harmless} opens the session for the current project.  A
+prefix argument opens the dashboard instead.
+
+The current project is the project root Emacs would use for the
+buffer, or @code{default-directory} when the buffer is not in a
+project.  The directory must be absolute.  Harmless refuses to treat a
+missing directory as the filesystem root.
+
+On the first run, sign in when the provider asks.  @xref{Accounts}.
+
+@node Sessions
+@chapter Sessions
+
+@findex harmless-current
+@findex harmless-new
+@findex harmless-chat
+@findex harmless-switch
+@findex harmless-dashboard
+@cindex session
+@cindex detached chat
+
+@table @kbd
+@item M-x harmless-current
+Open or resume the newest session for this project.  If none exists,
+start one with the default connection and model.
+
+@item M-x harmless-new
+Start a new session in the current project.  Harmless asks for the
+connection, the model, and the reasoning effort when more than one
+choice exists.
+
+@item M-x harmless-chat
+Start a chat with no project and no working directory.  This is a
+detached chat.  It can use global memory.  It cannot read project
+files, run a shell, or enter plan mode.
+
+@item M-x harmless-switch
+Jump to a live or saved session.  Completion shows the project, the
+title, and the session id.
+
+@item M-x harmless-dashboard
+List every session, grouped by project.  @xref{Keys}, for the
+dashboard keys.
+@end table
+
+The first user message becomes the title, cut at 60 characters, until
+you set a title when you create the session.  A set title stays.
+
+The header line of the transcript shows the title (or the project
+name), the connection, the model, the status, and the word
+@samp{plan} while plan mode is on.  @xref{Plan mode}.
+
+Two sessions in one project get separate transcript buffers.  The
+buffer name is @code{*harmless: @var{project}*} when the project has
+one session, and @code{*harmless: @var{project} @var{id}*} when it has
+more.  A detached chat always includes the id.
+
+@node Transcript
+@chapter Transcript
+
+@findex harmless-session-mode
+@kindex TAB @r{(transcript)}
+@kindex S-TAB @r{(transcript)}
+@kindex LEFT @r{(transcript)}
+@kindex RIGHT @r{(transcript)}
+The transcript is read-only.  Replies are Markdown.  A tool call is a
+folded line.  A run of reads and searches folds into one
+@samp{explored} line.
+
+@table @kbd
+@item TAB
+Toggle the fold at point.
+
+@item S-TAB
+Toggle every fold.
+
+@item LEFT
+Close the fold at point.
+
+@item RIGHT
+Open the fold at point.
+
+@item RET
+Move to the prompt.
+
+@item i
+Move to the prompt.
+
+@item q
+Quit the window.
+@end table
+
+Click the model name in the header line to change the connection, the
+model, and the effort.  @xref{Models}.
+
+@node Prompt
+@chapter Prompt
+
+@findex harmless-prompt-send
+@findex harmless-prompt-mode
+@kindex C-c C-c
+@kindex C-c RET
+The prompt is a small window under the transcript.  Type there and
+send the turn.
+
+@table @kbd
+@item C-c C-c
+Send the prompt.  @kbd{C-c @key{RET}} does the same.
+
+@item C-c C-a
+Abort the in-flight turn or shell.  @xref{Trouble}.
+
+@item C-c C-k
+Open the Harmless menu.  @xref{Keys}.
+@end table
+
+An empty prompt is refused.  While a permission question is showing,
+send is refused until you answer it.  @xref{Permissions}.
+
+@node Permissions
+@chapter Permissions
+
+@findex harmless-set-permission-mode
+@vindex harmless-permission-mode
+@cindex permission
+@kindex y @r{(permission)}
+@kindex n @r{(permission)}
+@kindex ! @r{(permission)}
+Each tool belongs to a class: @code{read}, @code{edit}, or
+@code{shell}.  A read never asks.  An edit asks.  A shell asks.
+
+The permission mode of a session changes that.
+
+@table @code
+@item ask
+The default.  Edits and shell commands ask.
+
+@item accept-edits
+Edits proceed.  Shell commands still ask.
+
+@item always-approve
+Edits and shell commands proceed.
+@end table
+
+@kbd{M-x harmless-set-permission-mode} sets the mode for the current
+session.  The menu key is @kbd{p}.  New sessions take the value of
+@code{harmless-permission-mode}, which defaults to @code{ask}.
+
+When a tool needs a decision, the prompt shows the class and a short
+description of the call.  For an edit, that description is the path.
+For a shell command, it is the command.
+
+@table @kbd
+@item y
+Allow this call.
+
+@item n
+Deny this call.  The model receives an error and can try something else.
+
+@item !
+Allow this class for the rest of the session.
+@end table
+
+Those three keys insert themselves when no question is pending, so you
+can type them in an ordinary prompt.
+
+A denied call does not change the project.  An allowed edit or shell
+command runs at once.
+
+@node Accounts
+@chapter Accounts
+
+@findex harmless-login
+@findex harmless-logout
+@kindex M-x harmless-login
+@kindex M-x harmless-logout
+@kbd{M-x harmless-login} signs in.  If several connections exist, it
+asks which one.  @kbd{M-x harmless-logout} forgets the Harmless token
+for that connection.  It does not delete a token that belongs to Grok
+Build, Claude Code, or Codex.
+
+@heading xAI
+
+@vindex harmless-xai-use-grok-auth
+Browser login opens @code{auth.x.ai}.  Harmless listens on port 56121.
+Tokens are stored under @code{harmless-directory}, mode 0600, and
+refresh on their own.  A prefix argument uses the device-code flow.
+Harmless also uses that flow when port 56121 is already taken, for
+example by Grok Build.
+
+If you have already run @code{grok login} and
+@code{harmless-xai-use-grok-auth} is non-nil, Harmless reuses
+@file{~/.grok/auth.json} until you sign in or out from Emacs.  It
+never writes that file.  A refresh is saved under
+@code{harmless-directory} instead.
+
+An API key still works when no OAuth session is active.  Put it in
+@file{~/.authinfo} as @code{machine api.x.ai login apikey password
+xai-...}, or export @code{XAI_API_KEY}.
+
+@heading OpenAI
+
+@vindex harmless-openai-use-codex-auth
+Login opens ChatGPT OAuth and listens on @code{localhost:1455}.  A
+prefix argument asks you to paste the redirect URL.  Harmless also
+does that when port 1455 is busy.  Tokens go in
+@file{auth-openai.json}.  A still-valid @file{~/.codex/auth.json} is
+reused and never written.
+
+ChatGPT subscription tokens are sent to the Codex Responses API, not
+to @code{api.openai.com}.  @code{OPENAI_API_KEY} remains a usage-based
+fallback on Chat Completions.
+
+@heading Anthropic
+
+@vindex harmless-anthropic-use-claude-auth
+Login uses Claude Code's OAuth client.  The browser shows a code.
+Paste it at the minibuffer prompt.  Tokens go in
+@file{auth-anthropic.json}.  A still-valid
+@file{~/.claude/.credentials.json} access token is reused.  Harmless
+does not write or refresh that file.
+
+@heading Several accounts
+
+Give each account its own connection name.  The default names keep the
+original files: @file{auth.json}, @file{auth-openai.json}, and
+@file{auth-anthropic.json}.  Any other name gets
+@file{auth-@var{slug}.json}.  A session stays on the connection it was
+given.  One buffer can use a personal Grok account while another uses
+a work Claude account.
+
+A local server has no browser login.
+
+@node Models
+@chapter Models
+
+@findex harmless-pick-model
+@findex harmless-set-model
+@findex harmless-set-reasoning-effort
+@vindex harmless-default-model
+@vindex harmless-default-reasoning-effort
+@cindex reasoning effort
+Click the model in the header line, or run @kbd{M-x harmless-pick-model}.
+Harmless asks for a logged-in connection, then a model, then a
+reasoning effort.  A provider with one model skips the model prompt.
+A model that does not take an effort skips the effort prompt.
+
+You can also set the pieces separately.  @kbd{M-x harmless-set-model}
+changes the model.  @kbd{M-x harmless-set-reasoning-effort} changes
+the effort.  An empty effort clears the session's own value and falls
+back to @code{harmless-default-reasoning-effort}.
+
+Models whose names start with @code{grok-4}, @code{gpt-5}, or
+@code{gpt-6}, and Claude models, accept an effort.  The usual values
+are @code{low}, @code{medium}, @code{high}, and @code{xhigh}.  Claude
+also accepts @code{max}.  A model id such as @code{grok-4.6-xhigh}
+sets both the model and the effort.
+
+Nil for the default effort omits the parameter.  For grok-4.6, the
+provider then uses @code{high}.
+
+The choice is saved with the session.  The next turn uses it.
+
+@node Tools
+@chapter Tools
+
+@cindex tools
+The model does not change your files by printing a diff.  It calls
+tools.  You see each call in the transcript.  Permission rules are in
+@ref{Permissions}.
+
+Paths are relative to the project root unless you pass an absolute
+path that is still inside that root.  A path that escapes the project
+is refused.  An empty path is refused.  The filesystem root is not a
+project: a search there is refused, and Harmless will not store its
+own state there.
+
+A detached chat is offered only @code{memory_read},
+@code{memory_remember}, and @code{memory_write_topic}.
+@xref{Memory}.
+
+@menu
+* File tools::  Read, list, write, and replace.
+* Search::      Find files and lines.
+* Shell::       Run a command.
+@end menu
+
+@node File tools
+@section File tools
+
+@table @code
+@item read_file
+Read a project file.  @code{offset} is the first line, counting from
+1.  @code{limit} is how many lines to return.  The result is cut at
+@code{harmless-read-file-max-bytes} (100000).  A cut result ends with
+@samp{[truncated]}.
+
+@item list_dir
+List the names in a directory.  A directory name ends with a slash.
+The default path is the project root.
+
+@item write_file
+Create or replace a file with the given contents.  This is an edit.
+
+@item replace
+Replace one unique string in a file.  If the string occurs more than
+once, the call fails unless @code{replace_all} is true.  This is an
+edit.
+
+In plan mode, @code{write_file} and @code{replace} fail.  The model
+must write @file{plan.md} with @code{write_plan}.  @xref{Plan mode}.
+@end table
+
+@node Search
+@section Search
+
+@table @code
+@item glob
+Find files whose names match a glob.  The pattern may be a basename
+or a relative path.
+
+@item grep
+Search file contents for a regular expression.  The optional
+arguments are @code{path}, @code{glob}, @code{engine}, @code{context},
+@code{type}, and @code{multiline}.
+@end table
+
+@cindex ripgrep
+@cindex ag
+@cindex grep
+@code{path} is a directory inside the project.  A trailing slash is
+the same directory.  @code{glob} limits basenames, for example
+@code{*.el}.
+
+@code{engine} is @code{rg}, @code{ag}, or @code{elisp}.  With no
+engine, Harmless uses ripgrep if @command{rg} is on @code{exec-path},
+then ag if @command{ag} is on @code{exec-path}, then an Emacs Lisp
+scan.
+
+Ripgrep and ag skip ignored files and the @file{.git} directory.
+They do search hidden files, so a file such as @file{.harmless} is
+visible.  The Emacs Lisp scan reads every regular file under the
+directory, including ignored files and @file{.git}.
+
+@code{context} is the number of lines to show around each hit.  A hit
+is printed as @code{path:line:text}.  A context line is printed as
+@code{path-line-text}.
+
+@code{type} is a file type that the chosen engine knows.  Ripgrep
+types come from @code{rg --type-list}.  Ag types come from
+@code{ag --list-file-types}.  The Emacs Lisp scan has no file types.
+
+@code{multiline} lets the pattern cross lines.  Only ripgrep can do
+that.  Ag refuses it.  The Emacs Lisp scan refuses it.
+
+The pattern is required, and it is case-sensitive.  An ag pattern
+cannot start with a hyphen.  A long result is cut at the same byte
+cap as @code{read_file}.
+
+@node Shell
+@section Shell
+
+@vindex harmless-shell-timeout-seconds
+@vindex harmless-shell-output-max-bytes
+@code{run_shell} runs one command in the project root through your
+shell.  Each command starts there.  A @code{cd} in one command does
+not change the next command.
+
+The command is killed after @code{harmless-shell-timeout-seconds}
+(120).  The text returned to the model, and shown in the transcript,
+is cut at @code{harmless-shell-output-max-bytes} (20000).  A timeout
+is an error, followed by whatever output was captured.
+
+Plan mode does not inspect the command.  A shell command can still
+write files while a plan is being written.  @xref{Plan mode}.
+
+@node Instructions
+@chapter Instructions
+
+@cindex project instructions
+@cindex AGENTS.md
+@cindex HARMLESS.md
+Harmless reads three names in each directory, from your home directory
+down to the session directory:
+
+@enumerate
+@item
+@file{AGENTS.md}
+
+@item
+@file{HARMLESS.md}
+
+@item
+@file{.harmless/HARMLESS.md}
+@end enumerate
+
+A file applies to its directory and everything under it.  Outer
+directories come first.  At one directory, the files are read in the
+order above.  When two files disagree, the later one wins.  Empty
+files are skipped.  The walk stops at your home directory and at the
+filesystem root.
+
+The text is sent with every turn.  It is not copied into the
+transcript.  A detached chat does not walk @code{default-directory}
+looking for these files.
+
+@node Skills
+@chapter Skills
+
+@cindex skills
+@cindex SKILL.md
+A skill is a directory that contains @file{SKILL.md}.  The file starts
+with @code{name} and @code{description} in YAML frontmatter.  If the
+name is missing, Harmless uses the directory name.  If the description
+is missing, it uses the first paragraph of the body.
+
+Each turn receives a catalog: the name, the description, and the path.
+The body is not sent until the model reads that file with
+@code{read_file}.
+
+Harmless looks for a @file{skills} directory inside these vendor
+directories, from your home directory down to the session:
+
+@table @file
+@item .agents/skills
+@itemx .codex/skills
+Codex.
+
+@item .claude/skills
+Claude Code.
+
+@item .grok/skills
+Grok Build.
+
+@item .harmless/skills
+Harmless.
+@end table
+
+In one directory, a later entry in that list replaces an earlier skill
+of the same name.  A skill closer to the session replaces one of the
+same name farther away.  @file{/etc/codex/skills} is included when it
+exists, at the lowest priority.  Skills that ship inside the Codex
+application, and are not files on disk, are not read.
+
+@node Memory
+@chapter Memory
+
+@findex harmless-remember
+@findex harmless-dream
+@cindex memory
+Memory is Markdown under @code{harmless-directory}, in @file{memory}.
+Global notes apply to every project.  Workspace notes belong to one
+project.  A detached chat has workspace memory unavailable and global
+memory available.
+
+Each scope has three directories:
+
+@table @file
+@item topics
+Curated notes, one file per topic.
+
+@item observations/_inbox
+New facts, not yet folded into a topic.
+
+@item archive
+Inbox files that @code{harmless-dream} has folded.
+@end table
+
+@file{MEMORY.md} in each scope is a generated index.  A turn receives
+the index, not the notes.
+
+@table @kbd
+@item M-x harmless-remember
+Save a title and a note in workspace memory.  A prefix argument saves
+it in global memory.
+
+@item M-x harmless-dream
+Fold the inbox into topics for this project and for global memory.
+The inbox files move to @file{archive}.
+@end table
+
+The model uses three tools.
+
+@table @code
+@item memory_read
+Read one memory file.  @code{scope} is @code{workspace} or
+@code{global}.
+
+@item memory_remember
+Append a fact to the inbox.  @code{topic} is an optional slug, such as
+@code{emacs}.
+
+@item memory_write_topic
+Replace one topic file with the full Markdown you supply.
+@end table
+
+@node Plan mode
+@chapter Plan mode
+
+@findex harmless-plan
+@findex enter_plan_mode
+@findex write_plan
+@findex exit_plan_mode
+@cindex plan mode
+@kbd{M-x harmless-plan} turns plan mode on for the current session.  A
+prefix argument turns it off.  The menu key is @kbd{P}.  The model may
+also call @code{enter_plan_mode}, which asks you before it switches.
+
+While plan mode is on, the model is told to explore with read-only
+tools, to write the plan only with @code{write_plan}, and to call
+@code{exit_plan_mode} when the plan is ready.  @code{write_file} and
+@code{replace} fail.  The header line shows @samp{plan}.
+
+@code{write_plan} writes @file{plan.md} in the session directory.  The
+contents replace the whole file.  An empty plan is refused.
+
+@code{exit_plan_mode} shows the plan and asks:
+
+@example
+Plan: a approve and build, s request changes, q quit
+@end example
+
+@table @kbd
+@item a
+Turn plan mode off and tell the model to implement the plan.
+
+@item s
+Ask for revision notes, leave plan mode on, and send those notes back.
+
+@item q
+Turn plan mode off and tell the model to stop without changing project
+files.
+@end table
+
+Approving does not apply a patch by itself.  The same turn continues,
+and later tool calls do the edits.
+
+Shell commands are not classified.  In plan mode a shell command can
+still write.  @xref{Shell}.
+
+The flag is saved with the session.
+
+@node Usage
+@chapter Usage
+
+@findex harmless-usage
+@vindex harmless-usage-context-windows
+@kindex g @r{(usage)}
+@kbd{M-x harmless-usage} shows two blocks.
+
+The session block is the context window of the current model, the
+prompt size of the last request, and what remains in the window.  It
+then shows the running prompt and completion totals for this chat.
+Window sizes that Harmless does not learn from the provider live in
+@code{harmless-usage-context-windows}.  A model with no known window
+is marked unknown.
+
+The account block is the last rate-limit remainder each provider sent.
+A connection with no such headers says so.  For the connection named
+@samp{xAI}, the buffer also asks xAI for the current allowance when
+you are not in batch Emacs.  This report is not an account credit
+balance.
+
+In the usage buffer, @kbd{g} redraws and @kbd{q} quits.
+
+@node Files
+@chapter Files
+
+@vindex harmless-directory
+@cindex session files
+Harmless keeps its own files under @code{harmless-directory}.  The
+default is @file{harmless/} in @code{user-emacs-directory}.  Nil and
+the empty string mean that same default.  A relative path is refused.
+The filesystem root is refused.  A missing directory is created when
+it is needed.  It is not replaced with @file{/}.
+
+@table @file
+@item config.el
+Optional configuration, loaded once.
+
+@item auth.json
+@itemx auth-openai.json
+@itemx auth-anthropic.json
+@itemx auth-@var{slug}.json
+OAuth tokens for each connection.  Mode 0600.
+
+@item sessions/@var{project}/@var{id}/summary.json
+The session's model, status, totals, and plan flag.
+
+@item sessions/@var{project}/@var{id}/messages.jsonl
+The transcript, one JSON object per line.
+
+@item sessions/@var{project}/@var{id}/plan.md
+The plan, when plan mode has written one.
+
+@item sessions/_detached/@var{id}/
+A chat with no project.
+
+@item memory/global/
+@itemx memory/workspaces/@var{project}/
+Notes.  @xref{Memory}.
+@end table
+
+@var{project} in a session path is the project directory encoded as one
+file name, not the project name you see in the buffer.
+
+The log is not a file.  It is the buffer @code{*harmless-log*}.
+@xref{Trouble}.
+
+@node Keys
+@chapter Keys
+
+@findex harmless-menu
+@kindex h @r{(Harmless buffers)}
+@kbd{M-x harmless-menu} opens a transient with the common commands.
+You can also open it with @kbd{m} in the transcript or @kbd{C-c C-k}
+in the prompt.
+
+@table @kbd
+@item n
+New session.
+
+@item C
+Detached chat.
+
+@item c
+Current project.
+
+@item s
+Switch session.
+
+@item d
+Dashboard.
+
+@item a
+Abort.
+
+@item P
+Plan mode.
+
+@item u
+Usage.
+
+@item m
+Model.  In the transcript buffer, @kbd{m} opens this menu and
+@kbd{M} picks a model directly.
+
+@item e
+Reasoning effort.
+
+@item p
+Permission mode.
+
+@item l
+Log in.
+
+@item o
+Log out.
+
+@item r
+Remember a note.
+
+@item D
+Dream: fold memory.
+
+@item h
+This manual.
+@end table
+
+@kbd{h} also opens this manual from the transcript, the dashboard, and
+the usage buffer.
+
+Dashboard keys:
+
+@table @kbd
+@item RET
+Open the session on this line.
+
+@item n
+New session.
+
+@item g
+Refresh the list.
+
+@item q
+Quit.
+
+@item h
+This manual.
+@end table
+
+@node Trouble
+@chapter Trouble
+
+@findex harmless-abort
+@findex harmless-reload-all-harmless
+@cindex log
+@kbd{M-x harmless-abort}, or @kbd{a} in the transcript, or @kbd{C-c C-a}
+in the prompt, cancels the HTTP request or the shell command that is
+running.  The session returns to idle and the transcript records
+@samp{aborted}.
+
+An empty reply from the model is an error: @samp{The model returned an
+empty reply.}
+
+Diagnostic lines go to the buffer @code{*harmless-log*}.  The buffer
+keeps at most @code{harmless-log-max-lines} lines (2000).  Do not put
+an API key in a note you expect to see there.  The log is not written
+to disk.
+
+@kbd{M-x harmless-reload-all-harmless} loads every @file{.el} file
+beside the @file{harmless.el} Emacs actually loaded.  It skips
+@file{harmless-autoloads.el} and prefers a newer source file over a
+byte-compiled copy.  Restart Emacs when a live session was created
+before a session field was added.  Reloading does not rebuild this
+manual.  @xref{Manual}.
+
+@node Manual
+@chapter Manual
+
+@findex harmless-info
+@cindex Info manual
+This book is an Info manual.  Open it with @kbd{M-x harmless-info},
+with @kbd{h} in a Harmless buffer, or with @kbd{h} in the Harmless
+menu.  After Harmless has loaded, @kbd{C-h i} lists it in the Emacs
+directory.
+
+The source is @file{doc/harmless.texi} next to @file{lisp}.  The file
+Emacs reads is @file{doc/harmless.info}.  Rebuild it from the
+repository root:
+
+@example
+make manual
+@end example
+
+That needs @command{makeinfo}, from the Texinfo package.  Commit both
+the Texinfo source and the generated Info file.  A change to a
+command, a key, a tool, or a permission belongs in the manual in the
+same change.
+
+@node Command Index
+@unnumbered Command Index
+@printindex fn
+
+@node Key Index
+@unnumbered Key Index
+@printindex ky
+
+@bye

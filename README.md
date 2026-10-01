@@ -128,6 +128,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-dashboard` | All sessions, grouped by project |
 | `M-x harmless-switch` | Jump to a live or saved session |
 | `M-x harmless-menu` | Transient: new / switch / model / effort / permissions / abort |
+| `M-x harmless-info` | Open the Info manual (`h` in the transcript, dashboard, usage buffer, or menu) |
 | `M-x harmless-set-reasoning-effort` | Set low / medium / high / xhigh |
 | Click `xAI/grok-4.6 (xhigh)` in the session header | Provider, then model, then effort |
 | `M-x harmless-login` | Sign in (xAI, Anthropic, or OpenAI) |

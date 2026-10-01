@@ -55,6 +55,7 @@
 (declare-function harmless-menu "harmless-transient")
 (declare-function harmless-new "harmless")
 (declare-function harmless-pick-model "harmless")
+(declare-function harmless-info "harmless")
 
 (defface harmless-user-face
   '((t :inherit font-lock-keyword-face :weight bold))
@@ -95,6 +96,7 @@
 (defvar harmless-session-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "q") #'quit-window)
+    (define-key map (kbd "h") #'harmless-info)
     (define-key map (kbd "a") #'harmless-abort)
     (define-key map (kbd "g") #'harmless-dashboard)
     (define-key map (kbd "n") #'harmless-new)

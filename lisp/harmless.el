@@ -56,11 +56,13 @@
 ;;   M-x harmless-login        ; sign in (picks a provider when several exist)
 ;;   M-x harmless-dashboard    ; all sessions
 ;;   M-x harmless-menu         ; transient
+;;   M-x harmless-info         ; this manual
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'info)
 (require 'subr-x)
 (require 'harmless-util)
 (require 'harmless-log)
@@ -432,6 +434,58 @@ when a live session object was created before a struct slot was added."
       (load file nil t))
     (message "Harmless reloaded (%d files)" (length files))
     files))
+
+(defun harmless-manual-directory (sources)
+  "Return the directory of the Harmless Info manual.
+SOURCES is the directory that holds `harmless.el'.  A trailing slash
+does not change the result.  Nil, the empty string, a relative path,
+and the filesystem root are refused.  A missing directory is not the
+filesystem root, and this function does not create one."
+  (unless (and (stringp sources)
+               (not (string-empty-p sources))
+               (file-name-absolute-p sources))
+    (error "Harmless Lisp directory must be absolute, not %S" sources))
+  (let* ((lisp (file-name-as-directory
+                (harmless-collapse-path (expand-file-name sources))))
+         (root (file-name-directory (directory-file-name lisp))))
+    (when (or (not (stringp root))
+              (harmless-filesystem-root-p lisp)
+              (harmless-filesystem-root-p root))
+      (error "Cannot place the Harmless manual at the filesystem root"))
+    (file-name-as-directory (expand-file-name "doc" root))))
+
+(defun harmless-manual-file (&optional sources)
+  "Return the absolute path of the Harmless Info file.
+SOURCES defaults to the directory of the loaded `harmless.el'."
+  (expand-file-name
+   "harmless.info"
+   (harmless-manual-directory
+    (or sources (harmless--lisp-directory)))))
+
+(defun harmless-manual-register (&optional sources)
+  "Add the Harmless manual directory to `Info-additional-directory-list'.
+SOURCES defaults to the directory of the loaded `harmless.el'.
+The same directory is not added twice.  Info searches this list after
+`Info-directory-list', including when `C-h i' builds the directory."
+  (let ((dir (harmless-manual-directory
+              (or sources (harmless--lisp-directory)))))
+    (unless (cl-some (lambda (existing)
+                       (harmless-same-directory-p existing dir))
+                     Info-additional-directory-list)
+      (add-to-list 'Info-additional-directory-list dir))
+    dir))
+
+;;;###autoload
+(defun harmless-info ()
+  "Open the Harmless Info manual."
+  (interactive)
+  (let ((file (harmless-manual-file)))
+    (unless (file-readable-p file)
+      (error "Harmless manual is missing: %s" file))
+    (harmless-manual-register)
+    (info file)))
+
+(harmless-manual-register)
 
 (provide 'harmless)
 

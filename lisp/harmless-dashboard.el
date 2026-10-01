@@ -49,6 +49,7 @@
 (require 'harmless-ui)
 
 (declare-function harmless-new "harmless")
+(declare-function harmless-info "harmless")
 
 (defvar harmless-dashboard-mode-map
   (let ((map (make-sparse-keymap)))
@@ -57,6 +58,7 @@
     (define-key map (kbd "n") #'harmless-new)
     (define-key map (kbd "g") #'harmless-dashboard-refresh)
     (define-key map (kbd "q") #'quit-window)
+    (define-key map (kbd "h") #'harmless-info)
     map)
   "Keymap for `harmless-dashboard-mode'.")
 
