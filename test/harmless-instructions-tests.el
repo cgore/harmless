@@ -5,6 +5,7 @@
 (require 'harmless-instructions)
 (require 'harmless-openai)
 (require 'harmless-anthropic)
+(require 'harmless-skills)
 
 (defun harmless-instructions-test-write (path text)
   (make-directory (file-name-directory path) t)
@@ -104,3 +105,74 @@
       (should (string-match-p "two spaces" (plist-get anthropic :system)))
       (should (equal "user"
                      (plist-get (car (plist-get anthropic :messages)) :role))))))
+
+(ert-deftest harmless-claude-md-follows-the-setting ()
+  (let* ((root (make-temp-file "harmless-claude-" t))
+         (child (file-name-as-directory (expand-file-name "sub" root)))
+         (claude (expand-file-name "CLAUDE.md" root))
+         (agents (expand-file-name "AGENTS.md" root))
+         (above (expand-file-name "CLAUDE.md" (file-name-directory
+                                               (directory-file-name root))))
+         (root-claude-existed (file-exists-p "/CLAUDE.md")))
+    (harmless-instructions-test-write claude "claude-rules\n")
+    (harmless-instructions-test-write agents "agents-rules\n")
+    (harmless-instructions-test-write
+     (expand-file-name "CLAUDE.md" child) "   \n")
+    (should-not (file-exists-p above))
+    (let ((harmless-claude-md t))
+      (let ((text (harmless-instructions-text child root nil)))
+        (should (string-match-p "claude-rules" text))
+        (should (string-match-p "agents-rules" text))
+        (should (< (string-match "claude-rules" text)
+                   (string-match "agents-rules" text)))
+        (should-not (string-match-p
+                    (regexp-quote (expand-file-name "CLAUDE.md" child))
+                    text)))
+      (should (equal (harmless-instruction-files
+                      (file-name-as-directory root) root "grok-4.6")
+                     (harmless-instruction-files
+                      (directory-file-name root) root "grok-4.6")))
+      (let ((default-directory root))
+        (should (string-match-p "claude-rules"
+                                (harmless-instructions-text "sub/" root nil)))
+        (should (string-match-p "claude-rules"
+                                (harmless-instructions-text "sub" root nil))))
+      (harmless-instructions-text "/" "/")
+      (should (eq root-claude-existed (file-exists-p "/CLAUDE.md"))))
+    (let ((harmless-claude-md nil))
+      (let ((text (harmless-instructions-text root root "claude-opus-5")))
+        (should (string-match-p "agents-rules" text))
+        (should-not (string-match-p "claude-rules" text))))
+    (let ((harmless-claude-md 'anthropic)
+          (harmless-current-model nil))
+      (dolist (model '("claude-sonnet-4-6" "claude-haiku-4-5" "claude-opus-5"))
+        (should (string-match-p
+                 "claude-rules"
+                 (harmless-instructions-text root root model))))
+      (dolist (model '(nil "" "claude" "Claude-opus-5" "grok-4.6" "gpt-5.4"))
+        (let ((text (harmless-instructions-text root root model)))
+          (should (string-match-p "agents-rules" text))
+          (should-not (string-match-p "claude-rules" text)))))
+    (let ((harmless-claude-md 'always)
+          (harmless-current-model "claude-opus-5"))
+      (should-not (harmless-claude-md-p nil))
+      (should-not (string-match-p
+                   "claude-rules"
+                   (harmless-instructions-text root root))))
+    (let ((harmless-claude-md 'anthropic)
+          (harmless-current-model "claude-sonnet-4-6"))
+      (should (harmless-claude-md-p nil))
+      (should (string-match-p "claude-rules"
+                              (harmless-instructions-text root root))))
+    (let ((harmless-claude-md 'anthropic)
+          (harmless-current-model "grok-4.6"))
+      (should-not (harmless-claude-md-p nil))
+      (let ((messages (harmless-context-messages root nil root "grok-4.6")))
+        (should-not (string-match-p "claude-rules"
+                                    (harmless-messages-system-text messages))))
+      (let ((messages (harmless-context-messages
+                       root nil root "claude-sonnet-4-6")))
+        (should (string-match-p "claude-rules"
+                                (harmless-messages-system-text messages)))))
+    (should-not (file-exists-p above))
+    (should (eq root-claude-existed (file-exists-p "/CLAUDE.md")))))

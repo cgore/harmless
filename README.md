@@ -158,11 +158,14 @@ The buffer is a view, not the source of truth.
 
 Harmless reads `AGENTS.md`, `HARMLESS.md`, and `.harmless/HARMLESS.md`
 from the session directory and from each parent directory up through
-your home directory.  Each file applies to its directory and everything
-under it.  Outer directories come first.  At each directory, `AGENTS.md`
-comes before `HARMLESS.md`, which comes before the file inside
-`.harmless/`.  When two files disagree, the later one wins.  The text
-is sent with every turn and is not stored in the transcript.
+your home directory.  `CLAUDE.md` is included too, according to
+`harmless-claude-md`: `nil` never, `t` always, and `anthropic` (the
+default) only when the session model id starts with `claude-`.  Each
+file applies to its directory and everything under it.  Outer
+directories come first.  At each directory, `CLAUDE.md` comes first
+when it is included, then `AGENTS.md`, then `HARMLESS.md`, then the
+file inside `.harmless/`.  When two files disagree, the later one wins.
+The text is sent with every turn and is not stored in the transcript.
 
 ## Skills
 

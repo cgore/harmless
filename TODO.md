@@ -104,7 +104,7 @@ Plan mode already has `enter_plan_mode`, `write_plan`, and `exit_plan_mode`, wit
 - [ ] Code intelligence through a language server: definition, references, and diagnostics after an edit (Claude Code `LSP`). Emacs already has the server. The model has no tool for it.
 - [ ] Let `read_file` read images, PDFs, and notebooks, not only text with an offset, a limit, and a byte cap. Edit a notebook cell (Claude Code `NotebookEdit`). Accept an image attached to the user prompt (Claude Code, Codex).
 - [ ] Apply a patch: several hunks across files in one call (Codex `apply_patch`, Claude Code `Edit`). `replace` changes one unique string.
-- [ ] Read `CLAUDE.md` and path-scoped rules (Claude Code `.claude/rules/`), and expand `@path` imports in instruction files. Harmless already reads `AGENTS.md`, `HARMLESS.md`, and `.harmless/HARMLESS.md`.
+- [ ] Read path-scoped rules (Claude Code `.claude/rules/`), and expand `@path` imports in instruction files. Harmless already reads `AGENTS.md`, `HARMLESS.md`, `.harmless/HARMLESS.md`, and, when `harmless-claude-md` says so, `CLAUDE.md`.
 - [ ] A standing harness prompt on every turn: tool policy, when to verify, and when to delegate. Today a turn sends project instructions, the skill catalog, the memory index, and, in plan mode, the plan rules.
 
 ## 9. Later

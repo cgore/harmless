@@ -194,11 +194,12 @@ STOP is passed to `harmless-skills-discover'."
   "This is a detached chat.  It is not attached to a project or a working directory.  Do not assume a repository or files on disk.  Workspace memory is unavailable.  Global memory is available."
   "System text for a chat that has no project.")
 
-(defun harmless-context-messages (dir messages &optional stop)
+(defun harmless-context-messages (dir messages &optional stop model)
   "Return MESSAGES with instructions, skills, and memory for DIR.
-STOP bounds the instruction and skill walks.  The session transcript
-is not modified.  A missing or relative DIR is a detached chat: it
-does not walk `default-directory', so a missing directory is not /."
+STOP bounds the instruction and skill walks.  MODEL selects whether
+`CLAUDE.md' is included.  The session transcript is not modified.  A
+missing or relative DIR is a detached chat: it does not walk
+`default-directory', so a missing directory is not /."
   (if (not (and (stringp dir)
                 (not (string-empty-p dir))
                 (file-name-absolute-p dir)))
@@ -207,7 +208,7 @@ does not walk `default-directory', so a missing directory is not /."
        (harmless-memory-catalog nil))
     (harmless-context-append
      (harmless-context-append
-      (harmless-instructions-apply dir messages stop)
+      (harmless-instructions-apply dir messages stop model)
       (harmless-skills-catalog dir stop))
      (harmless-memory-catalog dir))))
 

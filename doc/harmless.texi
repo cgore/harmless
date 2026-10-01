@@ -539,10 +539,15 @@ it.  Plan mode can use it.
 @cindex project instructions
 @cindex AGENTS.md
 @cindex HARMLESS.md
-Harmless reads three names in each directory, from your home directory
+@cindex CLAUDE.md
+@vindex harmless-claude-md
+Harmless reads these names in each directory, from your home directory
 down to the session directory:
 
 @enumerate
+@item
+@file{CLAUDE.md}, when @code{harmless-claude-md} says to read it
+
 @item
 @file{AGENTS.md}
 
@@ -552,6 +557,13 @@ down to the session directory:
 @item
 @file{.harmless/HARMLESS.md}
 @end enumerate
+
+@code{harmless-claude-md} has three values.  @code{nil} never reads
+@file{CLAUDE.md}.  @code{t} always reads it.  @code{anthropic}, the
+default, reads it only when the session model id starts with
+@code{claude-}.  A model such as @code{grok-4.6} does not match.
+@file{CLAUDE.md} is read before the other three names, so those later
+files win when they disagree.
 
 A file applies to its directory and everything under it.  Outer
 directories come first.  At one directory, the files are read in the

@@ -492,14 +492,22 @@ File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
 11 Instructions
 ***************
 
-Harmless reads three names in each directory, from your home directory
+Harmless reads these names in each directory, from your home directory
 down to the session directory:
 
-  1. ‘AGENTS.md’
+  1. ‘CLAUDE.md’, when ‘harmless-claude-md’ says to read it
 
-  2. ‘HARMLESS.md’
+  2. ‘AGENTS.md’
 
-  3. ‘.harmless/HARMLESS.md’
+  3. ‘HARMLESS.md’
+
+  4. ‘.harmless/HARMLESS.md’
+
+   ‘harmless-claude-md’ has three values.  ‘nil’ never reads
+‘CLAUDE.md’.  ‘t’ always reads it.  ‘anthropic’, the default, reads it
+only when the session model id starts with ‘claude-’.  A model such as
+‘grok-4.6’ does not match.  ‘CLAUDE.md’ is read before the other three
+names, so those later files win when they disagree.
 
    A file applies to its directory and everything under it.  Outer
 directories come first.  At one directory, the files are read in the
@@ -903,16 +911,16 @@ Node: Search13676
 Node: Shell15317
 Node: Questions15978
 Node: Instructions16730
-Node: Skills17475
-Node: Memory18624
-Node: Plan mode19889
-Node: Usage21282
-Node: Files22132
-Node: Keys23365
-Node: Trouble24400
-Node: Manual25387
-Node: Command Index26092
-Node: Key Index28494
+Node: Skills17903
+Node: Memory19052
+Node: Plan mode20317
+Node: Usage21710
+Node: Files22560
+Node: Keys23793
+Node: Trouble24828
+Node: Manual25815
+Node: Command Index26520
+Node: Key Index28922
 
 End Tag Table
 

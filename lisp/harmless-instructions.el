@@ -36,14 +36,45 @@
 
 ;;; Commentary:
 ;;
-;; Project instructions live in `AGENTS.md', `HARMLESS.md', and
-;; `.harmless/HARMLESS.md'.  Each applies to that directory and everything
-;; under it.  Files are read from the home directory down to the session
-;; directory.  A later file wins when two of them disagree.
+;; Project instructions live in `CLAUDE.md', `AGENTS.md', `HARMLESS.md',
+;; and `.harmless/HARMLESS.md'.  `harmless-claude-md' decides when
+;; `CLAUDE.md' is read.  Each file applies to that directory and
+;; everything under it.  Files are read from the home directory down to
+;; the session directory.  A later file wins when two of them disagree.
 
 ;;; Code:
 
 (require 'subr-x)
+
+(defcustom harmless-claude-md 'anthropic
+  "When to read `CLAUDE.md' as project instructions.
+nil never reads it.  t always reads it.  `anthropic' reads it only
+when the session model id starts with \"claude-\"."
+  :type '(choice (const :tag "Never" nil)
+                 (const :tag "Always" t)
+                 (const :tag "Anthropic models only" anthropic))
+  :group 'harmless)
+
+(defvar harmless-current-model)
+
+(defun harmless-instruction-model (model)
+  "Return MODEL, or `harmless-current-model' when MODEL is nil."
+  (or model
+      (and (boundp 'harmless-current-model)
+           harmless-current-model)))
+
+(defun harmless-claude-md-p (model)
+  "Return non-nil if `CLAUDE.md' should be read for MODEL.
+nil and any value other than t or `anthropic' mean no.  `anthropic'
+is true only for a model id that starts with \"claude-\"."
+  (cond
+   ((eq harmless-claude-md t) t)
+   ((eq harmless-claude-md 'anthropic)
+    (let ((name (harmless-instruction-model model)))
+      (and (stringp name)
+           (not (string-empty-p name))
+           (string-prefix-p "claude-" name))))
+   (t nil)))
 
 (defun harmless-message-system-p (msg)
   "Return non-nil if MSG is a system message."
@@ -81,22 +112,26 @@ and does not continue above it.  It also stops at the filesystem root."
                            (directory-file-name parent)))))))
     acc))
 
-(defun harmless-instruction-candidates (dir)
+(defun harmless-instruction-candidates (dir &optional model)
   "Return instruction paths for DIR, in the order they should be read.
-`AGENTS.md' comes first, then `HARMLESS.md', then `.harmless/HARMLESS.md'."
-  (list (expand-file-name "AGENTS.md" dir)
-        (expand-file-name "HARMLESS.md" dir)
-        (expand-file-name "HARMLESS.md"
-                          (expand-file-name ".harmless" dir))))
+`CLAUDE.md' comes first when `harmless-claude-md-p' is non-nil for
+MODEL.  Then `AGENTS.md', `HARMLESS.md', and `.harmless/HARMLESS.md'."
+  (let ((paths (list (expand-file-name "AGENTS.md" dir)
+                     (expand-file-name "HARMLESS.md" dir)
+                     (expand-file-name "HARMLESS.md"
+                                       (expand-file-name ".harmless" dir)))))
+    (if (harmless-claude-md-p model)
+        (cons (expand-file-name "CLAUDE.md" dir) paths)
+      paths)))
 
-(defun harmless-instruction-files (dir &optional stop)
+(defun harmless-instruction-files (dir &optional stop model)
   "Return instruction files that apply to DIR, outermost first.
-At each directory, `AGENTS.md' comes before `HARMLESS.md', which comes
-before `.harmless/HARMLESS.md'.  STOP is passed to
-`harmless-instruction-directories'."
+At each directory, `CLAUDE.md' comes first when it applies to MODEL,
+then `AGENTS.md', then `HARMLESS.md', then `.harmless/HARMLESS.md'.
+STOP is passed to `harmless-instruction-directories'."
   (let (files)
     (dolist (ancestor (harmless-instruction-directories dir stop))
-      (dolist (path (harmless-instruction-candidates ancestor))
+      (dolist (path (harmless-instruction-candidates ancestor model))
         (when (file-readable-p path)
           (push path files))))
     (nreverse files)))
@@ -108,16 +143,16 @@ before `.harmless/HARMLESS.md'.  STOP is passed to
       (insert-file-contents path))
     (string-trim (buffer-string))))
 
-(defun harmless-instructions-text (dir &optional stop)
+(defun harmless-instructions-text (dir &optional stop model)
   "Return the project-instruction prompt for DIR, or nil if none exist.
-STOP is passed to `harmless-instruction-files'."
+STOP and MODEL are passed to `harmless-instruction-files'."
   (let ((chunks
          (delq nil
                (mapcar (lambda (path)
                          (let ((body (harmless-instruction--read path)))
                            (unless (string-empty-p body)
                              (format "## %s\n%s" path body))))
-                       (harmless-instruction-files dir stop)))))
+                       (harmless-instruction-files dir stop model)))))
     (when chunks
       (concat
        "Project instructions for this session.  Files are listed from the outermost directory to the innermost.  When they disagree, prefer the later file.\n\n"
@@ -136,11 +171,11 @@ MESSAGES is unchanged when BLOCK is empty."
               (cdr messages))
       (cons (list :role :system :content block) messages))))
 
-(defun harmless-instructions-apply (dir messages &optional stop)
+(defun harmless-instructions-apply (dir messages &optional stop model)
   "Return MESSAGES with project instructions for DIR prepended.
-MESSAGES is unchanged when DIR has no instruction files.  STOP is
-passed to `harmless-instructions-text'."
-  (if-let* ((text (harmless-instructions-text dir stop)))
+MESSAGES is unchanged when DIR has no instruction files.  STOP and
+MODEL are passed to `harmless-instructions-text'."
+  (if-let* ((text (harmless-instructions-text dir stop model)))
       (cons (list :role :system :content text) messages)
     messages))
 

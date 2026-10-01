@@ -124,7 +124,9 @@ It is not offered project files, a shell, or plan mode."
                  (harmless-context-append
                   (harmless-context-messages
                    (harmless-session-cwd session)
-                   (harmless-session-messages session))
+                   (harmless-session-messages session)
+                   nil
+                   (harmless-session-model session))
                   (when (harmless-session-plan-mode session)
                     (harmless-plan-instructions)))
                  (harmless-tools-for-session session)
