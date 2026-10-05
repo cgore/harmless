@@ -714,6 +714,9 @@ If that fold is already collapsed, collapse its parent group."
                    (setq msgs (cdr msgs))))
                (when calls
                  (harmless-ui--insert-tool-block calls results))))
+            ((or :summary 'summary "summary")
+             (harmless-ui--insert-label "Summary" 'harmless-assistant-face)
+             (harmless-ui--insert-assistant-body msg))
             ((or :tool 'tool "tool")
              (harmless-ui--insert-tool-fold
               (list :id (plist-get msg :id)

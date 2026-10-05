@@ -86,6 +86,7 @@
 (require 'harmless-ask)
 (require 'harmless-usage)
 (require 'harmless-ui)
+(require 'harmless-compact)
 (require 'harmless-dashboard)
 (require 'harmless-transient)
 

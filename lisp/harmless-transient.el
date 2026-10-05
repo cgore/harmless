@@ -59,6 +59,7 @@
 (declare-function harmless-login "harmless-auth")
 (declare-function harmless-logout "harmless-auth")
 (declare-function harmless-info "harmless")
+(declare-function harmless-compact "harmless-compact" (&optional keep))
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -70,6 +71,7 @@
     ("s" "Switch" harmless-switch)
     ("d" "Dashboard" harmless-dashboard)
     ("a" "Abort" harmless-abort)
+    ("k" "Compact" harmless-compact)
     ("P" "Plan" harmless-plan)
     ("u" "Usage" harmless-usage)
     ("h" "Manual" harmless-info)]

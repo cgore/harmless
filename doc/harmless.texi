@@ -228,7 +228,23 @@ Move to the prompt.
 
 @item q
 Quit the window.
+
+@item k
+Compact the transcript.
 @end table
+
+@findex harmless-compact
+@vindex harmless-compact-keep-turns
+@kindex k @r{(transcript)}
+@kbd{k}, or @kbd{M-x harmless-compact}, summarizes the older turns and
+replaces them with one summary.  The recent turns stay in the
+transcript.  A turn starts at a user message and includes the
+assistant reply and tool results that follow it.  The default keeps
+the last two turns (@code{harmless-compact-keep-turns}).  A numeric
+prefix argument sets how many turns to keep, and the command keeps at
+least one.  An empty summary leaves the transcript as it was.  A turn
+that is streaming or waiting on permission is left alone.  The same
+command is @kbd{k} in the Harmless menu.
 
 Click the model name in the header line to change the connection, the
 model, and the effort.  @xref{Models}.
@@ -824,6 +840,9 @@ Dashboard.
 
 @item a
 Abort.
+
+@item k
+Compact the transcript.
 
 @item P
 Plan mode.

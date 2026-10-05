@@ -78,8 +78,12 @@
               (append (harmless-turn-acc-order acc) (list id)))
         entry)))
 
+(declare-function harmless-compact-cancel "harmless-compact" (session))
+
 (defun harmless-turn-abort (session)
   "Cancel SESSION's in-flight HTTP or shell process."
+  (when (fboundp 'harmless-compact-cancel)
+    (harmless-compact-cancel session))
   (when-let* ((proc (harmless-session-process session)))
     (when (process-live-p proc)
       (if (string-prefix-p "harmless-shell" (process-name proc))
