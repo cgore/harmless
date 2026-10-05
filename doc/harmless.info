@@ -211,6 +211,13 @@ summary leaves the transcript as it was.  A turn that is streaming or
 waiting on permission is left alone.  The same command is ‘k’ in the
 Harmless menu.
 
+   When the last prompt has used at least ‘harmless-compact-threshold’
+percent of the model's context window, the next prompt compacts first.
+The default is 80.  The same percent applies to every model.  A model
+with a larger window compacts at the same fullness.  Nil turns automatic
+compact off.  A model with no known window is left alone.  An automatic
+compact that fails still sends the prompt.
+
    Click the model name in the header line to change the connection, the
 model, and the effort.  *Note Models::.
 
@@ -685,7 +692,9 @@ prompt size of the last request, and what remains in the window.  It
 then shows the running prompt and completion totals for this chat.
 Window sizes that Harmless does not learn from the provider live in
 ‘harmless-usage-context-windows’.  A model with no known window is
-marked unknown.
+marked unknown.  Before the next prompt, Harmless compacts the
+transcript when that prompt size has reached
+‘harmless-compact-threshold’ percent of the window.  *Note Transcript::.
 
    The account block is the last rate-limit remainder each provider
 sent.  A connection with no such headers says so.  For the connection
@@ -935,26 +944,26 @@ Node: Installation2501
 Node: Starting4105
 Node: Sessions4644
 Node: Transcript6141
-Node: Prompt7400
-Node: Permissions7922
-Node: Accounts9169
-Node: Models11414
-Node: Tools12510
-Node: File tools13403
-Node: Search14637
-Node: Shell16278
-Node: Questions16939
-Node: Instructions17691
-Node: Skills19437
-Node: Memory20586
-Node: Plan mode21851
-Node: Usage23264
-Node: Files24114
-Node: Keys25347
-Node: Trouble26420
-Node: Manual27407
-Node: Command Index28112
-Node: Key Index30587
+Node: Prompt7805
+Node: Permissions8327
+Node: Accounts9574
+Node: Models11819
+Node: Tools12915
+Node: File tools13808
+Node: Search15042
+Node: Shell16683
+Node: Questions17344
+Node: Instructions18096
+Node: Skills19842
+Node: Memory20991
+Node: Plan mode22256
+Node: Usage23669
+Node: Files24688
+Node: Keys25921
+Node: Trouble26994
+Node: Manual27981
+Node: Command Index28686
+Node: Key Index31161
 
 End Tag Table
 

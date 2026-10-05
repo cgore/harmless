@@ -29,7 +29,7 @@ The shell is the only way out of the project. A skill that needs any of these is
 Every turn resends the full transcript. Sending a new prompt aborts a turn that is streaming or waiting on permission.
 
 - [x] Compact the transcript. `M-x harmless-compact` summarizes older turns, keeps the recent ones, and saves the shorter transcript. A tool call stays with its results. An empty summary leaves the transcript unchanged.
-- [ ] Compact automatically when the context window fills.
+- [x] Compact automatically when the context window fills. `harmless-compact-threshold` is a percent of that model's window (default 80). Nil disables it. The same percent applies to every model.
 - [ ] Rewind to an earlier turn and drop what follows. Codex also edits an earlier prompt and reruns from there.
 - [ ] Fork a session, keeping history up to this point (Grok Build, Codex, and Claude Code fork-mode subagents).
 - [ ] Steer a running turn. A follow-up arrives without aborting the turn.

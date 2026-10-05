@@ -79,6 +79,8 @@
         entry)))
 
 (declare-function harmless-compact-cancel "harmless-compact" (session))
+(declare-function harmless-compact--validate-threshold "harmless-compact" ())
+(declare-function harmless-compact-before-turn "harmless-compact" (session then))
 
 (defun harmless-turn-abort (session)
   "Cancel SESSION's in-flight HTTP or shell process."
@@ -96,11 +98,18 @@
   (harmless-emit session '(:error "aborted")))
 
 (defun harmless-turn-run (session text)
-  "Append user TEXT to SESSION and start the agent loop."
+  "Append user TEXT to SESSION and start the agent loop.
+When the last prompt fills the context window, older turns are
+summarized before the provider sees TEXT."
   (when (memq (harmless-session-status session) '(streaming waiting-permission))
     (harmless-turn-abort session))
+  (when (fboundp 'harmless-compact--validate-threshold)
+    (harmless-compact--validate-threshold))
   (harmless-session-append-user session text)
-  (harmless-turn--call session))
+  (if (fboundp 'harmless-compact-before-turn)
+      (harmless-compact-before-turn session
+                                    (lambda () (harmless-turn--call session)))
+    (harmless-turn--call session)))
 
 (defun harmless-tools-for-session (session)
   "Return the tools offered to SESSION.
