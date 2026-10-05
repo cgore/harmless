@@ -420,7 +420,7 @@ A detached chat is offered @code{memory_read},
 @code{ask_user}.  @xref{Memory}.  @xref{Questions}.
 
 @menu
-* File tools::  Read, list, write, and replace.
+* File tools::  Read, list, write, replace, and patch.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
@@ -448,8 +448,15 @@ Replace one unique string in a file.  If the string occurs more than
 once, the call fails unless @code{replace_all} is true.  This is an
 edit.
 
-In plan mode, @code{write_file} and @code{replace} fail.  The model
-must write @file{plan.md} with @code{write_plan}.  @xref{Plan mode}.
+@item apply_patch
+Apply several hunks in one call.  Each hunk names a @code{path}, an
+@code{old_string}, and a @code{new_string}.  The old string must occur
+once in that file.  Later hunks on the same file see earlier
+replacements.  If any hunk fails, no file is changed.  This is an edit.
+
+In plan mode, @code{write_file}, @code{replace}, and @code{apply_patch}
+fail.  The model must write @file{plan.md} with @code{write_plan}.
+@xref{Plan mode}.
 @end table
 
 @node Search
@@ -689,8 +696,9 @@ also call @code{enter_plan_mode}, which asks you before it switches.
 
 While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with @code{write_plan}, and to call
-@code{exit_plan_mode} when the plan is ready.  @code{write_file} and
-@code{replace} fail.  The header line shows @samp{plan}.
+@code{exit_plan_mode} when the plan is ready.  @code{write_file},
+@code{replace}, and @code{apply_patch} fail.  The header line shows
+@samp{plan}.
 @code{ask_user} can still ask a question.  @xref{Questions}.
 
 @code{write_plan} writes @file{plan.md} in the session directory.  The

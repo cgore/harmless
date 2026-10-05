@@ -67,7 +67,7 @@ Return `approve', `quit', or a string of revision notes.")
 
 (defun harmless-plan-instructions ()
   "System-prompt text used while plan mode is on."
-  "Plan mode is active. Explore the project with read-only tools. Write the plan only with write_plan. Include why the change is needed, the approach, the files to modify, existing code to reuse, and how to verify. When the plan is ready, call exit_plan_mode. Do not call write_file or replace.")
+  "Plan mode is active. Explore the project with read-only tools. Write the plan only with write_plan. Include why the change is needed, the approach, the files to modify, existing code to reuse, and how to verify. When the plan is ready, call exit_plan_mode. Do not call write_file, replace, or apply_patch.")
 
 (defun harmless-plan-enter (session)
   "Turn plan mode on for SESSION and save it."

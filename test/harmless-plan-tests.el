@@ -26,6 +26,18 @@
                   :type 'error)
     (should-error (harmless-tools-fs--replace
                    session '(:path "a.txt" :old_string "a" :new_string "b")))
+    (with-temp-file (expand-file-name "keep.txt" dir)
+      (insert "keep"))
+    (let ((err (should-error
+                (harmless-tools-fs--apply-patch
+                 session '(:hunks ((:path "keep.txt"
+                                    :old_string "keep"
+                                    :new_string "nope"))))
+                :type 'error)))
+      (should (equal (error-message-string err)
+                     "Plan mode is on. Only plan.md may be edited, with write_plan")))
+    (should (equal "keep"
+                   (harmless-tools-fs--read session '(:path "keep.txt"))))
     (should (string-match-p "Wrote plan.md"
                             (harmless-plan--tool-write
                              session '(:contents "# Plan\n\nDo the thing.\n"))))
@@ -72,6 +84,8 @@
       (should (string-match-p "write_plan"
                               (plist-get (car messages) :content)))
       (should (string-match-p "exit_plan_mode"
+                              (plist-get (car messages) :content)))
+      (should (string-match-p "apply_patch"
                               (plist-get (car messages) :content))))))
 
 (ert-deftest harmless-plan-file-stays-out-of-filesystem-root ()

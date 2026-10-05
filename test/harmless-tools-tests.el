@@ -361,4 +361,212 @@
       (should (string-match-p "skip.txt:1:needle ignored" elisp))
       (should (string-match-p "\\.git/secret.txt:1:needle git" elisp)))))
 
+(defun harmless-tools-patch-error (session args)
+  "Return the error string from apply_patch on SESSION with ARGS."
+  (error-message-string
+   (should-error (harmless-tools-fs--apply-patch session args) :type 'error)))
+
+(defun harmless-tools-test-abs (session path)
+  "Return PATH expanded against SESSION's project, as a file tool would."
+  (expand-file-name path (harmless-session-require-project session)))
+
+(defun harmless-tools-test-contents (path)
+  "Return the contents of PATH."
+  (with-temp-buffer
+    (insert-file-contents path)
+    (buffer-string)))
+
+(ert-deftest harmless-tools-apply-patch ()
+  (let* ((dir (make-temp-file "harmless-patch-" t))
+         (session (harmless-test--session dir))
+         (root (harmless-session-require-project session))
+         (a (harmless-tools-test-abs session "a.txt"))
+         (b (harmless-tools-test-abs session "b.txt"))
+         (seq (harmless-tools-test-abs session "seq.txt"))
+         (del (harmless-tools-test-abs session "del.txt"))
+         (nested (harmless-tools-test-abs session "sub/c.txt"))
+         (tool (harmless-tool-by-name "apply_patch")))
+    (should tool)
+    (should (eq 'edit (harmless-tool-class tool)))
+    (make-directory (expand-file-name "sub" root))
+    (with-temp-file a (insert "one"))
+    (with-temp-file b (insert "two"))
+    (with-temp-file seq (insert "alpha beta"))
+    (with-temp-file del (insert "hello world"))
+    (with-temp-file nested (insert "old"))
+    (let ((args (harmless-json-decode
+                 "{\"hunks\":[{\"path\":\"a.txt\",\"old_string\":\"one\",\"new_string\":\"1\"},{\"path\":\"b.txt\",\"old_string\":\"two\",\"new_string\":\"2\"}]}")))
+      (should (equal (format "Applied 2 hunks in %s (1), %s (1)" a b)
+                     (harmless-tools-fs--apply-patch session args))))
+    (should (equal "1" (harmless-tools-test-contents a)))
+    (should (equal "2" (harmless-tools-test-contents b)))
+    (should (equal "1" (harmless-tools-fs--read session '(:path "a.txt"))))
+    (should (equal "2" (harmless-tools-fs--read session '(:path "b.txt"))))
+    (should (equal (format "Applied 2 hunks in %s (2)" seq)
+                   (harmless-tools-fs--apply-patch
+                    session '(:hunks ((:path "seq.txt"
+                                       :old_string "alpha"
+                                       :new_string "ALPHA")
+                                      (:path "./seq.txt"
+                                       :old_string "ALPHA beta"
+                                       :new_string "done"))))))
+    (should (equal "done" (harmless-tools-test-contents seq)))
+    (should (equal (format "Applied 1 hunk in %s (1)" del)
+                   (harmless-tools-fs--apply-patch
+                    session '(:hunks [(:path "del.txt"
+                                       :old_string " world"
+                                       :new_string nil)]))))
+    (should (equal "hello" (harmless-tools-test-contents del)))
+    (should (equal (format "Applied 1 hunk in %s (1)" nested)
+                   (harmless-tools-fs--apply-patch
+                    session '(:hunks ((:path "sub/c.txt"
+                                       :old_string "old"
+                                       :new_string "new"))))))
+    (should (equal "new" (harmless-tools-test-contents nested)))
+    (should (equal "new"
+                   (harmless-tools-fs--read session '(:path "sub/c.txt"))))))
+
+(ert-deftest harmless-tools-apply-patch-refuses ()
+  (let* ((dir (make-temp-file "harmless-patch-no-" t))
+         (session (harmless-test--session dir))
+         (a (harmless-tools-test-abs session "a.txt"))
+         (b (harmless-tools-test-abs session "b.txt"))
+         (same (harmless-tools-test-abs session "same.txt"))
+         (dup (harmless-tools-test-abs session "dup.txt"))
+         (outside (expand-file-name "../harmless-escape" dir))
+         (root-before (file-exists-p "/a.txt")))
+    (make-directory (harmless-tools-test-abs session "sub"))
+    (with-temp-file a (insert "alpha"))
+    (with-temp-file b (insert "beta"))
+    (with-temp-file same (insert "alpha beta"))
+    (with-temp-file dup (insert "foo foo"))
+    (should (equal (format "hunk 2: old_string not found in %s" b)
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "a.txt"
+                                       :old_string "alpha"
+                                       :new_string "ALPHA")
+                                      (:path "b.txt"
+                                       :old_string "missing"
+                                       :new_string "nope"))))))
+    (should (equal "alpha" (harmless-tools-test-contents a)))
+    (should (equal "beta" (harmless-tools-test-contents b)))
+    (should (equal (format "hunk 2: old_string not found in %s" same)
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "same.txt"
+                                       :old_string "alpha"
+                                       :new_string "ALPHA")
+                                      (:path "same.txt"
+                                       :old_string "missing"
+                                       :new_string "nope"))))))
+    (should (equal "alpha beta" (harmless-tools-test-contents same)))
+    (should (equal (format "hunk 2: Path escapes project: %s" "../harmless-escape")
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "a.txt"
+                                       :old_string "alpha"
+                                       :new_string "ALPHA")
+                                      (:path "../harmless-escape"
+                                       :old_string "x"
+                                       :new_string "y"))))))
+    (should (equal "alpha" (harmless-tools-test-contents a)))
+    (should-not (file-exists-p outside))
+    (should (equal (format "hunk 1: old_string matched 2 times in %s; a hunk needs a unique string"
+                           dup)
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "dup.txt"
+                                       :old_string "foo"
+                                       :new_string "bar"))))))
+    (should (equal "foo foo" (harmless-tools-test-contents dup)))
+    (dolist (old (list nil ""))
+      (should (equal "hunk 1: old_string is empty"
+                     (harmless-tools-patch-error
+                      session (list :hunks
+                                    (list (list :path "a.txt"
+                                                :old_string old
+                                                :new_string "x")))))))
+    (should (equal "hunk 1: new_string is not a string"
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "a.txt"
+                                       :old_string "alpha"
+                                       :new_string 1))))))
+    (dolist (args (list nil
+                        '(:hunks nil)
+                        '(:hunks ())
+                        '(:hunks "")
+                        '(:hunks [])))
+      (should (equal "hunks is empty"
+                     (harmless-tools-patch-error session args))))
+    (should (equal "hunk 1 is not an object"
+                   (harmless-tools-patch-error
+                    session '(:hunks ("nope")))))
+    (should (equal "hunk 1 is not an object"
+                   (harmless-tools-patch-error
+                    session '(:hunks ["nope"]))))
+    (dolist (path (list nil ""))
+      (should (equal "hunk 1: Path is empty"
+                     (harmless-tools-patch-error
+                      session (list :hunks
+                                    (list (list :path path
+                                                :old_string "alpha"
+                                                :new_string "x")))))))
+    (should (equal "hunk 1: Path escapes project: ../x"
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "../x"
+                                       :old_string "a"
+                                       :new_string "b"))))))
+    (should (equal "hunk 1: Path escapes project: /"
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "/"
+                                       :old_string "a"
+                                       :new_string "b"))))))
+    (should (equal (format "hunk 1: Cannot read %s"
+                           (harmless-tools-test-abs session "sub/"))
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "sub/"
+                                       :old_string "a"
+                                       :new_string "b"))))))
+    (should (equal (format "hunk 1: Cannot read %s"
+                           (harmless-tools-test-abs session "a.txt/"))
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "a.txt/"
+                                       :old_string "alpha"
+                                       :new_string "x"))))))
+    (should (equal (format "hunk 1: Cannot read %s"
+                           (harmless-tools-test-abs session "missing.txt"))
+                   (harmless-tools-patch-error
+                    session '(:hunks ((:path "missing.txt"
+                                       :old_string "a"
+                                       :new_string "b"))))))
+    (should-not (file-exists-p (harmless-tools-test-abs session "missing.txt")))
+    (should (equal "alpha" (harmless-tools-test-contents a)))
+    (should (equal "beta" (harmless-tools-test-contents b)))
+    (should (eq root-before (file-exists-p "/a.txt")))))
+
+(ert-deftest harmless-tools-apply-patch-needs-a-project ()
+  (let ((default-directory "/")
+        (root-before (file-exists-p "/a.txt"))
+        (hunks '(:hunks ((:path "a.txt" :old_string "a" :new_string "b")))))
+    (should (equal "This chat is not attached to a project"
+                   (harmless-tools-patch-error
+                    (harmless-session--create :id "abcdef0123456789" :cwd nil)
+                    hunks)))
+    (should (equal "Directory must be absolute, not \"\""
+                   (harmless-tools-patch-error
+                    (harmless-session--create :id "abcdef0123456789" :cwd "")
+                    hunks)))
+    (should (equal "Directory must be absolute, not \"proj\""
+                   (harmless-tools-patch-error
+                    (harmless-session--create :id "abcdef0123456789" :cwd "proj")
+                    hunks)))
+    (let* ((parent (make-temp-file "harmless-patch-miss-" t))
+           (missing (expand-file-name "gone" parent))
+           (session (harmless-session--create
+                     :id "abcdef0123456789" :cwd missing))
+           (target (harmless-tools-test-abs session "a.txt")))
+      (should-not (file-directory-p missing))
+      (should (equal (format "hunk 1: Cannot read %s" target)
+                     (harmless-tools-patch-error session hunks)))
+      (should-not (file-exists-p target))
+      (should-not (file-directory-p missing)))
+    (should (eq root-before (file-exists-p "/a.txt")))))
+
 (provide 'harmless-tools-tests)

@@ -36,8 +36,9 @@
 
 ;;; Commentary:
 ;;
-;; read_file, write_file, replace, list_dir, grep, glob.  Paths must stay
-;; inside the session cwd.  grep uses ripgrep, then ag, then an Elisp scan.
+;; read_file, write_file, replace, apply_patch, list_dir, grep, glob.
+;; Paths must stay inside the session cwd.  apply_patch writes nothing
+;; when any hunk fails.  grep uses ripgrep, then ag, then an Elisp scan.
 
 ;;; Code:
 
@@ -180,6 +181,91 @@
       (write-region out nil path nil 'silent)
       (harmless-tools-fs-revert-visiting path)
       (format "Replaced %d occurrence(s) in %s" count path))))
+
+(defun harmless-tools-fs--hunk-list (args)
+  "Return the hunks from ARGS, or signal when none were given.
+A vector is accepted and returned as a list.  Nil, \"\", an empty
+list, and an empty vector all signal."
+  (let ((hunks (harmless-tool-arg args :hunks)))
+    (when (vectorp hunks)
+      (setq hunks (append hunks nil)))
+    (unless (consp hunks)
+      (error "hunks is empty"))
+    hunks))
+
+(defun harmless-tools-fs--replace-once (text old new path n)
+  "Return TEXT with one match of OLD replaced by NEW.
+PATH and N identify the hunk in an error.  OLD must occur once."
+  (unless (and (stringp old) (not (string-empty-p old)))
+    (error "hunk %d: old_string is empty" n))
+  (unless (stringp new)
+    (error "hunk %d: new_string is not a string" n))
+  (let ((count 0)
+        (start 0)
+        (at nil)
+        pos)
+    (while (setq pos (string-search old text start))
+      (setq count (1+ count)
+            at (or at pos)
+            start (+ pos (max 1 (length old)))))
+    (cond
+     ((= count 0)
+      (error "hunk %d: old_string not found in %s" n path))
+     ((> count 1)
+      (error "hunk %d: old_string matched %d times in %s; a hunk needs a unique string"
+             n count path))
+     (t (concat (substring text 0 at)
+                new
+                (substring text (+ at (length old))))))))
+
+(defun harmless-tools-fs--apply-patch (session args)
+  "apply_patch implementation.
+Each hunk replaces one unique string.  Later hunks on the same file
+see earlier replacements.  Nothing is written if any hunk fails."
+  (harmless-tools-fs--reject-plan-edit session)
+  (let ((hunks (harmless-tools-fs--hunk-list args))
+        (texts (make-hash-table :test 'equal))
+        (counts (make-hash-table :test 'equal))
+        (order nil)
+        (n 0))
+    (harmless-session-require-project session)
+    (dolist (hunk hunks)
+      (setq n (1+ n))
+      (unless (harmless-plist-p hunk)
+        (error "hunk %d is not an object" n))
+      (let* ((raw (harmless-tool-arg hunk :path))
+             (path (condition-case err
+                       (harmless-tools-fs-resolve session raw)
+                     (error (error "hunk %d: %s" n (error-message-string err)))))
+             (old (harmless-tool-arg hunk :old_string))
+             (new (harmless-tool-arg hunk :new_string)))
+        (when (null new)
+          (setq new ""))
+        (unless (gethash path texts)
+          (unless (and (file-regular-p path) (file-readable-p path))
+            (error "hunk %d: Cannot read %s" n path))
+          (puthash path
+                   (with-temp-buffer
+                     (insert-file-contents path)
+                     (buffer-string))
+                   texts)
+          (push path order)
+          (puthash path 0 counts))
+        (puthash path
+                 (harmless-tools-fs--replace-once
+                  (gethash path texts) old new path n)
+                 texts)
+        (puthash path (1+ (gethash path counts)) counts)))
+    (setq order (nreverse order))
+    (dolist (path order)
+      (write-region (gethash path texts) nil path nil 'silent)
+      (harmless-tools-fs-revert-visiting path))
+    (format "Applied %d hunk%s in %s"
+            n
+            (if (= n 1) "" "s")
+            (mapconcat (lambda (path)
+                         (format "%s (%d)" path (gethash path counts)))
+                       order ", "))))
 
 (defun harmless-tools-fs--list (session args)
   "list_dir implementation."
@@ -613,6 +699,22 @@ MULTILINE is ripgrep only."
                            :replace_all (:type "boolean"))
               :required ["path" "old_string" "new_string"])
     :fn #'harmless-tools-fs--replace))
+  (harmless-register-tool
+   (harmless-tool-create
+    :name "apply_patch"
+    :description "Apply HUNKS in one call. Each hunk replaces one unique OLD_STRING with NEW_STRING in PATH. Later hunks on the same file see earlier replacements. If any hunk fails, no file is changed."
+    :class 'edit
+    :schema '(:type "object"
+              :properties (:hunks
+                           (:type "array"
+                            :description "Replacements to apply, in order"
+                            :items (:type "object"
+                                    :properties (:path (:type "string")
+                                                 :old_string (:type "string")
+                                                 :new_string (:type "string"))
+                                    :required ["path" "old_string" "new_string"])))
+              :required ["hunks"])
+    :fn #'harmless-tools-fs--apply-patch))
   (harmless-register-tool
    (harmless-tool-create
     :name "list_dir"

@@ -210,7 +210,7 @@ directly.  A prefix argument stores it in global memory.
 prefix argument turns it off.  The same command is `P` in the Harmless
 menu.  The model may also ask to enter plan mode.
 
-In plan mode, `write_file` and `replace` fail.  The model writes
+In plan mode, `write_file`, `replace`, and `apply_patch` fail.  The model writes
 `plan.md` in the session directory with `write_plan`, then calls
 `exit_plan_mode`.  That shows the plan and asks you to approve it,
 send revision notes, or quit.  Approving turns plan mode off so the

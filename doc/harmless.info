@@ -374,7 +374,7 @@ Questions::.
 
 * Menu:
 
-* File tools::  Read, list, write, and replace.
+* File tools::  Read, list, write, replace, and patch.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
@@ -403,8 +403,15 @@ File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
      than once, the call fails unless ‘replace_all’ is true.  This is an
      edit.
 
-     In plan mode, ‘write_file’ and ‘replace’ fail.  The model must
-     write ‘plan.md’ with ‘write_plan’.  *Note Plan mode::.
+‘apply_patch’
+     Apply several hunks in one call.  Each hunk names a ‘path’, an
+     ‘old_string’, and a ‘new_string’.  The old string must occur once
+     in that file.  Later hunks on the same file see earlier
+     replacements.  If any hunk fails, no file is changed.  This is an
+     edit.
+
+     In plan mode, ‘write_file’, ‘replace’, and ‘apply_patch’ fail.  The
+     model must write ‘plan.md’ with ‘write_plan’.  *Note Plan mode::.
 
 
 File: harmless.info,  Node: Search,  Next: Shell,  Prev: File tools,  Up: Tools
@@ -622,9 +629,9 @@ call ‘enter_plan_mode’, which asks you before it switches.
 
    While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with ‘write_plan’, and to call
-‘exit_plan_mode’ when the plan is ready.  ‘write_file’ and ‘replace’
-fail.  The header line shows ‘plan’.  ‘ask_user’ can still ask a
-question.  *Note Questions::.
+‘exit_plan_mode’ when the plan is ready.  ‘write_file’, ‘replace’, and
+‘apply_patch’ fail.  The header line shows ‘plan’.  ‘ask_user’ can still
+ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -915,21 +922,21 @@ Node: Permissions7301
 Node: Accounts8548
 Node: Models10793
 Node: Tools11889
-Node: File tools12775
-Node: Search13676
-Node: Shell15317
-Node: Questions15978
-Node: Instructions16730
-Node: Skills18476
-Node: Memory19625
-Node: Plan mode20890
-Node: Usage22283
-Node: Files23133
-Node: Keys24366
-Node: Trouble25401
-Node: Manual26388
-Node: Command Index27093
-Node: Key Index29495
+Node: File tools12782
+Node: Search14016
+Node: Shell15657
+Node: Questions16318
+Node: Instructions17070
+Node: Skills18816
+Node: Memory19965
+Node: Plan mode21230
+Node: Usage22643
+Node: Files23493
+Node: Keys24726
+Node: Trouble25761
+Node: Manual26748
+Node: Command Index27453
+Node: Key Index29855
 
 End Tag Table
 
