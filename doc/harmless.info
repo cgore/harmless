@@ -515,6 +515,15 @@ order above.  When two files disagree, the later one wins.  Empty files
 are skipped.  The walk stops at your home directory and at the
 filesystem root.
 
+   An instruction file can include another file by writing ‘@path’.  The
+path is relative to the file that contains the import, not the session
+directory.  A backslash before a space is part of the path.  The file's
+text replaces the import.  An import inside inline code or a fenced code
+block is left as written.  A quoted path is left as written.  The file
+must stay inside the session directory.  Harmless refuses an empty path,
+a missing file, a directory, a cycle, and a path that leaves the
+session.  The filesystem root is not a directory an import may enter.
+
    The text is sent with every turn.  It is not copied into the
 transcript.  A detached chat does not walk ‘default-directory’ looking
 for these files.
@@ -911,16 +920,16 @@ Node: Search13676
 Node: Shell15317
 Node: Questions15978
 Node: Instructions16730
-Node: Skills17903
-Node: Memory19052
-Node: Plan mode20317
-Node: Usage21710
-Node: Files22560
-Node: Keys23793
-Node: Trouble24828
-Node: Manual25815
-Node: Command Index26520
-Node: Key Index28922
+Node: Skills18476
+Node: Memory19625
+Node: Plan mode20890
+Node: Usage22283
+Node: Files23133
+Node: Keys24366
+Node: Trouble25401
+Node: Manual26388
+Node: Command Index27093
+Node: Key Index29495
 
 End Tag Table
 

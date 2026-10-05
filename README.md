@@ -165,6 +165,8 @@ file applies to its directory and everything under it.  Outer
 directories come first.  At each directory, `CLAUDE.md` comes first
 when it is included, then `AGENTS.md`, then `HARMLESS.md`, then the
 file inside `.harmless/`.  When two files disagree, the later one wins.
+A file can include another file with `@path`.  The path is relative to
+the file that contains it and must stay inside the session directory.
 The text is sent with every turn and is not stored in the transcript.
 
 ## Skills

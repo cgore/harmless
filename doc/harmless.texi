@@ -571,6 +571,16 @@ order above.  When two files disagree, the later one wins.  Empty
 files are skipped.  The walk stops at your home directory and at the
 filesystem root.
 
+An instruction file can include another file by writing
+@code{@@path}.  The path is relative to the file that contains the
+import, not the session directory.  A backslash before a space is part
+of the path.  The file's text replaces the import.  An import inside
+inline code or a fenced code block is left as written.  A quoted path
+is left as written.  The file must stay inside the session directory.
+Harmless refuses an empty path, a missing file, a directory, a cycle,
+and a path that leaves the session.  The filesystem root is not a
+directory an import may enter.
+
 The text is sent with every turn.  It is not copied into the
 transcript.  A detached chat does not walk @code{default-directory}
 looking for these files.

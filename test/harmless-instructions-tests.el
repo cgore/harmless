@@ -176,3 +176,146 @@
                                 (harmless-messages-system-text messages)))))
     (should-not (file-exists-p above))
     (should (eq root-claude-existed (file-exists-p "/CLAUDE.md")))))
+
+(defun harmless-instructions-test-error (form)
+  (error-message-string (should-error (eval form t) :type 'error)))
+
+(ert-deftest harmless-instructions-expand-imports ()
+  (let* ((root (make-temp-file "harmless-import-" t))
+         (docs (expand-file-name "docs" root))
+         (agents (expand-file-name "AGENTS.md" root))
+         (note (expand-file-name "docs/a.md" root))
+         (nested (expand-file-name "docs/b.md" root))
+         (spaced-dir (expand-file-name "Design Docs" root))
+         (spaced (expand-file-name "a.md" spaced-dir)))
+    (harmless-instructions-test-write
+     agents "See @docs/a.md and @./docs/a.md too.\nMail dev@example.com.\n")
+    (harmless-instructions-test-write note "A @b.md\n")
+    (harmless-instructions-test-write nested "B-body\n")
+    (harmless-instructions-test-write spaced "spaced-body\n")
+    (let ((text (harmless-instructions-text root root)))
+      (should (string-match-p "A B-body" text))
+      (should (string-match-p "dev@example.com" text))
+      (should-not (string-match-p "@docs/a.md" text))
+      (should-not (string-match-p "@b.md" text))
+      (should (equal (file-truename
+                      (harmless-instruction-resolve-import
+                       "docs/a.md" agents root))
+                     (file-truename note)))
+      (should (equal (file-truename
+                      (harmless-instruction-resolve-import
+                       (expand-file-name "docs/a.md" root) agents root))
+                     (file-truename note))))
+    (harmless-instructions-test-write
+     agents "@Design\\ Docs/a.md\n")
+    (let ((text (harmless-instructions-text root root)))
+      (should (string-match-p "spaced-body" text))
+      (should-not (string-match-p "Design\\\\ Docs" text)))
+    (harmless-instructions-test-write
+     agents "Keep @\"docs/missing.md\" and `see @docs/missing.md`.\n```\n@docs/missing.md\n```\n~~~elisp\n@docs/missing.md\n~~~\n")
+    (let ((text (harmless-instructions-text root root)))
+      (should (string-match-p "@\"docs/missing.md\"" text))
+      (should (string-match-p "`see @docs/missing.md`" text))
+      (should (string-match-p "@docs/missing.md" text)))
+    (let ((child (expand-file-name "sub" root)))
+      (harmless-instructions-test-write
+       (expand-file-name "AGENTS.md" child) "@note.md\n")
+      (harmless-instructions-test-write
+       (expand-file-name "note.md" child) "from-sub\n")
+      (let ((default-directory root))
+        (should (string-match-p "from-sub"
+                                (harmless-instructions-text "sub/" root)))
+        (should (string-match-p "from-sub"
+                                (harmless-instructions-text "sub" root)))))
+    (let* ((parent (make-temp-file "harmless-import-parent-" t))
+           (session (expand-file-name "sub" parent))
+           (parent-agents (expand-file-name "AGENTS.md" parent)))
+      (harmless-instructions-test-write
+       parent-agents "@sub/inside.md\n")
+      (harmless-instructions-test-write
+       (expand-file-name "inside.md" session) "from-inside\n")
+      (let ((text (harmless-instructions-text session parent)))
+        (should (string-match-p "from-inside" text))
+        (should-not (string-match-p "@sub/inside.md" text))))))
+
+(ert-deftest harmless-instructions-refuse-bad-imports ()
+  (let* ((root (make-temp-file "harmless-import-bad-" t))
+         (outside (make-temp-file "harmless-import-out-" t))
+         (agents (expand-file-name "AGENTS.md" root))
+         (secret (expand-file-name "secret.md" outside))
+         (root-agents-existed (file-exists-p "/AGENTS.md")))
+    (harmless-instructions-test-write secret "hidden\n")
+    (harmless-instructions-test-write
+     (expand-file-name "docs/a.md" root) "kept\n")
+    (make-directory (expand-file-name "docs" root) t)
+    (make-symbolic-link secret (expand-file-name "link.md" root))
+    (dolist (bad (list nil ""))
+      (should (equal "Instruction import is empty"
+                     (harmless-instructions-test-error
+                      `(harmless-instruction-resolve-import
+                        ,bad ,agents ,root))))
+      (should (equal "Instruction import escapes the project: docs/a.md"
+                     (harmless-instructions-test-error
+                      `(harmless-instruction-resolve-import
+                        "docs/a.md" ,agents ,bad)))))
+    (should (equal "Instruction import escapes the project: /"
+                   (harmless-instructions-test-error
+                    `(harmless-instruction-resolve-import
+                      "/" ,agents ,root))))
+    (should (equal "Instruction import escapes the project: /etc/passwd"
+                   (harmless-instructions-test-error
+                    `(harmless-instruction-resolve-import
+                      "/etc/passwd" "/AGENTS.md" "/"))))
+    (should (equal "Instruction import escapes the project: etc/passwd"
+                   (harmless-instructions-test-error
+                    `(harmless-instruction-resolve-import
+                      "etc/passwd" "/AGENTS.md" "/"))))
+    (should (eq root-agents-existed (file-exists-p "/AGENTS.md")))
+    (harmless-instructions-test-write agents "@docs/\n")
+    (should (equal "Instruction import is a directory: docs/"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@docs\n")
+    (should (equal "Instruction import is a directory: docs"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@docs/missing.md\n")
+    (should (equal "Instruction import is missing: docs/missing.md"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@\n")
+    (should (equal "Instruction import is empty"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@../secret.md\n")
+    (should (equal "Instruction import escapes the project: ../secret.md"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@/etc/passwd\n")
+    (should (equal "Instruction import escapes the project: /etc/passwd"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@link.md\n")
+    (should (equal "Instruction import escapes the project: link.md"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@AGENTS.md\n")
+    (should (equal "Instruction import is a cycle: AGENTS.md"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (harmless-instructions-test-write agents "@other.md\n")
+    (harmless-instructions-test-write
+     (expand-file-name "other.md" root) "@AGENTS.md\n")
+    (should (equal "Instruction import is a cycle: AGENTS.md"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (let* ((parent (make-temp-file "harmless-import-escape-" t))
+           (session (expand-file-name "sub" parent)))
+      (harmless-instructions-test-write
+       (expand-file-name "AGENTS.md" parent) "@outside.md\n")
+      (harmless-instructions-test-write
+       (expand-file-name "outside.md" parent) "from-outside\n")
+      (make-directory session t)
+      (should (equal "Instruction import escapes the project: outside.md"
+                     (harmless-instructions-test-error
+                      `(harmless-instructions-text ,session ,parent)))))))
