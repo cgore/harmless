@@ -56,6 +56,7 @@
 (declare-function harmless-new "harmless")
 (declare-function harmless-pick-model "harmless")
 (declare-function harmless-info "harmless")
+(declare-function harmless-message-user-p "harmless-session" (msg))
 
 (defface harmless-user-face
   '((t :inherit font-lock-keyword-face :weight bold))
@@ -679,11 +680,21 @@ If that fold is already collapsed, collapse its parent group."
   (harmless-ui--insert-label "You" 'harmless-user-face)
   (insert (or (plist-get msg :content) "") "\n\n"))
 
+(defun harmless-ui--mark-turn (start turn)
+  "Mark the text from START to point as user turn TURN.
+TURN is 1-based.  A nil START, or an empty range, is left unmarked."
+  (when (and start (integerp turn) (> turn 0) (> (point) start))
+    (put-text-property start (point) 'harmless-turn turn)))
+
 (defun harmless-ui-render-session (session)
-  "Redraw SESSION's transcript from stored messages."
+  "Redraw SESSION's transcript from stored messages.
+Each user turn gets the text property `harmless-turn', a 1-based count.
+A summary before the first user turn is left unmarked."
   (with-current-buffer (harmless-ui-ensure-session-buffer session)
     (let ((inhibit-read-only t)
-          (msgs (harmless-session-messages session)))
+          (msgs (harmless-session-messages session))
+          (turn 0)
+          (turn-start nil))
       (dolist (marker (list harmless--stream-marker
                             harmless--stream-start
                             harmless--tool-block-start))
@@ -696,6 +707,10 @@ If that fold is already collapsed, collapse its parent group."
             harmless--tool-ids nil)
       (while msgs
         (let ((msg (car msgs)))
+          (when (harmless-message-user-p msg)
+            (harmless-ui--mark-turn turn-start turn)
+            (setq turn (1+ turn)
+                  turn-start (point)))
           (pcase (plist-get msg :role)
             ((or :user 'user "user")
              (harmless-ui--insert-message msg))
@@ -726,6 +741,7 @@ If that fold is already collapsed, collapse its parent group."
                           (plist-get msg :content)))
               "" nil))))
         (setq msgs (cdr msgs)))
+      (harmless-ui--mark-turn turn-start turn)
       (goto-char (point-max)))))
 
 (defun harmless-ui--with-session-buffer (session fn)

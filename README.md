@@ -135,6 +135,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-logout` | Sign out of a provider |
 | `M-x harmless-abort` | Cancel the in-flight turn or shell |
 | `M-x harmless-compact` | Summarize older turns and keep the recent ones (`k` in the transcript). Also runs before a prompt that would fill the context window. |
+| `M-x harmless-rewind` | Drop turns after the one at point and save the shorter transcript (`w` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
 In the prompt window: `C-c C-c` sends.  When a tool needs approval: `y` allow,

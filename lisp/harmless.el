@@ -87,6 +87,7 @@
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-compact)
+(require 'harmless-rewind)
 (require 'harmless-dashboard)
 (require 'harmless-transient)
 

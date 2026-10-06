@@ -314,6 +314,12 @@ combined with :cwd."
   (harmless-emit session (list :message message))
   message)
 
+(defun harmless-message-user-p (msg)
+  "Return non-nil if MSG starts a user turn.
+A summary is not a user turn.  The roles :user, user, and \"user\" are."
+  (or (memq (plist-get msg :role) '(:user user))
+      (equal (plist-get msg :role) "user")))
+
 (defun harmless-session-append-user (session text)
   "Append a user TEXT message to SESSION."
   (harmless-session-append session (list :role :user :content text)))

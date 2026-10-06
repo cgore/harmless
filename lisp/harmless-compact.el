@@ -53,6 +53,7 @@
 (require 'harmless-ui)
 
 (declare-function harmless--context-session "harmless")
+(declare-function harmless-message-user-p "harmless-session" (msg))
 
 (defcustom harmless-compact-keep-turns 2
   "Number of recent user turns `harmless-compact' leaves verbatim.
@@ -98,8 +99,7 @@ alone."
 
 (defun harmless-compact--user-p (msg)
   "Return non-nil if MSG starts a user turn."
-  (or (memq (plist-get msg :role) '(:user user))
-      (equal (plist-get msg :role) "user")))
+  (harmless-message-user-p msg))
 
 (defun harmless-compact--count-users (messages)
   "Return how many user turns MESSAGES contains."

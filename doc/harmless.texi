@@ -231,6 +231,9 @@ Quit the window.
 
 @item k
 Compact the transcript.
+
+@item w
+Rewind to the turn at point.
 @end table
 
 @findex harmless-compact
@@ -253,6 +256,18 @@ The default is 80.  The same percent applies to every model.  A model
 with a larger window compacts at the same fullness.  Nil turns
 automatic compact off.  A model with no known window is left alone.
 An automatic compact that fails still sends the prompt.
+
+@findex harmless-rewind
+@kindex w @r{(transcript)}
+@kbd{w}, or @kbd{M-x harmless-rewind}, drops every turn after the one
+at point and saves the shorter transcript.  That turn stays, including
+its assistant reply and tool results.  A numeric prefix argument keeps
+that many turns from the start of the transcript.  Outside the
+transcript, the command asks which turn to keep.  It keeps at least
+one turn and asks before dropping anything.  The dropped turns are not
+saved.  The last prompt size is cleared, and the running token totals
+stay.  A turn that is streaming or waiting on permission is left
+alone.  The same command is @kbd{w} in the Harmless menu.
 
 Click the model name in the header line to change the connection, the
 model, and the effort.  @xref{Models}.
@@ -854,6 +869,9 @@ Abort.
 
 @item k
 Compact the transcript.
+
+@item w
+Rewind to the turn at point.
 
 @item P
 Plan mode.

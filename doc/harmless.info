@@ -201,6 +201,9 @@ line.
 ‘k’
      Compact the transcript.
 
+‘w’
+     Rewind to the turn at point.
+
    ‘k’, or ‘M-x harmless-compact’, summarizes the older turns and
 replaces them with one summary.  The recent turns stay in the
 transcript.  A turn starts at a user message and includes the assistant
@@ -217,6 +220,16 @@ The default is 80.  The same percent applies to every model.  A model
 with a larger window compacts at the same fullness.  Nil turns automatic
 compact off.  A model with no known window is left alone.  An automatic
 compact that fails still sends the prompt.
+
+   ‘w’, or ‘M-x harmless-rewind’, drops every turn after the one at
+point and saves the shorter transcript.  That turn stays, including its
+assistant reply and tool results.  A numeric prefix argument keeps that
+many turns from the start of the transcript.  Outside the transcript,
+the command asks which turn to keep.  It keeps at least one turn and
+asks before dropping anything.  The dropped turns are not saved.  The
+last prompt size is cleared, and the running token totals stay.  A turn
+that is streaming or waiting on permission is left alone.  The same
+command is ‘w’ in the Harmless menu.
 
    Click the model name in the header line to change the connection, the
 model, and the effort.  *Note Models::.
@@ -776,6 +789,9 @@ also open it with ‘m’ in the transcript or ‘C-c C-k’ in the prompt.
 ‘k’
      Compact the transcript.
 
+‘w’
+     Rewind to the turn at point.
+
 ‘P’
      Plan mode.
 
@@ -883,7 +899,7 @@ Command Index
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
 * harmless-chat:                         Sessions.             (line  6)
-* harmless-compact:                      Transcript.           (line 34)
+* harmless-compact:                      Transcript.           (line 37)
 * harmless-current:                      Sessions.             (line  6)
 * harmless-dashboard:                    Sessions.             (line  6)
 * harmless-dream:                        Memory.               (line  6)
@@ -902,6 +918,7 @@ Command Index
 * harmless-prompt-send:                  Prompt.               (line  6)
 * harmless-reload-all-harmless:          Trouble.              (line  6)
 * harmless-remember:                     Memory.               (line  6)
+* harmless-rewind:                       Transcript.           (line 54)
 * harmless-session-mode:                 Transcript.           (line  6)
 * harmless-set-model:                    Models.               (line  6)
 * harmless-set-permission-mode:          Permissions.          (line  6)
@@ -925,7 +942,7 @@ Key Index
 * C-c RET:                               Prompt.               (line  6)
 * g (usage):                             Usage.                (line  6)
 * h (Harmless buffers):                  Keys.                 (line  6)
-* k (transcript):                        Transcript.           (line 34)
+* k (transcript):                        Transcript.           (line 37)
 * LEFT (transcript):                     Transcript.           (line  6)
 * M-x harmless:                          Starting.             (line  6)
 * M-x harmless-login:                    Accounts.             (line  6)
@@ -934,6 +951,7 @@ Key Index
 * RIGHT (transcript):                    Transcript.           (line  6)
 * S-TAB (transcript):                    Transcript.           (line  6)
 * TAB (transcript):                      Transcript.           (line  6)
+* w (transcript):                        Transcript.           (line 54)
 * y (permission):                        Permissions.          (line  6)
 
 
@@ -944,26 +962,26 @@ Node: Installation2501
 Node: Starting4105
 Node: Sessions4644
 Node: Transcript6141
-Node: Prompt7805
-Node: Permissions8327
-Node: Accounts9574
-Node: Models11819
-Node: Tools12915
-Node: File tools13808
-Node: Search15042
-Node: Shell16683
-Node: Questions17344
-Node: Instructions18096
-Node: Skills19842
-Node: Memory20991
-Node: Plan mode22256
-Node: Usage23669
-Node: Files24688
-Node: Keys25921
-Node: Trouble26994
-Node: Manual27981
-Node: Command Index28686
-Node: Key Index31161
+Node: Prompt8459
+Node: Permissions8981
+Node: Accounts10228
+Node: Models12473
+Node: Tools13569
+Node: File tools14462
+Node: Search15696
+Node: Shell17337
+Node: Questions17998
+Node: Instructions18750
+Node: Skills20496
+Node: Memory21645
+Node: Plan mode22910
+Node: Usage24323
+Node: Files25342
+Node: Keys26575
+Node: Trouble27691
+Node: Manual28678
+Node: Command Index29383
+Node: Key Index31931
 
 End Tag Table
 
