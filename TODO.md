@@ -32,7 +32,7 @@ Every turn resends the full transcript. Sending a new prompt aborts a turn that 
 - [x] Compact automatically when the context window fills. `harmless-compact-threshold` is a percent of that model's window (default 80). Nil disables it. The same percent applies to every model.
 - [x] Rewind to an earlier turn and drop what follows. `M-x harmless-rewind` keeps that turn and everything before it. A tool call stays with its turn. The dropped turns are not saved.
 - [x] Edit an earlier prompt and rerun from there. `M-x harmless-edit-prompt` replaces that prompt, drops its reply and every later turn, and sends the new prompt. The dropped turns are not saved.
-- [ ] Fork a session, keeping history up to this point (Grok Build, Codex, and Claude Code fork-mode subagents).
+- [x] Fork a session, keeping history up to this point. `M-x harmless-fork` copies the transcript through that turn into a new session and leaves the original alone. Nothing is sent.
 - [ ] Steer a running turn. A follow-up arrives without aborting the turn.
 
 ## 4. A lasting team

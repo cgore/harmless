@@ -237,6 +237,9 @@ Rewind to the turn at point.
 
 @item E
 Edit the prompt at point and rerun from there.
+
+@item f
+Fork through the turn at point.
 @end table
 
 @findex harmless-compact
@@ -282,6 +285,19 @@ the transcript, the command asks which turn to edit.  It asks before
 changing anything.  The last prompt size is cleared, and the running
 token totals stay.  A turn that is streaming or waiting on permission
 is left alone.  The same command is @kbd{E} in the Harmless menu.
+
+@findex harmless-fork
+@kindex f @r{(transcript)}
+@kbd{f}, or @kbd{M-x harmless-fork}, copies the transcript through the
+turn at point into a new session.  That turn stays in the copy,
+including its assistant reply and tool results.  Later turns stay in
+the original session.  The original session is left unchanged.
+Nothing is sent.  A numeric prefix argument chooses the turn, counting
+from the start of the transcript.  Outside the transcript, the command
+asks which turn to copy through.  It asks before creating the new
+session.  The copy starts with empty token totals.  A turn that is
+streaming or waiting on permission is left alone.  The same command is
+@kbd{f} in the Harmless menu.
 
 Click the model name in the header line to change the connection, the
 model, and the effort.  @xref{Models}.
@@ -889,6 +905,9 @@ Rewind to the turn at point.
 
 @item E
 Edit the prompt at point and rerun from there.
+
+@item f
+Fork through the turn at point.
 
 @item P
 Plan mode.

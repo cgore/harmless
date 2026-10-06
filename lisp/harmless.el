@@ -89,6 +89,7 @@
 (require 'harmless-compact)
 (require 'harmless-rewind)
 (require 'harmless-edit)
+(require 'harmless-fork)
 (require 'harmless-dashboard)
 (require 'harmless-transient)
 
