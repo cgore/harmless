@@ -234,6 +234,9 @@ Compact the transcript.
 
 @item w
 Rewind to the turn at point.
+
+@item E
+Edit the prompt at point and rerun from there.
 @end table
 
 @findex harmless-compact
@@ -268,6 +271,17 @@ one turn and asks before dropping anything.  The dropped turns are not
 saved.  The last prompt size is cleared, and the running token totals
 stay.  A turn that is streaming or waiting on permission is left
 alone.  The same command is @kbd{w} in the Harmless menu.
+
+@findex harmless-edit-prompt
+@kindex E @r{(transcript)}
+@kbd{E}, or @kbd{M-x harmless-edit-prompt}, replaces the prompt at point
+and sends the new text.  The reply to the old prompt, and every turn
+after it, is dropped and is not saved.  A numeric prefix argument
+chooses the turn, counting from the start of the transcript.  Outside
+the transcript, the command asks which turn to edit.  It asks before
+changing anything.  The last prompt size is cleared, and the running
+token totals stay.  A turn that is streaming or waiting on permission
+is left alone.  The same command is @kbd{E} in the Harmless menu.
 
 Click the model name in the header line to change the connection, the
 model, and the effort.  @xref{Models}.
@@ -872,6 +886,9 @@ Compact the transcript.
 
 @item w
 Rewind to the turn at point.
+
+@item E
+Edit the prompt at point and rerun from there.
 
 @item P
 Plan mode.

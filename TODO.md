@@ -31,7 +31,7 @@ Every turn resends the full transcript. Sending a new prompt aborts a turn that 
 - [x] Compact the transcript. `M-x harmless-compact` summarizes older turns, keeps the recent ones, and saves the shorter transcript. A tool call stays with its results. An empty summary leaves the transcript unchanged.
 - [x] Compact automatically when the context window fills. `harmless-compact-threshold` is a percent of that model's window (default 80). Nil disables it. The same percent applies to every model.
 - [x] Rewind to an earlier turn and drop what follows. `M-x harmless-rewind` keeps that turn and everything before it. A tool call stays with its turn. The dropped turns are not saved.
-- [ ] Edit an earlier prompt and rerun from there.
+- [x] Edit an earlier prompt and rerun from there. `M-x harmless-edit-prompt` replaces that prompt, drops its reply and every later turn, and sends the new prompt. The dropped turns are not saved.
 - [ ] Fork a session, keeping history up to this point (Grok Build, Codex, and Claude Code fork-mode subagents).
 - [ ] Steer a running turn. A follow-up arrives without aborting the turn.
 

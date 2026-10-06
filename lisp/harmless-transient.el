@@ -61,6 +61,7 @@
 (declare-function harmless-info "harmless")
 (declare-function harmless-compact "harmless-compact" (&optional keep))
 (declare-function harmless-rewind "harmless-rewind" (&optional keep))
+(declare-function harmless-edit-prompt "harmless-edit" (&optional turn text))
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -74,6 +75,7 @@
     ("a" "Abort" harmless-abort)
     ("k" "Compact" harmless-compact)
     ("w" "Rewind" harmless-rewind)
+    ("E" "Edit prompt" harmless-edit-prompt)
     ("P" "Plan" harmless-plan)
     ("u" "Usage" harmless-usage)
     ("h" "Manual" harmless-info)]

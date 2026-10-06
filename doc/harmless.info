@@ -204,6 +204,9 @@ line.
 ‘w’
      Rewind to the turn at point.
 
+‘E’
+     Edit the prompt at point and rerun from there.
+
    ‘k’, or ‘M-x harmless-compact’, summarizes the older turns and
 replaces them with one summary.  The recent turns stay in the
 transcript.  A turn starts at a user message and includes the assistant
@@ -230,6 +233,15 @@ asks before dropping anything.  The dropped turns are not saved.  The
 last prompt size is cleared, and the running token totals stay.  A turn
 that is streaming or waiting on permission is left alone.  The same
 command is ‘w’ in the Harmless menu.
+
+   ‘E’, or ‘M-x harmless-edit-prompt’, replaces the prompt at point and
+sends the new text.  The reply to the old prompt, and every turn after
+it, is dropped and is not saved.  A numeric prefix argument chooses the
+turn, counting from the start of the transcript.  Outside the
+transcript, the command asks which turn to edit.  It asks before
+changing anything.  The last prompt size is cleared, and the running
+token totals stay.  A turn that is streaming or waiting on permission is
+left alone.  The same command is ‘E’ in the Harmless menu.
 
    Click the model name in the header line to change the connection, the
 model, and the effort.  *Note Models::.
@@ -792,6 +804,9 @@ also open it with ‘m’ in the transcript or ‘C-c C-k’ in the prompt.
 ‘w’
      Rewind to the turn at point.
 
+‘E’
+     Edit the prompt at point and rerun from there.
+
 ‘P’
      Plan mode.
 
@@ -899,10 +914,11 @@ Command Index
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
 * harmless-chat:                         Sessions.             (line  6)
-* harmless-compact:                      Transcript.           (line 37)
+* harmless-compact:                      Transcript.           (line 40)
 * harmless-current:                      Sessions.             (line  6)
 * harmless-dashboard:                    Sessions.             (line  6)
 * harmless-dream:                        Memory.               (line  6)
+* harmless-edit-prompt:                  Transcript.           (line 67)
 * harmless-info:                         Manual.               (line  6)
 * harmless-login:                        Accounts.             (line  6)
 * harmless-logout:                       Accounts.             (line  6)
@@ -918,7 +934,7 @@ Command Index
 * harmless-prompt-send:                  Prompt.               (line  6)
 * harmless-reload-all-harmless:          Trouble.              (line  6)
 * harmless-remember:                     Memory.               (line  6)
-* harmless-rewind:                       Transcript.           (line 54)
+* harmless-rewind:                       Transcript.           (line 57)
 * harmless-session-mode:                 Transcript.           (line  6)
 * harmless-set-model:                    Models.               (line  6)
 * harmless-set-permission-mode:          Permissions.          (line  6)
@@ -940,9 +956,10 @@ Key Index
 * ! (permission):                        Permissions.          (line  6)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
+* E (transcript):                        Transcript.           (line 67)
 * g (usage):                             Usage.                (line  6)
 * h (Harmless buffers):                  Keys.                 (line  6)
-* k (transcript):                        Transcript.           (line 37)
+* k (transcript):                        Transcript.           (line 40)
 * LEFT (transcript):                     Transcript.           (line  6)
 * M-x harmless:                          Starting.             (line  6)
 * M-x harmless-login:                    Accounts.             (line  6)
@@ -951,7 +968,7 @@ Key Index
 * RIGHT (transcript):                    Transcript.           (line  6)
 * S-TAB (transcript):                    Transcript.           (line  6)
 * TAB (transcript):                      Transcript.           (line  6)
-* w (transcript):                        Transcript.           (line 54)
+* w (transcript):                        Transcript.           (line 57)
 * y (permission):                        Permissions.          (line  6)
 
 
@@ -962,26 +979,26 @@ Node: Installation2501
 Node: Starting4105
 Node: Sessions4644
 Node: Transcript6141
-Node: Prompt8459
-Node: Permissions8981
-Node: Accounts10228
-Node: Models12473
-Node: Tools13569
-Node: File tools14462
-Node: Search15696
-Node: Shell17337
-Node: Questions17998
-Node: Instructions18750
-Node: Skills20496
-Node: Memory21645
-Node: Plan mode22910
-Node: Usage24323
-Node: Files25342
-Node: Keys26575
-Node: Trouble27691
-Node: Manual28678
-Node: Command Index29383
-Node: Key Index31931
+Node: Prompt9076
+Node: Permissions9598
+Node: Accounts10845
+Node: Models13090
+Node: Tools14186
+Node: File tools15079
+Node: Search16313
+Node: Shell17954
+Node: Questions18615
+Node: Instructions19367
+Node: Skills21113
+Node: Memory22262
+Node: Plan mode23527
+Node: Usage24940
+Node: Files25959
+Node: Keys27192
+Node: Trouble28369
+Node: Manual29356
+Node: Command Index30061
+Node: Key Index32682
 
 End Tag Table
 
