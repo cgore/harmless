@@ -636,6 +636,7 @@
                        "schedule_cancel"
                        "send_message"
                        "spawn_agent"
+                       "todo_write"
                        "web_fetch"
                        "web_search"
                        "x_keyword_search"

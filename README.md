@@ -309,6 +309,16 @@ waiting prompt.  The class is `edit`, so accepting edits does not
 ask.  Plan mode does not refuse it.  A read-only subagent cannot
 use it.  Nothing is written into the project.
 
+## Todos
+
+`todo_write` keeps a list of work on the session.  Each item has
+an id, content, a status (`pending`, `in_progress`, `completed`,
+or `cancelled`), and the ids it depends on.  `merge` updates by
+id.  False replaces the list.  The list is saved with the
+session.  A fork copies it.  A subagent starts empty.  The class
+is `read`, so it does not ask.  Plan mode does not refuse it.
+Nothing is written into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

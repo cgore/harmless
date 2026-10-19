@@ -169,7 +169,10 @@
                    'keymap harmless-ui--model-header-map)
        "  "
        (format "%s" (harmless-session-status s))
-       (if (harmless-session-plan-mode s) "  plan" "")))))
+       (if (harmless-session-plan-mode s) "  plan" "")
+       (if (fboundp 'harmless-todo-header)
+           (harmless-todo-header s)
+         "")))))
 
 (defun harmless-ui--short-id (session)
   "Return a short prefix of SESSION's id."
@@ -299,6 +302,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("monitor_stop" "stop")
     ("schedule" "schedule")
     ("schedule_cancel" "cancel")
+    ("todo_write" "todo")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -394,6 +398,17 @@ directory, which lives under the Harmless data directory.  Setting
                     ((stringp id) id)
                     ((integerp id) (number-to-string id))
                     (t ""))))))
+            ("todo_write"
+             (let ((todos (harmless-tool-arg args :todos)))
+               (if (and (listp todos) (not (harmless-plist-p todos)))
+                   (mapconcat
+                    (lambda (item)
+                      (if (listp item)
+                          (let ((content (harmless-tool-arg item :content)))
+                            (if (stringp content) content ""))
+                        ""))
+                    todos ", ")
+                 "")))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)
@@ -807,6 +822,11 @@ A summary before the first user turn is left unmarked."
             harmless--stream-start nil
             harmless--tool-block-start nil
             harmless--tool-ids nil)
+      (when (and (fboundp 'harmless-todo-format)
+                 (harmless-session-todos session))
+        (harmless-ui--insert-label "Todos" 'harmless-assistant-face)
+        (insert (harmless-todo-format (harmless-session-todos session))
+                "\n\n"))
       (while msgs
         (let ((msg (car msgs)))
           (when (harmless-message-user-p msg)

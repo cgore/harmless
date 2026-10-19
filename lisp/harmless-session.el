@@ -46,7 +46,9 @@
 ;; :prompt, and :at.  A timer is not stored on the item.  `rules' is
 ;; the allow and deny list for this session.  It is not saved.
 ;; Configured rules and `.harmless/permissions' are copied when the
-;; session is created and when it is loaded.
+;; session is created and when it is loaded.  `todos' is the work
+;; list the model updates.  Each item is :id, :content, :status,
+;; and :depends.  It is saved.  It is not a queue row.
 
 ;;; Code:
 
@@ -149,7 +151,8 @@ Nil, \"\", and an unknown name are `ask'.  `auto' is kept."
   findings
   schedules
   rules
-  extra-dirs)
+  extra-dirs
+  todos)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -536,7 +539,9 @@ Timers are not included."
    (harmless-session--worktree-summary session)
    (harmless-session--schedules-summary session)
    (when (fboundp 'harmless-extra-summary)
-     (harmless-extra-summary session))))
+     (harmless-extra-summary session))
+   (when (fboundp 'harmless-todo-summary)
+     (harmless-todo-summary session))))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -655,6 +660,8 @@ Signal when that path would be /NAME or outside the sessions root."
         (harmless-perm-install-configured-rules session))
       (when (fboundp 'harmless-extra-restore)
         (harmless-extra-restore session (plist-get summary :extra-dirs)))
+      (when (fboundp 'harmless-todo-restore)
+        (harmless-todo-restore session (plist-get summary :todos)))
       session)))
 
 (defun harmless-session-list-on-disk ()

@@ -569,7 +569,8 @@ Messages::.  It can search the web and fetch a page.  *Note Web
 search::.  *Note Fetch a page::.  It can search X for posts, a thread,
 and accounts.  *Note X search::.  It can list and read MCP resources.
 *Note MCP::.  It can see the screen, click, type, and open a browser.
-*Note Computer use::.  It can schedule a prompt.  *Note Schedules::.
+*Note Computer use::.  It can schedule a prompt.  *Note Schedules::.  It
+can keep a todo list.  *Note Todos::.
 
 * Menu:
 
@@ -588,6 +589,7 @@ and accounts.  *Note X search::.  It can list and read MCP resources.
 * Computer use::  See the screen, click, type, and open a browser.
 * Monitors::    Wake when a line in a file or a stream matches.
 * Schedules::   Send one prompt at a later time.
+* Todos::       A list of work with status and dependencies.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -1270,7 +1272,7 @@ these tools.  Nothing is written into the project.  The watch is
 forgotten when Emacs exits.
 
 
-File: harmless.info,  Node: Schedules,  Prev: Monitors,  Up: Tools
+File: harmless.info,  Node: Schedules,  Next: Todos,  Prev: Monitors,  Up: Tools
 
 10.15 Schedules
 ===============
@@ -1314,6 +1316,54 @@ turn that runs later still obeys plan mode.  A read-only subagent is not
 offered these tools.  A workspace subagent may schedule.  A detached
 chat is offered them.  Nothing is written into the project.  Forking a
 session does not copy its schedules.
+
+
+File: harmless.info,  Node: Todos,  Prev: Schedules,  Up: Tools
+
+10.16 Todos
+===========
+
+‘todo_write’ keeps a list of work on the session.  Each item has an id,
+content, a status, and the ids it depends on.  Status is ‘pending’,
+‘in_progress’, ‘completed’, or ‘cancelled’.  A missing status on a new
+item is ‘pending’.
+
+   ‘merge’ true, or omitted, updates items by id and appends an id that
+is new.  A field that is omitted stays as it was.  ‘merge’ false
+replaces the whole list.  JSON null and ‘[]’ are an empty list.  A
+missing ‘todos’ value is refused: ‘todos must be a list’.  A value that
+is not a list is refused the same way.  A merge value that is not a
+boolean is refused: ‘todo merge must be a boolean’.
+
+   An item that is not an item is refused: ‘todo must be an item’.  Nil,
+‘""’, and whitespace are refused: ‘todo id is empty’.  A value that is
+not text is refused: ‘todo id must be a string’.  The same empty and
+non-text refusals apply to content: ‘todo content is empty’ and ‘todo
+content must be a string’.  A new item needs content.  An update can
+omit it.  A status outside the four names is refused: ‘todo status is
+not a status’.  An id repeated in one call is refused: ‘todo id is
+duplicate’.
+
+   ‘depends’ lists ids.  Omitted, it stays as it was on an update and is
+empty on a new item.  JSON null and ‘[]’ clear it.  A value that is not
+a list is refused: ‘todo depends must be a list’.  An entry that is not
+text is refused: ‘todo depends must be a string’.  An empty entry is
+refused: ‘todo depends is empty’.  A repeated entry is refused: ‘todo
+depends is duplicate’.  An item that depends on its own id is refused:
+‘todo depends on itself’.  An unknown id is refused: ‘todo depends is
+missing’.  A cycle is refused: ‘todo depends is a cycle’.  A dependency
+does not block a status change.  The list shows it.
+
+   ‘/’, ‘c:/’, ‘notes’, and ‘sub/’ are text, not paths.  They are not
+resolved, and they do not create a file or a directory.  The list is
+saved with the session.  A fork copies it.  A subagent starts with an
+empty list.  Loading a session keeps the list.  A saved item that is not
+usable is dropped.  A dependency that is missing, repeated, on itself,
+or that closes a cycle is dropped.  The class is ‘read’, so the tool
+does not ask.  Plan mode does not refuse it.  A read-only subagent may
+update its own list.  A detached chat is offered the tool.  Nothing is
+written into the project.  The session header shows how many items are
+pending or in progress.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1547,8 +1597,8 @@ replaced with ‘/’.
      OAuth tokens for each connection.  Mode 0600.
 
 ‘sessions/PROJECT/ID/summary.json’
-     The session's model, status, totals, plan flag, and schedules that
-     are still waiting.
+     The session's model, status, totals, plan flag, schedules that are
+     still waiting, and its todo list.
 
 ‘sessions/PROJECT/ID/messages.jsonl’
      The transcript, one JSON object per line.  A finding from another
@@ -1807,32 +1857,33 @@ Node: Permissions11011
 Node: Accounts18317
 Node: Models20562
 Node: Tools21658
-Node: File tools25173
-Node: Search26579
-Node: Shell28475
-Node: Questions31260
-Node: Subagents32030
-Node: Workflows36179
-Node: Worktrees41182
-Node: Messages44310
-Node: Web search46131
-Node: Fetch a page46986
-Node: X search48219
-Node: MCP50616
-Node: Computer use53320
-Node: Monitors55336
-Node: Schedules58340
-Node: Instructions60792
-Node: Skills62538
-Node: Memory63687
-Node: Plan mode64952
-Node: Usage67723
-Node: Files68742
-Node: Keys70287
-Node: Trouble71636
-Node: Manual72890
-Node: Command Index73595
-Node: Key Index76581
+Node: File tools25276
+Node: Search26682
+Node: Shell28578
+Node: Questions31363
+Node: Subagents32133
+Node: Workflows36282
+Node: Worktrees41285
+Node: Messages44413
+Node: Web search46234
+Node: Fetch a page47089
+Node: X search48322
+Node: MCP50719
+Node: Computer use53423
+Node: Monitors55439
+Node: Schedules58443
+Node: Todos60909
+Node: Instructions63549
+Node: Skills65295
+Node: Memory66444
+Node: Plan mode67709
+Node: Usage70480
+Node: Files71499
+Node: Keys73059
+Node: Trouble74408
+Node: Manual75662
+Node: Command Index76367
+Node: Key Index79353
 
 End Tag Table
 

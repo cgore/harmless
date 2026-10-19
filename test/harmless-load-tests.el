@@ -38,7 +38,8 @@
   (should (harmless-tool-by-name "monitor"))
   (should (harmless-tool-by-name "monitor_stop"))
   (should (harmless-tool-by-name "schedule"))
-  (should (harmless-tool-by-name "schedule_cancel")))
+  (should (harmless-tool-by-name "schedule_cancel"))
+  (should (harmless-tool-by-name "todo_write")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

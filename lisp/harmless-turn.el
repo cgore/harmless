@@ -207,10 +207,10 @@ summarized before the provider sees TEXT."
 A detached chat can use global memory, ask the user a question,
 start a subagent, run a workflow, message another live session,
 search the web, fetch a page, look up X, read MCP resources,
-see the screen, click, type, open a browser, and schedule a
-prompt.  It is not offered project files, a project shell, or
-plan mode.  A subagent is not offered `spawn_agent' or
-`run_workflow'."
+see the screen, click, type, open a browser, schedule a prompt,
+and update a todo list.  It is not offered project files, a
+project shell, or plan mode.  A subagent is not offered
+`spawn_agent' or `run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
@@ -229,6 +229,7 @@ plan mode.  A subagent is not offered `spawn_agent' or
                             "run_workflow"
                             "schedule"
                             "schedule_cancel"
+                            "todo_write"
                             "web_fetch"
                             "web_search"
                             "x_keyword_search"
