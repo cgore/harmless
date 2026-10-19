@@ -53,6 +53,9 @@
 (require 'harmless-tools)
 (require 'harmless-turn)
 
+(declare-function harmless-plugin-agent-files "harmless-plugin" (ancestor))
+(declare-function harmless-plugin-user-agent-files "harmless-plugin" ())
+
 (declare-function harmless-worktree-for-child "harmless-worktree"
                   (session args))
 (declare-function harmless-worktree-requested-p "harmless-worktree" (args))
@@ -145,6 +148,10 @@ KEYS is a plist of frontmatter fields.  BODY is the rest of TEXT."
   "Return agent files for DIR, lowest priority first.
 STOP is passed to `harmless-instruction-directories'."
   (let (files)
+    (when (and (null stop)
+               (fboundp 'harmless-plugin-user-agent-files))
+      (dolist (path (harmless-plugin-user-agent-files))
+        (push path files)))
     (dolist (ancestor (harmless-instruction-directories dir stop))
       (dolist (vendor harmless-skill-vendors)
         (let ((root (expand-file-name
@@ -157,7 +164,10 @@ STOP is passed to `harmless-instruction-directories'."
                 (let ((path (expand-file-name name root)))
                   (when (and (file-regular-p path)
                              (file-readable-p path))
-                    (push path files)))))))))
+                    (push path files))))))))
+      (when (fboundp 'harmless-plugin-agent-files)
+        (dolist (path (harmless-plugin-agent-files ancestor))
+          (push path files))))
     (nreverse files)))
 
 (defun harmless-agent--identified (dir stop)

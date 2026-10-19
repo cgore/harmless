@@ -231,6 +231,23 @@ directory, later entries in this list replace earlier ones:
 `/etc/codex/skills` is included when it exists, at the lowest priority.
 Codex's own bundled skills are not on disk and are not read.
 
+## Plugins
+
+A plugin is one directory of skills, agents, `hooks.json`, and
+`mcp.json`.  `M-x harmless-plugin-install` copies that directory.  It
+does not merge the files into `.harmless/skills`, `.harmless/agents`,
+or the project's `mcp.json`.
+
+A project copy is `.harmless/plugins/NAME`.  A user copy is
+`plugins/NAME` under the Harmless data directory.  A later plugin
+name wins on a clash.  A project copy wins over a user copy.  Delete
+that directory to remove the bundle.
+
+A marketplace is a directory.  `marketplace.json` lists plugins when
+it is present.  `source` is a relative path inside the marketplace.
+Without that file, a child directory whose `plugin.json` name matches
+the directory is a plugin.  The name is a plugin id, not a path.
+
 ## Subagents
 
 `spawn_agent` starts a child session with its own transcript and waits

@@ -49,6 +49,8 @@
 (require 'harmless-tools)
 (require 'harmless-agent)
 
+(declare-function harmless-plugin-mcp-servers "harmless-plugin" (session))
+
 (defvar harmless-mcp-call-function #'harmless-mcp-call-default
   "Function (SERVER METHOD PARAMS) that returns one MCP result.
 SERVER is a plist with :name, :command, and :args.  The return
@@ -208,8 +210,11 @@ FILE is not created.  The filesystem root is not a config file."
 The global file is first.  The project file overrides the same
 name.  A detached chat has no project file."
   (harmless-mcp--merge
-   (harmless-mcp--read-file (harmless-mcp-global-file))
-   (harmless-mcp--read-file (harmless-mcp-project-file session))))
+   (harmless-mcp--merge
+    (harmless-mcp--read-file (harmless-mcp-global-file))
+    (harmless-mcp--read-file (harmless-mcp-project-file session)))
+   (when (fboundp 'harmless-plugin-mcp-servers)
+     (harmless-plugin-mcp-servers session))))
 
 (defun harmless-mcp--find (session name)
   "Return SESSION's server named NAME, or signal."

@@ -38,6 +38,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Tools::               What the model can do to the project.
 * Instructions::        Project text sent on every turn.
 * Skills::              Task instructions the model can open.
+* Plugins::             One copy of skills, agents, hooks, and MCP.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -1621,7 +1622,7 @@ transcript.  Nil, an empty string, and a relative directory still
 receive the prompt, and they still do not walk ‘default-directory’.
 
 
-File: harmless.info,  Node: Skills,  Next: Memory,  Prev: Instructions,  Up: Top
+File: harmless.info,  Node: Skills,  Next: Plugins,  Prev: Instructions,  Up: Top
 
 12 Skills
 *********
@@ -1678,9 +1679,47 @@ exists, at the lowest priority.  Skills that ship inside the Codex
 application, and are not files on disk, are not read.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Skills,  Up: Top
+File: harmless.info,  Node: Plugins,  Next: Memory,  Prev: Skills,  Up: Top
 
-13 Memory
+13 Plugins
+**********
+
+A plugin is one directory.  It can hold skills, agents, a ‘hooks.json’
+file, and an ‘mcp.json’ file.  ‘M-x harmless-plugin-install’ copies that
+directory as one unit.  It does not merge those files into
+‘.harmless/skills’, ‘.harmless/agents’, or the project's ‘mcp.json’.
+
+   The copy for a project is ‘.harmless/plugins/NAME’.  The copy for the
+user is ‘plugins/NAME’ under the Harmless data directory.  A later
+plugin name wins when two installed plugins define the same skill,
+agent, or MCP server.  A project copy wins over a user copy.  Deleting
+the copied directory removes the bundle.
+
+   A marketplace is a directory.  When it contains ‘marketplace.json’,
+that file is the list of plugins.  ‘source’ is a relative path inside
+the marketplace.  An absolute path, ‘~’, and a path that leaves the
+marketplace are refused.  With no ‘marketplace.json’, each child
+directory whose ‘plugin.json’ name matches the directory is a plugin.
+
+   ‘plugin.json’ names the plugin.  The name is a plugin id, not a path.
+Skills live in ‘skills/ID/SKILL.md’.  Agents live in ‘agents/NAME.md’.
+‘hooks.json’ is a list of hooks.  ‘mcp.json’ uses the same ‘mcpServers’
+object as the project file.
+
+   Nil, ‘""’, and whitespace are refused: ‘plugin name is empty’.  A
+value that is not text is refused: ‘plugin name must be a string’.  A
+path, ‘~’, and the filesystem root are refused: ‘plugin name is not a
+name’.  A missing plugin is refused: ‘no plugin named ’, followed by the
+id.  A relative marketplace, including ‘~’, is refused and is not
+expanded: ‘plugin directory must be absolute’.  ‘/’ and a drive root are
+refused: ‘plugin directory is the filesystem root’.  A detached chat has
+no project copy: ‘This chat is not attached to a project’.  A second
+copy is refused: ‘plugin is already installed: ’, followed by the id.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Plugins,  Up: Top
+
+14 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -1725,7 +1764,7 @@ index, not the notes.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-14 Plan mode
+15 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -1790,7 +1829,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-15 Usage
+16 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -1814,7 +1853,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-16 Files
+17 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -1865,7 +1904,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-17 Keys
+18 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -1968,7 +2007,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-18 Trouble
+19 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -1995,7 +2034,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-19 Manual
+20 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2046,6 +2085,7 @@ Command Index
 * harmless-new:                          Sessions.             (line  6)
 * harmless-pick-model:                   Models.               (line  6)
 * harmless-plan:                         Plan mode.            (line  6)
+* harmless-plugin-install:               Plugins.              (line  6)
 * harmless-prompt-mode:                  Prompt.               (line  6)
 * harmless-prompt-send:                  Prompt.               (line  6)
 * harmless-reload-all-harmless:          Trouble.              (line  6)
@@ -2102,45 +2142,46 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction1770
-Node: Installation2501
-Node: Starting4105
-Node: Sessions4644
-Node: Transcript6141
-Node: Prompt9770
-Node: Permissions11011
-Node: Accounts18317
-Node: Models20562
-Node: Tools21658
-Node: File tools25915
-Node: Search30422
-Node: Shell32318
-Node: Questions35103
-Node: Subagents35873
-Node: Workflows40022
-Node: Worktrees45025
-Node: Messages48153
-Node: Web search49974
-Node: Fetch a page50829
-Node: X search52062
-Node: MCP54459
-Node: Computer use57163
-Node: Monitors59179
-Node: Schedules62183
-Node: Todos64649
-Node: Review67304
-Node: Language server70887
-Node: Instructions74074
-Node: Skills77182
-Node: Memory79511
-Node: Plan mode80776
-Node: Usage83740
-Node: Files84759
-Node: Keys86338
-Node: Trouble87888
-Node: Manual89142
-Node: Command Index89847
-Node: Key Index93344
+Node: Introduction1838
+Node: Installation2569
+Node: Starting4173
+Node: Sessions4712
+Node: Transcript6209
+Node: Prompt9838
+Node: Permissions11079
+Node: Accounts18385
+Node: Models20630
+Node: Tools21726
+Node: File tools25983
+Node: Search30490
+Node: Shell32386
+Node: Questions35171
+Node: Subagents35941
+Node: Workflows40090
+Node: Worktrees45093
+Node: Messages48221
+Node: Web search50042
+Node: Fetch a page50897
+Node: X search52130
+Node: MCP54527
+Node: Computer use57231
+Node: Monitors59247
+Node: Schedules62251
+Node: Todos64717
+Node: Review67372
+Node: Language server70955
+Node: Instructions74142
+Node: Skills77250
+Node: Plugins79580
+Node: Memory81623
+Node: Plan mode82889
+Node: Usage85853
+Node: Files86872
+Node: Keys88451
+Node: Trouble90001
+Node: Manual91255
+Node: Command Index91960
+Node: Key Index95530
 
 End Tag Table
 

@@ -47,6 +47,7 @@ commands, keys, and files a user needs.
 * Tools::               What the model can do to the project.
 * Instructions::        Project text sent on every turn.
 * Skills::              Task instructions the model can open.
+* Plugins::             One copy of skills, agents, hooks, and MCP.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -1891,6 +1892,49 @@ of the same name.  A skill closer to the session replaces one of the
 same name farther away.  @file{/etc/codex/skills} is included when it
 exists, at the lowest priority.  Skills that ship inside the Codex
 application, and are not files on disk, are not read.
+
+@node Plugins
+@chapter Plugins
+
+@cindex plugins
+@cindex marketplace
+@findex harmless-plugin-install
+A plugin is one directory.  It can hold skills, agents, a
+@file{hooks.json} file, and an @file{mcp.json} file.
+@kbd{M-x harmless-plugin-install} copies that directory as one unit.
+It does not merge those files into @file{.harmless/skills},
+@file{.harmless/agents}, or the project's @file{mcp.json}.
+
+The copy for a project is @file{.harmless/plugins/NAME}.  The copy
+for the user is @file{plugins/NAME} under the Harmless data
+directory.  A later plugin name wins when two installed plugins
+define the same skill, agent, or MCP server.  A project copy wins
+over a user copy.  Deleting the copied directory removes the bundle.
+
+A marketplace is a directory.  When it contains
+@file{marketplace.json}, that file is the list of plugins.
+@code{source} is a relative path inside the marketplace.  An
+absolute path, @code{~}, and a path that leaves the marketplace are
+refused.  With no @file{marketplace.json}, each child directory
+whose @file{plugin.json} name matches the directory is a plugin.
+
+@file{plugin.json} names the plugin.  The name is a plugin id, not
+a path.  Skills live in @file{skills/ID/SKILL.md}.  Agents live in
+@file{agents/NAME.md}.  @file{hooks.json} is a list of hooks.
+@file{mcp.json} uses the same @code{mcpServers} object as the
+project file.
+
+Nil, @code{""}, and whitespace are refused: @samp{plugin name is
+empty}.  A value that is not text is refused: @samp{plugin name
+must be a string}.  A path, @code{~}, and the filesystem root are
+refused: @samp{plugin name is not a name}.  A missing plugin is
+refused: @samp{no plugin named }, followed by the id.  A relative
+marketplace, including @code{~}, is refused and is not expanded:
+@samp{plugin directory must be absolute}.  @code{/} and a drive
+root are refused: @samp{plugin directory is the filesystem root}.
+A detached chat has no project copy: @samp{This chat is not
+attached to a project}.  A second copy is refused: @samp{plugin is
+already installed: }, followed by the id.
 
 @node Memory
 @chapter Memory

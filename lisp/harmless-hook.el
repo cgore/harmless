@@ -54,6 +54,8 @@
 (require 'harmless-session)
 (require 'harmless-tools)
 
+(declare-function harmless-plugin-hooks "harmless-plugin" (session))
+
 (declare-function harmless-agent-create "harmless-agent"
                   (session args callback))
 (declare-function harmless-mcp--find "harmless-mcp" (session name))
@@ -709,7 +711,10 @@ A nested call does not run hooks again."
           (condition-case err
               (setq hooks
                     (harmless-hook--select
-                     (harmless-hook-validate harmless-hooks)
+                     (harmless-hook-validate
+                      (append (and (fboundp 'harmless-plugin-hooks)
+                                   (harmless-plugin-hooks session))
+                              harmless-hooks))
                      event tool))
             (error
              (setq failed

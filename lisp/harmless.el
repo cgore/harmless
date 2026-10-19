@@ -94,6 +94,7 @@
 (require 'harmless-web)
 (require 'harmless-x)
 (require 'harmless-mcp)
+(require 'harmless-plugin)
 (require 'harmless-computer)
 (require 'harmless-monitor)
 (require 'harmless-schedule)
@@ -218,6 +219,23 @@ skill id, not a path.  A prompt that starts with /NAME loads it too."
   (unless (harmless-session-p session)
     (error "No Harmless session"))
   (harmless-skill-load session name))
+
+;;;###autoload
+(defun harmless-plugin-install (session marketplace plugin &optional scope)
+  "Install PLUGIN from MARKETPLACE into SESSION.
+MARKETPLACE is an absolute directory.  PLUGIN is a plugin id, not
+a path.  SCOPE is `project' or `user'.  Nil is `project'.  The
+install is one copy of the plugin directory.  Skills, agents,
+hooks, and MCP servers in that copy are what the session sees."
+  (interactive
+   (progn
+     (harmless-ensure-configured)
+     (list (or (harmless--context-session) (harmless-current))
+           (read-directory-name "Marketplace: ")
+           (read-string "Plugin: ")
+           (completing-read "Scope: " '("project" "user")
+                            nil t nil nil "project"))))
+  (harmless-plugin--install session marketplace plugin scope))
 
 ;;;###autoload
 (defun harmless-current ()

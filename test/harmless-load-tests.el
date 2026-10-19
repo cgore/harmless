@@ -48,7 +48,8 @@
   (should (fboundp 'harmless-path-rules-text))
   (should (boundp 'harmless-harness-prompt))
   (should (harmless-tool-by-name "skill"))
-  (should (fboundp 'harmless-load-skill)))
+  (should (fboundp 'harmless-load-skill))
+  (should (fboundp 'harmless-plugin-install)))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

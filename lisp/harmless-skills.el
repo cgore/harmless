@@ -54,6 +54,9 @@
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
 
+(declare-function harmless-plugin-skill-directories "harmless-plugin" (ancestor))
+(declare-function harmless-plugin-user-skill-directories "harmless-plugin" ())
+
 (defconst harmless-skill-vendors
   '("agents" "codex" "claude" "grok" "harmless")
   "Dot-directory names that contain a skills folder, lowest priority first.")
@@ -67,12 +70,19 @@ STOP is passed to `harmless-instruction-directories'."
   (let (roots)
     (when (file-directory-p harmless-skill-admin-root)
       (push harmless-skill-admin-root roots))
+    (when (and (null stop)
+               (fboundp 'harmless-plugin-user-skill-directories))
+      (dolist (dir (harmless-plugin-user-skill-directories))
+        (push dir roots)))
     (dolist (ancestor (harmless-instruction-directories dir stop))
       (dolist (vendor harmless-skill-vendors)
         (push (expand-file-name
                "skills"
                (expand-file-name (concat "." vendor) ancestor))
-              roots)))
+              roots))
+      (when (fboundp 'harmless-plugin-skill-directories)
+        (dolist (dir (harmless-plugin-skill-directories ancestor))
+          (push dir roots))))
     (nreverse roots)))
 
 (defun harmless-skills--find (dir seen)
