@@ -622,7 +622,8 @@
       (should (equal '("ask_user"
                        "memory_read"
                        "memory_remember"
-                       "memory_write_topic")
+                       "memory_write_topic"
+                       "spawn_agent")
                      (sort names #'string<)))
       (should-not (member "read_file" names))
       (should-not (member "run_shell" names)))

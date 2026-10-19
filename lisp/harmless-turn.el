@@ -84,6 +84,16 @@
 (declare-function harmless-compact-cancel "harmless-compact" (session))
 (declare-function harmless-compact--validate-threshold "harmless-compact" ())
 (declare-function harmless-compact-before-turn "harmless-compact" (session then))
+(declare-function harmless-agent-abort-children "harmless-agent" (session))
+(declare-function harmless-agent-note-abort "harmless-agent" (session))
+(declare-function harmless-agent-note-error "harmless-agent" (session text))
+(declare-function harmless-agent-limited-p "harmless-agent" (session))
+(declare-function harmless-agent-stop-for-limit "harmless-agent" (session))
+(declare-function harmless-agent-count-turn "harmless-agent" (session))
+(declare-function harmless-agent-context-suffix "harmless-agent" (session messages))
+(declare-function harmless-agent-refuse-call "harmless-agent" (session tool args))
+(declare-function harmless-agent-plan-refuses-p "harmless-agent" (session tool args))
+(declare-function harmless-agent-filter-tools "harmless-agent" (session tools))
 
 (cl-defstruct (harmless-turn-batch
                (:constructor harmless-turn-batch-create)
@@ -116,7 +126,8 @@
 
 (defun harmless-turn-abort (session)
   "Cancel SESSION's in-flight HTTP request, foreground shells, and tool batch.
-A background shell keeps running."
+A background shell keeps running.  A subagent that is still running
+is aborted too.  Its summary is not recorded on SESSION."
   (when (fboundp 'harmless-compact-cancel)
     (harmless-compact-cancel session))
   (let ((batch (harmless-session-tool-batch session)))
@@ -125,6 +136,10 @@ A background shell keeps running."
     (setf (harmless-session-tool-batch session) nil))
   (harmless-turn--clear-permission-prompt session)
   (harmless-session-kill-processes session)
+  (when (fboundp 'harmless-agent-abort-children)
+    (harmless-agent-abort-children session))
+  (when (fboundp 'harmless-agent-note-abort)
+    (harmless-agent-note-abort session))
   (setf (harmless-session-steers session) nil)
   (harmless-session-set-status session 'idle)
   (harmless-emit session '(:error "aborted")))
@@ -173,44 +188,65 @@ summarized before the provider sees TEXT."
 
 (defun harmless-tools-for-session (session)
   "Return the tools offered to SESSION.
-A detached chat can use global memory and ask the user a question.
-It is not offered project files, a shell, or plan mode."
-  (if (not (harmless-session-detached-p session))
-      (harmless-tools-enabled)
-    (let ((allowed '("ask_user"
-                     "memory_read"
-                     "memory_remember"
-                     "memory_write_topic")))
-      (seq-filter (lambda (tool)
-                    (member (harmless-tool-name tool) allowed))
-                  (harmless-tools-enabled)))))
+A detached chat can use global memory, ask the user a question, and
+start a subagent.  It is not offered project files, a shell, or plan
+mode.  A subagent is not offered `spawn_agent'."
+  (let ((tools
+         (if (not (harmless-session-detached-p session))
+             (harmless-tools-enabled)
+           (let ((allowed '("ask_user"
+                            "memory_read"
+                            "memory_remember"
+                            "memory_write_topic"
+                            "spawn_agent")))
+             (seq-filter (lambda (tool)
+                           (member (harmless-tool-name tool) allowed))
+                         (harmless-tools-enabled))))))
+    (if (fboundp 'harmless-agent-filter-tools)
+        (harmless-agent-filter-tools session tools)
+      tools)))
+
+(defun harmless-turn--messages (session)
+  "Return the provider messages for SESSION, including agent context."
+  (let ((messages
+         (harmless-context-append
+          (harmless-context-messages
+           (harmless-session-cwd session)
+           (harmless-session-messages session)
+           nil
+           (harmless-session-model session))
+          (when (harmless-session-plan-mode session)
+            (harmless-plan-instructions)))))
+    (if (fboundp 'harmless-agent-context-suffix)
+        (harmless-agent-context-suffix session messages)
+      messages)))
 
 (defun harmless-turn--call (session)
   "Send SESSION messages to the provider."
-  (let ((acc (harmless-turn-acc-create))
-        (harmless-current-model (harmless-session-model session))
-        (harmless-current-reasoning-effort
-         (harmless-session-effective-reasoning-effort session)))
-    (harmless-session-set-status session 'streaming)
-    (let ((proc (harmless-provider-complete
-                 (harmless-session-provider session)
-                 (harmless-context-append
-                  (harmless-context-messages
-                   (harmless-session-cwd session)
-                   (harmless-session-messages session)
-                   nil
-                   (harmless-session-model session))
-                  (when (harmless-session-plan-mode session)
-                    (harmless-plan-instructions)))
-                 (harmless-tools-for-session session)
-                 (lambda (event)
-                   (harmless-turn--on-event session acc event)))))
-      (setf (harmless-session-process session) proc)
-      proc)))
+  (if (and (fboundp 'harmless-agent-limited-p)
+           (harmless-agent-limited-p session))
+      (harmless-agent-stop-for-limit session)
+    (when (fboundp 'harmless-agent-count-turn)
+      (harmless-agent-count-turn session))
+    (let ((acc (harmless-turn-acc-create))
+          (harmless-current-model (harmless-session-model session))
+          (harmless-current-reasoning-effort
+           (harmless-session-effective-reasoning-effort session)))
+      (harmless-session-set-status session 'streaming)
+      (let ((proc (harmless-provider-complete
+                   (harmless-session-provider session)
+                   (harmless-turn--messages session)
+                   (harmless-tools-for-session session)
+                   (lambda (event)
+                     (harmless-turn--on-event session acc event)))))
+        (setf (harmless-session-process session) proc)
+        proc))))
 
 (defun harmless-turn--on-event (session acc event)
-  "Handle one canonical EVENT for SESSION, accumulating into ACC."
-  (unless (harmless-turn-acc-finished acc)
+  "Handle one canonical EVENT for SESSION, accumulating into ACC.
+Events that arrive after an abort are ignored."
+  (unless (or (harmless-turn-acc-finished acc)
+              (not (eq (harmless-session-status session) 'streaming)))
   (harmless-emit session event)
   (pcase event
     (`(:text ,s)
@@ -237,6 +273,8 @@ It is not offered project files, a shell, or plan mode."
       plist))
     (`(:error ,err)
      (setf (harmless-turn-acc-finished acc) t)
+     (when (fboundp 'harmless-agent-note-error)
+       (harmless-agent-note-error session (format "%s" (or err ""))))
      (harmless-session-set-status session 'error)
      (harmless-log "turn error: %s" err))
     (`(:stop ,reason)
@@ -267,6 +305,9 @@ It is not offered project files, a shell, or plan mode."
            (string-empty-p (string-trim (or reasoning ""))))
       (if (harmless-turn--take-steers session)
           (harmless-turn--call session)
+        (when (fboundp 'harmless-agent-note-error)
+          (harmless-agent-note-error
+           session "The model returned an empty reply."))
         (harmless-session-set-status session 'error)
         (harmless-emit session '(:error "The model returned an empty reply."))))
      (t
@@ -407,14 +448,24 @@ inside this loop, so it must not start the loop again."
        (harmless-turn--tool-message
         call (format "Error: unknown tool %s" (plist-get call :name)))))
      (t
-      (let ((class (harmless-turn--class tool session args))
-            (command (and (string= (harmless-tool-name tool) "run_shell")
-                          (harmless-tool-arg args :command))))
-        (if (harmless-shell-plan-refuses-p session command)
+      (let* ((class (harmless-turn--class tool session args))
+             (command (and (string= (harmless-tool-name tool) "run_shell")
+                           (harmless-tool-arg args :command)))
+             (agent-refusal
+              (and (fboundp 'harmless-agent-refuse-call)
+                   (harmless-agent-refuse-call session tool args)))
+             (plan-refusal
+              (and (not agent-refusal)
+                   (or (and (harmless-shell-plan-refuses-p session command)
+                            harmless-shell-plan-refusal)
+                       (and (fboundp 'harmless-agent-plan-refuses-p)
+                            (harmless-agent-plan-refuses-p
+                             session tool args))))))
+        (if (or agent-refusal plan-refusal)
             (harmless-turn--finish-call
              batch index
              (harmless-turn--tool-message
-              call harmless-shell-plan-refusal))
+              call (or agent-refusal plan-refusal)))
           (setf (harmless-turn-batch-waiting-perm batch) t)
           (harmless-perm-confirm
            session

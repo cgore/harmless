@@ -37,8 +37,9 @@
 ;;; Commentary:
 ;;
 ;; A session is the unit of concurrency.  The registry is global.  Disk is
-;; the source of truth; buffers are views.  `parent-id' is stored for a
-;; later child-session slice.
+;; the source of truth; buffers are views.  `parent-id' links a fork or a
+;; subagent to the session that started it.  `agent' is the in-memory
+;; subagent run; the saved fields are its sandbox, tool list, and prompt.
 
 ;;; Code:
 
@@ -51,6 +52,7 @@
 (require 'harmless-provider)
 
 (declare-function harmless-tools-shell-kill "harmless-tools-shell" (proc))
+(declare-function harmless-agent-settle "harmless-agent" (session))
 
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
@@ -107,7 +109,8 @@ location.  A relative path or the filesystem root is refused."
   shell-jobs
   shell-seq
   shell-cwd
-  steers)
+  steers
+  agent)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -334,10 +337,14 @@ combined with :cwd."
     session))
 
 (defun harmless-session-set-status (session status)
-  "Set SESSION status to STATUS and notify observers."
+  "Set SESSION status to STATUS and notify observers.
+When STATUS is idle or error, a subagent run settles and reports."
   (setf (harmless-session-status session) status
         (harmless-session-updated-at session) (harmless-now-iso))
-  (harmless-emit session (list :status status)))
+  (harmless-emit session (list :status status))
+  (when (and (memq status '(idle error))
+             (fboundp 'harmless-agent-settle))
+    (harmless-agent-settle session)))
 
 (defun harmless-session-append (session message)
   "Append canonical MESSAGE to SESSION and persist."
@@ -365,27 +372,65 @@ A summary is not a user turn.  The roles :user, user, and \"user\" are."
   "Append a user TEXT message to SESSION."
   (harmless-session-append session (list :role :user :content text)))
 
+(defun harmless-session--agent-summary (session)
+  "Return summary fields for SESSION's subagent limits, or nil.
+The callback and the turn counter stay in memory."
+  (let ((agent (harmless-session-agent session)))
+    (when agent
+      (list :agent-sandbox (symbol-name
+                            (or (plist-get agent :sandbox) 'workspace))
+            :agent-allow (cond
+                          ((eq (plist-get agent :allow) 'none) "none")
+                          ((listp (plist-get agent :allow))
+                           (plist-get agent :allow))
+                          (t "all"))
+            :agent-prompt (plist-get agent :prompt)))))
+
+(defun harmless-session--agent-from-summary (summary)
+  "Return the in-memory agent plist stored in SUMMARY, or nil."
+  (let ((sandbox (plist-get summary :agent-sandbox))
+        (allow (plist-get summary :agent-allow))
+        (prompt (plist-get summary :agent-prompt))
+        (source (or (plist-get summary :source) "")))
+    (when (or sandbox allow prompt (equal source "agent"))
+      (list :prompt (and (stringp prompt)
+                         (not (string-empty-p prompt))
+                         prompt)
+            :allow (cond
+                    ((equal allow "none") 'none)
+                    ((consp allow) allow)
+                    (t 'all))
+            :sandbox (if (equal sandbox "read-only") 'read-only 'workspace)
+            :callback nil
+            :turns 0
+            :max nil
+            :error nil
+            :task nil))))
+
 (defun harmless-session-summary-plist (session)
   "Return a plist suitable for summary.json."
-  (list :id (harmless-session-id session)
-        :title (harmless-session-title session)
-        :cwd (harmless-session-cwd session)
-        :provider (harmless-session-provider-name session)
-        :model (harmless-session-model session)
-        :reasoning-effort (harmless-session-reasoning-effort session)
-        :status (format "%s" (harmless-session-status session))
-        :parent-id (harmless-session-parent-id session)
-        :source (format "%s" (harmless-session-source session))
-        :permission-mode (format "%s" (harmless-session-permission-mode session))
-        :prompt-tokens (harmless-session-prompt-tokens session)
-        :completion-tokens (harmless-session-completion-tokens session)
-        :last-prompt-tokens (or (harmless-session-last-prompt-tokens session) 0)
-        :last-completion-tokens (or (harmless-session-last-completion-tokens session) 0)
-        :created-at (harmless-session-created-at session)
-        :updated-at (harmless-session-updated-at session)
-        :title-locked (and (harmless-session-title-locked session) t)
-        :plan-mode (and (harmless-session-plan-mode session) t)
-        :shell-cwd (harmless-session-shell-cwd session)))
+  (append
+   (list :id (harmless-session-id session)
+         :title (harmless-session-title session)
+         :cwd (harmless-session-cwd session)
+         :provider (harmless-session-provider-name session)
+         :model (harmless-session-model session)
+         :reasoning-effort (harmless-session-reasoning-effort session)
+         :status (format "%s" (harmless-session-status session))
+         :parent-id (harmless-session-parent-id session)
+         :source (format "%s" (harmless-session-source session))
+         :permission-mode (format "%s" (harmless-session-permission-mode session))
+         :prompt-tokens (harmless-session-prompt-tokens session)
+         :completion-tokens (harmless-session-completion-tokens session)
+         :last-prompt-tokens (or (harmless-session-last-prompt-tokens session) 0)
+         :last-completion-tokens
+         (or (harmless-session-last-completion-tokens session) 0)
+         :created-at (harmless-session-created-at session)
+         :updated-at (harmless-session-updated-at session)
+         :title-locked (and (harmless-session-title-locked session) t)
+         :plan-mode (and (harmless-session-plan-mode session) t)
+         :shell-cwd (harmless-session-shell-cwd session))
+   (harmless-session--agent-summary session)))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -492,7 +537,8 @@ Signal when that path would be /NAME or outside the sessions root."
                      :shell-cwd (let ((cwd (plist-get summary :shell-cwd)))
                                   (and (stringp cwd)
                                        (not (string-empty-p cwd))
-                                       cwd)))))
+                                       cwd))
+                     :agent (harmless-session--agent-from-summary summary))))
       (harmless-session-register session)
       session)))
 

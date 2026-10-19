@@ -198,6 +198,18 @@ directory, later entries in this list replace earlier ones:
 `/etc/codex/skills` is included when it exists, at the lowest priority.
 Codex's own bundled skills are not on disk and are not read.
 
+## Subagents
+
+`spawn_agent` starts a child session with its own transcript and waits
+for that child's last reply.  `prompt` is the task.  An optional
+`agent` name loads `NAME.md` from `.claude/agents/`, `.codex/agents/`,
+`.harmless/agents/`, `.grok/agents/`, or `.agents/agents/`, from the
+session directory up through your home directory.  A closer file wins.
+The file's frontmatter can set `tools`, `model`, and `sandbox`
+(`workspace` or `read-only`).  The body is extra instructions for the
+child.  A subagent cannot start another subagent.  Aborting the parent
+aborts a child that is still running.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

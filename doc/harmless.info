@@ -461,6 +461,7 @@ Questions::.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
+* Subagents::   A child session that reports a summary.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -595,7 +596,7 @@ A read-only command still runs.  ‘shell_kill’ still asks.  *Note Plan
 mode::.
 
 
-File: harmless.info,  Node: Questions,  Prev: Shell,  Up: Tools
+File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Shell,  Up: Tools
 
 10.4 Questions
 ==============
@@ -613,6 +614,87 @@ cancelled the question.’
 
    The tool does not ask for permission first.  A detached chat can use
 it.  Plan mode can use it.
+
+
+File: harmless.info,  Node: Subagents,  Prev: Questions,  Up: Tools
+
+10.5 Subagents
+==============
+
+‘spawn_agent’ starts a child session and waits for its last reply.  The
+child has its own transcript.  It does not see the parent's messages.
+‘prompt’ is the task.  Nil, ‘""’, and whitespace are refused: ‘prompt is
+empty’.  ‘description’ is an optional one-line title.  A value such as
+‘/’ or ‘sub/’ is a title, not a path.
+
+   ‘agent’ is an optional definition name.  It is not a path.  ‘""’  is
+refused: ‘agent name is empty’.  ‘sub/’, ‘/’, and ‘c:/’ are refused:
+‘agent name is not a name’.  A name with no definition is refused: ‘no
+agent named ’, followed by that name.  ‘sub’ is a name.  With no file it
+is ‘no agent named sub’.
+
+   Harmless reads ‘NAME.md’ from these directories, at every level from
+your home directory down to the session, skipping the filesystem root.
+A definition closer to the session replaces one of the same name farther
+away.  In one directory, later entries in this list replace earlier
+ones:
+
+  1. ‘.agents/agents/’
+
+  2. ‘.codex/agents/’
+
+  3. ‘.claude/agents/’
+
+  4. ‘.grok/agents/’
+
+  5. ‘.harmless/agents/’
+
+   A trailing slash is the same directory.  The file may start with
+frontmatter:
+
+     ---
+     name: reviewer
+     description: Reviews code
+     tools: read_file, grep
+     model: grok-4.6
+     sandbox: read-only
+     ---
+     Report findings.  Do not edit files.
+
+   ‘tools’ limits the child.  An unknown tool name is refused.
+‘spawn_agent’ cannot be one of them.  ‘model’ replaces the parent's
+model.  ‘inherit’ keeps it.  ‘sandbox’ is ‘workspace’ or ‘read-only’.
+Anything else is refused: ‘sandbox must be workspace or read-only’.  The
+body is extra instructions for that child.  Each turn lists the
+available agents for the parent.  A subagent does not receive that list.
+
+   A read-only child may read files and run a shell command that cannot
+write.  A tool that can write is refused before the permission question:
+‘This subagent is read-only. A tool that can write is refused’.  A blank
+shell command is not that refusal.  A workspace child uses the parent's
+permission mode.
+
+   In plan mode, a subagent that can write is refused before the
+permission question, including when the mode is ‘always-approve’: ‘Plan
+mode is on. A subagent that can write is refused’.  A read-only subagent
+still runs.
+
+   The child cannot start another subagent: ‘a subagent cannot start
+another subagent’.  A tool outside its list is refused: ‘this subagent
+cannot use ’, followed by the tool name.
+
+   ‘harmless-agent-max-turns’ (8) is how many provider calls the child
+may make.  The next call stops it: ‘subagent stopped after ’, the
+number, and ‘ turns’.  The value must be a positive integer.
+
+   Aborting the parent aborts a child that is still running.  The parent
+does not record a summary for that call.  Aborting only the child
+returns ‘subagent aborted’.  An empty child reply is ‘The model returned
+an empty reply.’
+
+   The child's sandbox, tool list, and extra prompt are saved with the
+session.  The running callback is not.  A detached chat can start a
+child with no definition.  A named definition needs a project directory.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -949,8 +1031,9 @@ File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
 prompt, cancels the HTTP request or a foreground shell command.  A
-background shell keeps running.  The session returns to idle and the
-transcript records ‘aborted’.
+background shell keeps running.  A subagent that is still running is
+aborted too, and its summary is not added to the transcript.  The
+session returns to idle and the transcript records ‘aborted’.
 
    An empty reply from the model is an error: ‘The model returned an
 empty reply.’
@@ -1071,21 +1154,22 @@ Node: Permissions11011
 Node: Accounts12660
 Node: Models14905
 Node: Tools16001
-Node: File tools17196
-Node: Search18430
-Node: Shell20071
-Node: Questions22856
-Node: Instructions23608
-Node: Skills25354
-Node: Memory26503
-Node: Plan mode27768
-Node: Usage29451
-Node: Files30470
-Node: Keys31703
-Node: Trouble32926
-Node: Manual33942
-Node: Command Index34647
-Node: Key Index37414
+Node: File tools17252
+Node: Search18486
+Node: Shell20127
+Node: Questions22912
+Node: Subagents23682
+Node: Instructions27028
+Node: Skills28774
+Node: Memory29923
+Node: Plan mode31188
+Node: Usage32871
+Node: Files33890
+Node: Keys35123
+Node: Trouble36346
+Node: Manual37460
+Node: Command Index38165
+Node: Key Index40932
 
 End Tag Table
 

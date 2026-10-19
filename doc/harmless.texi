@@ -520,6 +520,7 @@ A detached chat is offered @code{memory_read},
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
+* Subagents::   A child session that reports a summary.
 @end menu
 
 @node File tools
@@ -676,6 +677,101 @@ choice are refused.  A choice is text.  A value such as @code{/} or
 
 The tool does not ask for permission first.  A detached chat can use
 it.  Plan mode can use it.
+
+@node Subagents
+@section Subagents
+
+@cindex subagent
+@cindex spawn_agent
+@vindex harmless-agent-max-turns
+@code{spawn_agent} starts a child session and waits for its last
+reply.  The child has its own transcript.  It does not see the
+parent's messages.  @code{prompt} is the task.  Nil, @code{""}, and
+whitespace are refused: @samp{prompt is empty}.  @code{description}
+is an optional one-line title.  A value such as @code{/} or
+@code{sub/} is a title, not a path.
+
+@code{agent} is an optional definition name.  It is not a path.
+@code{""} is refused: @samp{agent name is empty}.  @code{sub/},
+@code{/}, and @code{c:/} are refused: @samp{agent name is not a
+name}.  A name with no definition is refused: @samp{no agent named },
+followed by that name.  @code{sub} is a name.  With no file it is
+@samp{no agent named sub}.
+
+Harmless reads @file{NAME.md} from these directories, at every level
+from your home directory down to the session, skipping the filesystem
+root.  A definition closer to the session replaces one of the same
+name farther away.  In one directory, later entries in this list
+replace earlier ones:
+
+@enumerate
+@item
+@file{.agents/agents/}
+
+@item
+@file{.codex/agents/}
+
+@item
+@file{.claude/agents/}
+
+@item
+@file{.grok/agents/}
+
+@item
+@file{.harmless/agents/}
+@end enumerate
+
+A trailing slash is the same directory.  The file may start with
+frontmatter:
+
+@example
+---
+name: reviewer
+description: Reviews code
+tools: read_file, grep
+model: grok-4.6
+sandbox: read-only
+---
+Report findings.  Do not edit files.
+@end example
+
+@code{tools} limits the child.  An unknown tool name is refused.
+@code{spawn_agent} cannot be one of them.  @code{model} replaces the
+parent's model.  @code{inherit} keeps it.  @code{sandbox} is
+@code{workspace} or @code{read-only}.  Anything else is refused:
+@samp{sandbox must be workspace or read-only}.  The body is extra
+instructions for that child.  Each turn lists the available agents
+for the parent.  A subagent does not receive that list.
+
+A read-only child may read files and run a shell command that cannot
+write.  A tool that can write is refused before the permission
+question: @samp{This subagent is read-only. A tool that can write is
+refused}.  A blank shell command is not that refusal.  A workspace
+child uses the parent's permission mode.
+
+In plan mode, a subagent that can write is refused before the
+permission question, including when the mode is @code{always-approve}:
+@samp{Plan mode is on. A subagent that can write is refused}.  A
+read-only subagent still runs.
+
+The child cannot start another subagent: @samp{a subagent cannot
+start another subagent}.  A tool outside its list is refused:
+@samp{this subagent cannot use }, followed by the tool name.
+
+@code{harmless-agent-max-turns} (8) is how many provider calls the
+child may make.  The next call stops it: @samp{subagent stopped after
+}, the number, and @samp{ turns}.  The value must be a positive
+integer.
+
+Aborting the parent aborts a child that is still running.  The parent
+does not record a summary for that call.  Aborting only the child
+returns @samp{subagent aborted}.  An empty child reply is @samp{The
+model returned an empty reply.}
+
+The child's sandbox, tool list, and extra prompt are saved with the
+session.  The running callback is not.  A detached chat can start a
+child with no definition.  A named definition needs a project
+directory.
 
 @node Instructions
 @chapter Instructions
@@ -1043,8 +1139,9 @@ This manual.
 @cindex log
 @kbd{M-x harmless-abort}, or @kbd{a} in the transcript, or @kbd{C-c C-a}
 in the prompt, cancels the HTTP request or a foreground shell command.
-A background shell keeps running.  The session returns to idle and the
-transcript records @samp{aborted}.
+A background shell keeps running.  A subagent that is still running is
+aborted too, and its summary is not added to the transcript.  The
+session returns to idle and the transcript records @samp{aborted}.
 
 An empty reply from the model is an error: @samp{The model returned an
 empty reply.}
