@@ -54,6 +54,10 @@
   (should (fboundp 'harmless-rename))
   (should (fboundp 'harmless-delete-session))
   (should (fboundp 'harmless-export-session))
+  (should (fboundp 'harmless-task-start))
+  (should (fboundp 'harmless-task-status))
+  (should (fboundp 'harmless-headless-batch))
+  (should (fboundp 'harmless-headless-work))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

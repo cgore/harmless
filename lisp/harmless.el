@@ -57,6 +57,7 @@
 ;;   M-x harmless-dashboard    ; all sessions
 ;;   M-x harmless-menu         ; transient
 ;;   M-x harmless-info         ; this manual
+;;   M-x harmless-task-start   ; one prompt in another Emacs
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -111,6 +112,7 @@
 (require 'harmless-fork)
 (require 'harmless-dashboard)
 (require 'harmless-transient)
+(require 'harmless-headless)
 
 (defvar harmless--config-loaded nil
   "Non-nil after the Harmless config file has been loaded.")
@@ -301,6 +303,61 @@ A relative path stays inside the project."
 (define-key harmless-session-mode-map (kbd "t") #'harmless-rename)
 (define-key harmless-session-mode-map (kbd "x") #'harmless-export-session)
 (define-key harmless-session-mode-map (kbd "X") #'harmless-delete-session)
+
+;;;###autoload
+(defun harmless-task-start (directory prompt)
+  "Start PROMPT in DIRECTORY in another Emacs and return the task id.
+That process keeps running after this Emacs exits.  The task file
+is under `harmless-directory'.  This command does not wait for
+the reply and does not open a window for the worker."
+  (interactive
+   (progn
+     (harmless-ensure-configured)
+     (list (read-directory-name "Project: " nil nil t)
+           (read-string "Prompt: "))))
+  (harmless-ensure-configured)
+  (harmless-headless-start directory prompt))
+
+;;;###autoload
+(defun harmless-task-status (id)
+  "Show the stored status of task ID and return the task plist."
+  (interactive (list (read-string "Task id: ")))
+  (let ((task (harmless-headless-status id)))
+    (message "Harmless task %s: %s"
+             (plist-get task :id)
+             (plist-get task :status))
+    task))
+
+(defun harmless-headless-batch ()
+  "Run one prompt from the remaining arguments and exit.
+The next two arguments are the project directory and the prompt.
+A leading \"--\" is skipped.  The reply is printed.  This quits
+Emacs."
+  (harmless-ensure-configured)
+  (condition-case err
+      (let ((directory (harmless-headless--pop-arg))
+            (prompt (harmless-headless--pop-arg)))
+        (princ (harmless-headless-run directory prompt))
+        (princ "\n")
+        (kill-emacs 0))
+    (error
+     (princ (error-message-string err))
+     (princ "\n")
+     (kill-emacs 1))))
+
+(defun harmless-headless-work ()
+  "Finish the task id in the remaining arguments and exit.
+A leading \"--\" is skipped.  This is the entry the detached
+Emacs runs.  This quits Emacs."
+  (harmless-ensure-configured)
+  (condition-case err
+      (progn
+        (harmless-headless-finish (harmless-headless--pop-arg))
+        (kill-emacs 0))
+    (error
+     (princ (error-message-string err))
+     (princ "\n")
+     (kill-emacs 1))))
 
 ;;;###autoload
 (defun harmless-current ()

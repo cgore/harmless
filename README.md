@@ -142,6 +142,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-rename` | Set the session title. The id stays (`t` in the transcript) |
 | `M-x harmless-export-session` | Write the transcript as Markdown (`x` in the transcript) |
 | `M-x harmless-delete-session` | Delete the session from disk (`X` in the transcript) |
+| `M-x harmless-task-start` | Run one prompt in another Emacs that keeps going after this one exits |
+| `M-x harmless-task-status` | Read that task's status |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -276,6 +278,17 @@ against the session directory, not the buffer's default directory.
 The bytes come from `harmless-image-generate-function`.  When that
 function is unset, the tool refuses.  Plan mode does not generate.
 A detached chat has no project to write into.
+
+## Headless
+
+`M-x harmless-task-start` writes a task file and starts another
+Emacs to run one prompt.  That process keeps running after this
+Emacs exits.  `M-x harmless-task-status` reads the task.  The file
+is `tasks/<id>.json` under `harmless-directory`.
+
+`emacs --batch -l harmless -f harmless-headless-batch` runs one
+prompt in the current process and prints the reply.  The next two
+arguments are the project directory and the prompt.
 
 ## Subagents
 

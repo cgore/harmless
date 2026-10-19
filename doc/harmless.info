@@ -41,6 +41,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Plugins::             One copy of skills, agents, hooks, and MCP.
 * Output styles::       Role, tone, and format for one session.
 * Image generation::    Write a generated image into the project.
+* Headless::            One prompt, and a task that outlives Emacs.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -1797,7 +1798,7 @@ harness prompt stays first.  The style comes next.  Project
 instructions, path-scoped rules, and plan mode win when they disagree.
 
 
-File: harmless.info,  Node: Image generation,  Next: Memory,  Prev: Output styles,  Up: Top
+File: harmless.info,  Node: Image generation,  Next: Headless,  Prev: Output styles,  Up: Top
 
 15 Image generation
 *******************
@@ -1834,9 +1835,65 @@ successful call reports the absolute path and the number of bytes
 written.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Image generation,  Up: Top
+File: harmless.info,  Node: Headless,  Next: Memory,  Prev: Image generation,  Up: Top
 
-16 Memory
+16 Headless
+***********
+
+A headless run sends one prompt and saves the session.  It does not open
+a window.  A task starts another Emacs on this machine to run that
+prompt.  Closing the Emacs that started the task does not stop the other
+process.  The task file is what a later Emacs reads.
+
+‘M-x harmless-task-start’
+     Ask for a project directory and a prompt.  Write a task file under
+     ‘harmless-directory’ and start the other Emacs.  The command
+     returns the task id.  It does not wait for the reply.
+
+‘M-x harmless-task-status’
+     Read that task file.  The status is ‘running’, ‘done’, or ‘error’.
+
+‘emacs --batch -l harmless -f harmless-headless-batch’
+     Run one prompt in this process and print the reply.  The next two
+     arguments are the project directory and the prompt.  This exits
+     Emacs.
+
+‘emacs --batch -l harmless -f harmless-headless-work’
+     Finish the task id given as the next argument.  This is the entry
+     the other Emacs runs.  This exits Emacs.
+
+   Nil, ‘""’, and whitespace are refused: ‘headless prompt is empty’.  A
+prompt that is not text is refused: ‘headless prompt must be a string’.
+
+   Nil, ‘""’, and whitespace are refused: ‘headless directory is empty’.
+A directory that is not text is refused: ‘headless directory must be a
+string’.  A relative path, including ‘~’, is refused and is not
+expanded: ‘headless directory must be absolute’.  ‘/’ and a drive root
+are refused: ‘headless directory is the filesystem root’.  A path that
+is not there is refused: ‘headless directory is missing’.  A file is
+refused: ‘headless directory is not a directory’.  A trailing slash is
+the same directory.
+
+   Nil, ‘""’, and whitespace are refused: ‘headless task is empty’.  A
+task id that is not text is refused: ‘headless task must be a string’.
+A path is refused: ‘headless task is not a name’.  An unknown id is
+refused: ‘headless task is missing’.  A task that is not running is
+refused: ‘headless task is not running’.  A broken task file is refused:
+‘headless task is not valid’.
+
+   A task file is refused at the filesystem root: ‘Refusing to store a
+headless task at ’, followed by that directory.  A turn that does not
+finish with a reply is refused: ‘headless turn failed’.  The task file
+then says ‘error’ and keeps that text.
+
+   A finished task stores the reply and the session id.  The transcript
+is the session file a window would have saved.  In batch Emacs, a tool
+that would ask is denied.  The turn still ends.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Headless,  Up: Top
+
+17 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -1904,7 +1961,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-17 Plan mode
+18 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -1969,7 +2026,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-18 Usage
+19 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -1993,7 +2050,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-19 Files
+20 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2025,6 +2082,9 @@ replaced with ‘/’.
 ‘sessions/_detached/ID/’
      A chat with no project.
 
+‘tasks/ID.json’
+     One headless task.  *Note Headless::.
+
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
 
@@ -2044,7 +2104,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-20 Keys
+21 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2156,7 +2216,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-21 Trouble
+22 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2183,7 +2243,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-22 Manual
+23 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2224,6 +2284,8 @@ Command Index
 * harmless-edit-prompt:                  Transcript.           (line 79)
 * harmless-export-session:               Sessions.             (line 31)
 * harmless-fork:                         Transcript.           (line 88)
+* harmless-headless-batch:               Headless.             (line  6)
+* harmless-headless-work:                Headless.             (line  6)
 * harmless-info:                         Manual.               (line  6)
 * harmless-load-skill:                   Skills.               (line  6)
 * harmless-login:                        Accounts.             (line  6)
@@ -2253,6 +2315,8 @@ Command Index
 * harmless-setup:                        Installation.         (line  6)
 * harmless-steer:                        Prompt.               (line  6)
 * harmless-switch:                       Sessions.             (line  6)
+* harmless-task-start:                   Headless.             (line  6)
+* harmless-task-status:                  Headless.             (line  6)
 * harmless-usage:                        Usage.                (line  6)
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
@@ -2299,48 +2363,49 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction1968
-Node: Installation2699
-Node: Starting4303
-Node: Sessions4842
-Node: Transcript8023
-Node: Prompt11784
-Node: Permissions13025
-Node: Accounts20331
-Node: Models22576
-Node: Tools23672
-Node: File tools28020
-Node: Search32527
-Node: Shell34423
-Node: Questions37208
-Node: Subagents37978
-Node: Workflows42127
-Node: Worktrees47130
-Node: Messages50258
-Node: Web search52079
-Node: Fetch a page52934
-Node: X search54167
-Node: MCP56564
-Node: Computer use59268
-Node: Monitors61284
-Node: Schedules64288
-Node: Todos66754
-Node: Review69409
-Node: Language server72992
-Node: Instructions76179
-Node: Skills79287
-Node: Plugins81617
-Node: Output styles83667
-Node: Image generation85678
-Node: Memory87518
-Node: Plan mode90120
-Node: Usage93106
-Node: Files94125
-Node: Keys95704
-Node: Trouble97386
-Node: Manual98640
-Node: Command Index99345
-Node: Key Index103280
+Node: Introduction2036
+Node: Installation2767
+Node: Starting4371
+Node: Sessions4910
+Node: Transcript8091
+Node: Prompt11852
+Node: Permissions13093
+Node: Accounts20399
+Node: Models22644
+Node: Tools23740
+Node: File tools28088
+Node: Search32595
+Node: Shell34491
+Node: Questions37276
+Node: Subagents38046
+Node: Workflows42195
+Node: Worktrees47198
+Node: Messages50326
+Node: Web search52147
+Node: Fetch a page53002
+Node: X search54235
+Node: MCP56632
+Node: Computer use59336
+Node: Monitors61352
+Node: Schedules64356
+Node: Todos66822
+Node: Review69477
+Node: Language server73060
+Node: Instructions76247
+Node: Skills79355
+Node: Plugins81685
+Node: Output styles83735
+Node: Image generation85746
+Node: Headless87588
+Node: Memory90277
+Node: Plan mode92871
+Node: Usage95857
+Node: Files96876
+Node: Keys98519
+Node: Trouble100201
+Node: Manual101455
+Node: Command Index102160
+Node: Key Index106387
 
 End Tag Table
 

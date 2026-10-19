@@ -50,6 +50,7 @@ commands, keys, and files a user needs.
 * Plugins::             One copy of skills, agents, hooks, and MCP.
 * Output styles::       Role, tone, and format for one session.
 * Image generation::    Write a generated image into the project.
+* Headless::            One prompt, and a task that outlives Emacs.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -2066,6 +2067,70 @@ The tool is an edit.  A detached chat is not offered it.  A
 successful call reports the absolute path and the number of bytes
 written.
 
+@node Headless
+@chapter Headless
+
+@cindex headless
+@findex harmless-task-start
+@findex harmless-task-status
+@findex harmless-headless-batch
+@findex harmless-headless-work
+A headless run sends one prompt and saves the session.  It does not
+open a window.  A task starts another Emacs on this machine to run
+that prompt.  Closing the Emacs that started the task does not stop
+the other process.  The task file is what a later Emacs reads.
+
+@table @kbd
+@item M-x harmless-task-start
+Ask for a project directory and a prompt.  Write a task file under
+@code{harmless-directory} and start the other Emacs.  The command
+returns the task id.  It does not wait for the reply.
+
+@item M-x harmless-task-status
+Read that task file.  The status is @code{running}, @code{done}, or
+@code{error}.
+
+@item emacs --batch -l harmless -f harmless-headless-batch
+Run one prompt in this process and print the reply.  The next two
+arguments are the project directory and the prompt.  This exits
+Emacs.
+
+@item emacs --batch -l harmless -f harmless-headless-work
+Finish the task id given as the next argument.  This is the entry
+the other Emacs runs.  This exits Emacs.
+@end table
+
+Nil, @code{""}, and whitespace are refused: @samp{headless prompt is
+empty}.  A prompt that is not text is refused: @samp{headless prompt
+must be a string}.
+
+Nil, @code{""}, and whitespace are refused: @samp{headless directory
+is empty}.  A directory that is not text is refused: @samp{headless
+directory must be a string}.  A relative path, including @code{~},
+is refused and is not expanded: @samp{headless directory must be
+absolute}.  @code{/} and a drive root are refused: @samp{headless
+directory is the filesystem root}.  A path that is not there is
+refused: @samp{headless directory is missing}.  A file is refused:
+@samp{headless directory is not a directory}.  A trailing slash is
+the same directory.
+
+Nil, @code{""}, and whitespace are refused: @samp{headless task is
+empty}.  A task id that is not text is refused: @samp{headless task
+must be a string}.  A path is refused: @samp{headless task is not a
+name}.  An unknown id is refused: @samp{headless task is missing}.
+A task that is not running is refused: @samp{headless task is not
+running}.  A broken task file is refused: @samp{headless task is not
+valid}.
+
+A task file is refused at the filesystem root: @samp{Refusing to
+store a headless task at }, followed by that directory.  A turn that
+does not finish with a reply is refused: @samp{headless turn
+failed}.  The task file then says @code{error} and keeps that text.
+
+A finished task stores the reply and the session id.  The transcript
+is the session file a window would have saved.  In batch Emacs, a
+tool that would ask is denied.  The turn still ends.
+
 @node Memory
 @chapter Memory
 
@@ -2281,6 +2346,9 @@ The plan, when plan mode has written one.
 
 @item sessions/_detached/@var{id}/
 A chat with no project.
+
+@item tasks/@var{id}.json
+One headless task.  @xref{Headless}.
 
 @item worktrees/@var{repository}/@var{name}/
 An isolated checkout of that repository.  @xref{Worktrees}.
