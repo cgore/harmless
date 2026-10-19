@@ -2213,6 +2213,10 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-room-say
 @findex harmless-team-room-history
 @findex harmless-team-room-wait
+@findex harmless-team-pace
+@findex harmless-team-pace-add
+@findex harmless-team-pace-show
+@findex harmless-team-pace-step
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2320,6 +2324,25 @@ be a string}.  Any other topic is refused: @samp{team room
 topic is not a name}.  A speaker uses the empty and
 must-be-a-string sentences, with @code{speaker} in place of
 @code{topic}.  The text uses them too, with @code{text}.
+
+@kbd{M-x harmless-team-pace} starts a named sequence aimed at
+one seat.  The seat is @code{pod.member} or the address.
+@kbd{M-x harmless-team-pace-add} appends one piece.
+@kbd{M-x harmless-team-pace-show} reads the sequence and does
+not send.  @kbd{M-x harmless-team-pace-step} sends the next
+piece to that seat, then moves forward.  One call sends one
+piece.  There is no command that sends the rest at once.  A
+seat at a prompt or a permission question refuses the step,
+and the sequence stays on that piece.  A finished sequence is
+refused: @samp{team pace is finished}.
+
+A blank pace name is refused: @samp{team pace is empty}.  A
+name that is not text is refused: @samp{team pace must be a
+string}.  Any other name is refused: @samp{team pace is not a
+name}.  Piece text uses the empty and must-be-a-string
+sentences, with @code{text} in place of @code{pace}.  The same
+name again is refused: @samp{team pace already exists}.  A
+missing pace is refused: @samp{team pace is missing}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2598,7 +2621,8 @@ One headless task.  @xref{Headless}.
 @item teams/@var{rig}.json
 One rig: its pods, its seats, its edges, the session occupying
 each seat, the work each seat still holds, the text sent to
-each seat, and the rig's chatroom.
+each seat, the rig's chatroom, and a pace that walks context
+into a seat.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

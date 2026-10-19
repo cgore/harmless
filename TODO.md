@@ -47,7 +47,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] Adopt a session that is already running, including one started by hand. Release it without killing it. A seat can be a Harmless session, a Claude Code session, a Codex session, a Pi session, or a plain terminal for a dev server or a log.
 - [x] Send to a seat, several seats, a pod, or the whole rig. Check that the text appeared. Refuse to type into a seat that is sitting on a prompt or a permission question. Capture what is on a seat's screen, and read what it has said across every session that has occupied it.
 - [x] A durable chatroom for the rig, with history, topics, and a wait that blocks until someone speaks.
-- [ ] Walk a paced sequence of context into a seat, one piece at a time, so onboarding is not one dump.
+- [x] Walk a paced sequence of context into a seat, one piece at a time, so onboarding is not one dump.
 - [ ] A queue row: one unit of owned work, with a destination seat, a body, a state, and an append-only history. It survives the owner's turn ending, the owner compacting, and the owner being replaced.
 - [ ] Claim a row, append notes, and close it only with a reason: `handed_off_to`, `blocked_on`, `denied`, `canceled`, `no-follow-on`, or `escalation`. Closing records delivery. Acceptance is the next seat's own verdict.
 - [ ] Hand work to another seat in one transaction: the source row closes and the destination row opens together.

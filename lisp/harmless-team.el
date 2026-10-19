@@ -46,6 +46,7 @@
 ;; and does not stop the session.  Send appends text to a seat's
 ;; screen and keeps a transcript across occupants.  The rig has
 ;; a chatroom: history, topics, and a wait for the next line.
+;; A pace walks context into one seat, one piece at a time.
 ;; This file does not register another machine.
 
 ;;; Code:
@@ -336,6 +337,36 @@ Nil means the rig has no room yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--paces-ok-p (rig)
+  "Return non-nil if RIG's paces are readable.
+Nil means the rig has no pace yet."
+  (let ((items (plist-get rig :paces)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (seen nil))
+        (while (and ok (consp items))
+          (let* ((item (car items))
+                 (pieces (and (harmless-plist-p item)
+                              (plist-get item :pieces)))
+                 (cursor (and (harmless-plist-p item)
+                              (plist-get item :cursor))))
+            (if (and (harmless-plist-p item)
+                     (harmless-team--member-name-p
+                      (plist-get item :name))
+                     (not (harmless-team--seen-p
+                           (plist-get item :name) seen))
+                     (stringp (plist-get item :seat))
+                     (not (string-empty-p (plist-get item :seat)))
+                     (harmless-team--string-list-p pieces)
+                     (integerp cursor)
+                     (>= cursor 0)
+                     (<= cursor (length pieces)))
+                (setq seen (cons (plist-get item :name) seen)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -351,7 +382,8 @@ Nil means the rig has no room yet."
          (and ok (null pods)))
        (harmless-team--edges-ok-p rig)
        (harmless-team--transcript-ok-p rig)
-       (harmless-team--room-ok-p rig)))
+       (harmless-team--room-ok-p rig)
+       (harmless-team--paces-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -1812,6 +1844,146 @@ nobody speaks within `harmless-team-room-wait-seconds'."
   (let ((line (harmless-team--room-wait rig topic)))
     (message "Heard %s" (plist-get line :topic))
     line))
+
+(defun harmless-team--pace-name (name)
+  "Return NAME trimmed, or signal."
+  (harmless-team--token
+   name "team pace is empty" "team pace must be a string"
+   #'harmless-team--member-name-p "team pace is not a name"))
+
+(defun harmless-team--pace-text (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team pace text is empty"))
+   ((not (stringp text))
+    (error "team pace text must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team pace text is empty")
+    text))
+
+(defun harmless-team--public-pace (item)
+  "Return one pace ITEM with keys in a fixed order."
+  (let ((pieces (plist-get item :pieces))
+        (cursor (plist-get item :cursor)))
+    (list :name (plist-get item :name)
+          :seat (plist-get item :seat)
+          :pieces pieces
+          :cursor cursor
+          :left (nthcdr cursor pieces))))
+
+(defun harmless-team--pace-open (rig name seat)
+  "Create an empty pace NAME aimed at SEAT in RIG."
+  (setq rig (harmless-team--rig-name rig))
+  (setq name (harmless-team--pace-name name))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (address (harmless-team--endpoint stored seat)))
+    (when (harmless-team--find-named (plist-get stored :paces) name)
+      (error "team pace already exists"))
+    (let ((pace (list :name name :seat address
+                      :pieces nil :cursor 0)))
+      (plist-put stored :paces
+                 (append (plist-get stored :paces) (list pace)))
+      (harmless-team--write (car loaded) stored)
+      (harmless-team--public-pace pace))))
+
+(defun harmless-team--pace-add (rig name text)
+  "Append TEXT to pace NAME in RIG."
+  (setq rig (harmless-team--rig-name rig))
+  (setq name (harmless-team--pace-name name))
+  (setq text (harmless-team--pace-text text))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (pace (harmless-team--find-named
+                (plist-get stored :paces) name)))
+    (unless pace
+      (error "team pace is missing"))
+    (plist-put pace :pieces
+               (append (plist-get pace :pieces) (list text)))
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-pace pace)))
+
+(defun harmless-team--pace-show (rig name)
+  "Return pace NAME in RIG without sending."
+  (setq rig (harmless-team--rig-name rig))
+  (setq name (harmless-team--pace-name name))
+  (let ((pace (harmless-team--find-named
+               (plist-get (cdr (harmless-team--load rig)) :paces)
+               name)))
+    (unless pace
+      (error "team pace is missing"))
+    (harmless-team--public-pace pace)))
+
+(defun harmless-team--pace-step (rig name)
+  "Send the next piece of pace NAME and return the pace.
+A refusal leaves the pace where it was."
+  (setq rig (harmless-team--rig-name rig))
+  (setq name (harmless-team--pace-name name))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (pace (harmless-team--find-named
+                (plist-get stored :paces) name)))
+    (unless pace
+      (error "team pace is missing"))
+    (let ((cursor (plist-get pace :cursor))
+          (pieces (plist-get pace :pieces)))
+      (when (>= cursor (length pieces))
+        (error "team pace is finished"))
+      (harmless-team--send rig (plist-get pace :seat)
+                           (nth cursor pieces))
+      (let* ((again (harmless-team--load rig))
+             (fresh (harmless-team--find-named
+                     (plist-get (cdr again) :paces) name)))
+        (unless fresh
+          (error "team pace is missing"))
+        (plist-put fresh :cursor (1+ (plist-get fresh :cursor)))
+        (harmless-team--write (car again) (cdr again))
+        (harmless-team--public-pace fresh)))))
+
+;;;###autoload
+(defun harmless-team-pace (rig name seat)
+  "Start pace NAME in RIG, aimed at SEAT.
+The pace has no pieces yet.  Return it."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pace: ")
+         (read-string "Seat: ")))
+  (let ((pace (harmless-team--pace-open rig name seat)))
+    (message "Paced %s" (plist-get pace :name))
+    pace))
+
+;;;###autoload
+(defun harmless-team-pace-add (rig name text)
+  "Append TEXT as the next piece of pace NAME in RIG.
+Return the pace."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pace: ")
+         (read-string "Text: ")))
+  (let ((pace (harmless-team--pace-add rig name text)))
+    (message "Added to %s" (plist-get pace :name))
+    pace))
+
+;;;###autoload
+(defun harmless-team-pace-show (rig name)
+  "Return pace NAME in RIG without sending a piece."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pace: ")))
+  (harmless-team--pace-show rig name))
+
+;;;###autoload
+(defun harmless-team-pace-step (rig name)
+  "Send the next piece of pace NAME in RIG to its seat.
+One call sends one piece.  Return the pace."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pace: ")))
+  (let ((pace (harmless-team--pace-step rig name)))
+    (message "Stepped %s" (plist-get pace :name))
+    pace))
 
 (provide 'harmless-team)
 

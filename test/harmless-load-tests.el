@@ -78,6 +78,10 @@
   (should (fboundp 'harmless-team-room-say))
   (should (fboundp 'harmless-team-room-history))
   (should (fboundp 'harmless-team-room-wait))
+  (should (fboundp 'harmless-team-pace))
+  (should (fboundp 'harmless-team-pace-add))
+  (should (fboundp 'harmless-team-pace-show))
+  (should (fboundp 'harmless-team-pace-step))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

@@ -1929,3 +1929,266 @@
       (should (equal roots (harmless-team-test-roots)))
       (should (equal session-roots
                      (harmless-team-test-session-roots))))))
+
+(ert-deftest harmless-team-pace-walks-one-piece-at-a-time ()
+  (let* ((base (make-temp-file "harmless-team-pace-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (logf (expand-file-name "server.log" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop"))))
+    (make-directory elsewhere t)
+    (harmless-team-test-write logf "ready\n")
+    (cl-letf (((symbol-function 'start-process)
+               (lambda (&rest _) (error "team pace started a process")))
+              ((symbol-function 'make-process)
+               (lambda (&rest _) (error "team pace started a process")))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (error "team pace started a process")))
+              ((symbol-function 'delete-process)
+               (lambda (&rest _) (error "team pace killed a process")))
+              ((symbol-function 'signal-process)
+               (lambda (&rest _) (error "team pace killed a process")))
+              ((symbol-function 'w32-shell-execute)
+               (lambda (&rest _) (error "team pace started a process")))
+              ((symbol-function 'harmless-turn-run)
+               (lambda (&rest _) (error "team pace started a turn"))))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" bad "qa.note")))
+                       "team pace is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-pace "workshop" 42 "qa.note")))
+                     "team pace must be a string"))
+      (dolist (bad (list "/" "c:/" "notes/" "sub/" ".." "c:" "\\"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" bad "qa.note")))
+                       "team pace is not a name")))
+      (dolist (bad (list nil "" "   " "\n"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace-add
+                           "workshop" "onboard" bad)))
+                       "team pace text is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-pace-add "workshop" "onboard" 42)))
+                     "team pace text must be a string"))
+      (let ((harmless-directory "/"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace "workshop" nil "qa.note")))
+                       "team pace is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" "onboard" "qa.note")))
+                       "Refusing to store a team at /")))
+      (let ((harmless-directory "c:"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" "onboard" "qa.note")))
+                       "Refusing to store a team at c:")))
+      (let ((harmless-directory " c:/ "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" "onboard" "qa.note")))
+                       "Refusing to store a team at c:/")))
+      (let ((harmless-directory "notes"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" "onboard" "qa.note")))
+                       "Harmless data directory must be absolute, not \"notes\"")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-pace
+                         "workshop" "onboard" "qa.note")))
+                     "team rig is missing"))
+      (should-not (file-directory-p teams))
+      (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+      (should-not (file-exists-p (expand-file-name "notes" base)))
+      (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+      (harmless-team-add-seat "workshop" "qa" "note" "notes")
+      (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+      (harmless-team-edge
+       "workshop" "delegates_to" "dev.build" "qa.note")
+      (harmless-team-adopt "workshop" "qa" "note" "terminal" logf)
+      (harmless-team-room-say "workshop" "general" "Ada" "hello room")
+      (let ((bytes (harmless-team-test-bytes file))
+            (log-bytes (harmless-team-test-bytes logf)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace "workshop" "onboard" "")))
+                       "team edge is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" "onboard" "qa.gone")))
+                       "team seat is missing"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace "workshop" "onboard" "/")))
+                       "team edge is not a seat"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (harmless-team-test-bytes logf) log-bytes)))
+      (should (equal (harmless-team-pace
+                      "workshop" " onboard " "QA.note")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces nil
+                           :cursor 0
+                           :left nil)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-pace-step "workshop" "onboard")))
+                     "team pace is finished"))
+      (should (equal (harmless-team-test-read logf) "ready\n"))
+      (should (equal (harmless-team-pace-add
+                      "workshop" "onboard" "  first piece  ")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces '("first piece")
+                           :cursor 0
+                           :left '("first piece"))))
+      (should (equal (harmless-team-pace-add
+                      "workshop" "ONBOARD" "  second\npiece\n  ")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces '("first piece" "second\npiece")
+                           :cursor 0
+                           :left '("first piece" "second\npiece"))))
+      (should (equal (harmless-team-pace-show "workshop" "onboard")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces '("first piece" "second\npiece")
+                           :cursor 0
+                           :left '("first piece" "second\npiece"))))
+      (should (equal (harmless-team-pace-step "workshop" "onboard")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces '("first piece" "second\npiece")
+                           :cursor 1
+                           :left '("second\npiece"))))
+      (should (equal (harmless-team-test-read logf)
+                     "ready\nfirst piece\n"))
+      (should-not (string-search "second" (harmless-team-test-read logf)))
+      (should (equal (harmless-team-pace-step "workshop" "onboard")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces '("first piece" "second\npiece")
+                           :cursor 2
+                           :left nil)))
+      (should (equal (harmless-team-test-read logf)
+                     "ready\nfirst piece\nsecond\npiece\n"))
+      (let ((bytes (harmless-team-test-bytes file))
+            (log-bytes (harmless-team-test-bytes logf)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace-step "workshop" "onboard")))
+                       "team pace is finished"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (harmless-team-test-bytes logf) log-bytes)))
+      (harmless-team-pace-add "workshop" "onboard" "third piece")
+      (harmless-team-test-write logf "ready\n>\n")
+      (let ((bytes (harmless-team-test-bytes file))
+            (log-bytes (harmless-team-test-bytes logf)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace-step "workshop" "onboard")))
+                       "team seat is at a prompt"))
+        (should (equal (harmless-team-pace-show "workshop" "onboard")
+                       (list :name "onboard"
+                             :seat "qa-note@workshop"
+                             :pieces '("first piece" "second\npiece"
+                                       "third piece")
+                             :cursor 2
+                             :left '("third piece"))))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (harmless-team-test-bytes logf) log-bytes)))
+      (harmless-team-test-write logf "ready\n")
+      (should (equal (harmless-team-pace-step "workshop" "onboard")
+                     (list :name "onboard"
+                           :seat "qa-note@workshop"
+                           :pieces '("first piece" "second\npiece"
+                                     "third piece")
+                           :cursor 3
+                           :left nil)))
+      (should (equal (harmless-team-test-read logf) "ready\nthird piece\n"))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace
+                           "workshop" "onboard" "qa.note")))
+                       "team pace already exists"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace-show "workshop" "absent")))
+                       "team pace is missing"))
+        (should (equal (harmless-team-test-bytes file) bytes)))
+      (should (equal (harmless-team-pace "workshop" "c" "dev.build")
+                     (list :name "c"
+                           :seat "dev-build@workshop"
+                           :pieces nil
+                           :cursor 0
+                           :left nil)))
+      (harmless-team-pace-add "workshop" "c" "for build")
+      (let ((log-bytes (harmless-team-test-bytes logf)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-pace-step "workshop" "c")))
+                       "team seat is not occupied"))
+        (should (equal (harmless-team-pace-show "workshop" "c")
+                       (list :name "c"
+                             :seat "dev-build@workshop"
+                             :pieces '("for build")
+                             :cursor 0
+                             :left '("for build"))))
+        (should (equal (harmless-team-test-bytes logf) log-bytes)))
+      (should (equal (harmless-team-seat "workshop" "dev" "build")
+                     (harmless-team-test-seat "" work)))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (should (equal (mapcar (lambda (line) (plist-get line :text))
+                             (harmless-team-room-history "workshop"))
+                     '("hello room")))
+      (let* ((obj (harmless-json-decode (harmless-team-test-read file)))
+             (log-bytes (harmless-team-test-bytes logf)))
+        (harmless-team-test-write
+         file
+         (harmless-json-text
+          (plist-put obj :paces
+                     (list (list :name "onboard"
+                                 :seat "qa-note@workshop"
+                                 :pieces '("x")
+                                 :cursor 9)))))
+        (let ((bytes (harmless-team-test-bytes file)))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-pace-step
+                             "workshop" "onboard")))
+                         "team rig is not valid"))
+          (should (equal (harmless-team-test-bytes file) bytes))
+          (should (equal (harmless-team-test-bytes logf) log-bytes))))
+      (should (file-name-absolute-p file))
+      (should (harmless-directory-strictly-under-p file base))
+      (should-not (equal (file-truename file) (file-truename "/")))
+      (should (file-name-absolute-p logf))
+      (should (harmless-directory-strictly-under-p logf base))
+      (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+      (should (equal roots (harmless-team-test-roots)))
+      (should (equal session-roots
+                     (harmless-team-test-session-roots))))))

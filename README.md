@@ -164,6 +164,10 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-room-say` | Append a line to the rig's chatroom |
 | `M-x harmless-team-room-history` | Read that room, or one topic |
 | `M-x harmless-team-room-wait` | Wait until someone speaks in a topic |
+| `M-x harmless-team-pace` | Start a paced sequence aimed at one seat |
+| `M-x harmless-team-pace-add` | Append one piece to that sequence |
+| `M-x harmless-team-pace-show` | Read the sequence without sending |
+| `M-x harmless-team-pace-step` | Send the next piece, and only that piece |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -380,6 +384,13 @@ topic, or one topic.  `M-x harmless-team-room-wait` blocks until a new
 line arrives in that topic.  Lines already stored do not count.
 Nobody speaking within `harmless-team-room-wait-seconds` (default 10)
 stops the wait.  The room does not start a turn.
+
+`M-x harmless-team-pace` starts a named sequence aimed at one seat.
+`M-x harmless-team-pace-add` appends one piece.
+`M-x harmless-team-pace-step` sends the next piece to that seat and
+then moves forward.  One call sends one piece.  A seat at a prompt or
+a permission question refuses the step, and the sequence stays put.
+A finished sequence refuses another step.
 
 ## Subagents
 

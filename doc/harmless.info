@@ -2043,6 +2043,22 @@ topic is refused: ‘team room topic is not a name’.  A speaker uses the
 empty and must-be-a-string sentences, with ‘speaker’ in place of
 ‘topic’.  The text uses them too, with ‘text’.
 
+   ‘M-x harmless-team-pace’ starts a named sequence aimed at one seat.
+The seat is ‘pod.member’ or the address.  ‘M-x harmless-team-pace-add’
+appends one piece.  ‘M-x harmless-team-pace-show’ reads the sequence and
+does not send.  ‘M-x harmless-team-pace-step’ sends the next piece to
+that seat, then moves forward.  One call sends one piece.  There is no
+command that sends the rest at once.  A seat at a prompt or a permission
+question refuses the step, and the sequence stays on that piece.  A
+finished sequence is refused: ‘team pace is finished’.
+
+   A blank pace name is refused: ‘team pace is empty’.  A name that is
+not text is refused: ‘team pace must be a string’.  Any other name is
+refused: ‘team pace is not a name’.  Piece text uses the empty and
+must-be-a-string sentences, with ‘text’ in place of ‘pace’.  The same
+name again is refused: ‘team pace already exists’.  A missing pace is
+refused: ‘team pace is missing’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2288,7 +2304,8 @@ replaced with ‘/’.
 ‘teams/RIG.json’
      One rig: its pods, its seats, its edges, the session occupying each
      seat, the work each seat still holds, the text sent to each seat,
-     and the rig's chatroom.  *Note Team::.
+     the rig's chatroom, and a pace that walks context into a seat.
+     *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2533,6 +2550,10 @@ Command Index
 * harmless-team-grow:                    Team.                 (line  6)
 * harmless-team-launch-order:            Team.                 (line  6)
 * harmless-team-occupy:                  Team.                 (line  6)
+* harmless-team-pace:                    Team.                 (line  6)
+* harmless-team-pace-add:                Team.                 (line  6)
+* harmless-team-pace-show:               Team.                 (line  6)
+* harmless-team-pace-step:               Team.                 (line  6)
 * harmless-team-preview:                 Team.                 (line  6)
 * harmless-team-release:                 Team.                 (line  6)
 * harmless-team-remove:                  Team.                 (line  6)
@@ -2624,15 +2645,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory101671
-Node: Plan mode104261
-Node: Usage107247
-Node: Files108266
-Node: Keys110119
-Node: Trouble111801
-Node: Manual113055
-Node: Command Index113760
-Node: Key Index119447
+Node: Memory102658
+Node: Plan mode105248
+Node: Usage108234
+Node: Files109253
+Node: Keys111149
+Node: Trouble112831
+Node: Manual114085
+Node: Command Index114790
+Node: Key Index120769
 
 End Tag Table
 

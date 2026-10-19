@@ -73,6 +73,9 @@
 ;;   M-x harmless-team-room-say  ; append a line to the rig's room
 ;;   M-x harmless-team-room-history ; read that room, or one topic
 ;;   M-x harmless-team-room-wait ; block until someone speaks
+;;   M-x harmless-team-pace    ; start a paced sequence for one seat
+;;   M-x harmless-team-pace-add ; append one piece to that sequence
+;;   M-x harmless-team-pace-step ; send the next piece, and only that
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
