@@ -2128,6 +2128,22 @@ not write.  A blank view is refused: ‘team board is empty’.  A view that
 is not text is refused: ‘team board must be a string’.  Any other view
 is refused: ‘team board is not a view’.
 
+   ‘M-x harmless-team-workflow’ declares an ordered list of steps and
+opens the first one.  ‘M-x harmless-team-workflows’ reads them, oldest
+first.  Closing the current step opens the next step's row in the same
+write.  The owner decides that the step is done.  The reason records
+delivery of this step.  The next row stays open.  The last close opens
+no row.  Handing the current step is refused: ‘team row is a workflow
+step’.  A blank name is refused: ‘team workflow is empty’.  A name that
+is not text is refused: ‘team workflow must be a string’.  Any other
+name is refused: ‘team workflow is not a name’.  No steps is refused:
+‘team workflow has no steps’.  Steps that are not a list are refused:
+‘team workflow steps must be a list’.  A step without a seat and a body
+is refused: ‘team workflow step is not a step’.  A blank body is
+refused: ‘team workflow body is empty’.  A body that is not text is
+refused: ‘team workflow body must be a string’.  A workflow that already
+exists is refused: ‘team workflow already exists’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2376,7 +2392,8 @@ replaced with ‘/’.
      the rig's chatroom, a pace that walks context into a seat, and a
      queue row of owned work that can be claimed, noted, closed, handed
      to another seat, or parked on one wake.  The same file holds intake
-     that nobody owns yet.  *Note Team::.
+     that nobody owns yet.  It also holds a declared workflow.  Closing
+     its current step opens the next step.  *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2646,6 +2663,8 @@ Command Index
 * harmless-team-seat:                    Team.                 (line  6)
 * harmless-team-send:                    Team.                 (line  6)
 * harmless-team-transcript:              Team.                 (line  6)
+* harmless-team-workflow:                Team.                 (line  6)
+* harmless-team-workflows:               Team.                 (line  6)
 * harmless-usage:                        Usage.                (line  6)
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
@@ -2728,15 +2747,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory106810
-Node: Plan mode109400
-Node: Usage112386
-Node: Files113405
-Node: Keys115471
-Node: Trouble117153
-Node: Manual118407
-Node: Command Index119112
-Node: Key Index125967
+Node: Memory107891
+Node: Plan mode110481
+Node: Usage113467
+Node: Files114486
+Node: Keys116640
+Node: Trouble118322
+Node: Manual119576
+Node: Command Index120281
+Node: Key Index127282
 
 End Tag Table
 

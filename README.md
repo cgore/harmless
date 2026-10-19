@@ -180,6 +180,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-intake` | Record an observation nobody owns |
 | `M-x harmless-team-intakes` | Read that intake, oldest first |
 | `M-x harmless-team-board` | Read held, stalled, or waiting rows |
+| `M-x harmless-team-workflow` | Declare steps; closing one opens the next |
+| `M-x harmless-team-workflows` | Read those declared workflows |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -437,6 +439,13 @@ It has no seat.  `M-x harmless-team-intakes` reads them, oldest
 first.  `M-x harmless-team-board` reads one view: `held` is a
 row the owner still has, `stalled` is a held row with nothing
 after the claim, and `waiting` is a park that asks a person.
+
+`M-x harmless-team-workflow` declares an ordered list of steps
+and opens the first one.  `M-x harmless-team-workflows` reads
+them, oldest first.  Closing the current step opens the next
+step's row in the same write.  The owner decides that the step
+is done.  The next row stays open.  The last close opens no
+row.  Handing the current step is refused.
 
 ## Subagents
 

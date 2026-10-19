@@ -87,6 +87,8 @@
 ;;   M-x harmless-team-row-resolve ; record the decision and wake it
 ;;   M-x harmless-team-intake  ; record an observation nobody owns
 ;;   M-x harmless-team-board   ; held, stalled, or waiting rows
+;;   M-x harmless-team-workflow ; declare steps; close opens the next
+;;   M-x harmless-team-workflows ; read those declared workflows
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

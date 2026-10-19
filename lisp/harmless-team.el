@@ -55,8 +55,10 @@
 ;; Resolving it records the decision and returns the row to
 ;; held.  Intake holds observations nobody owns.  The board
 ;; shows held rows, rows stalled after a claim, and rows
-;; waiting on a person.  This file does not register another
-;; machine.
+;; waiting on a person.  A declared workflow opens its first
+;; step.  Closing that step opens the next step in the same
+;; write.  The owner decides that the step is done.  This file
+;; does not register another machine.
 
 ;;; Code:
 
@@ -479,6 +481,58 @@ Nil means the rig has no intake yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--workflow-steps-ok-p (steps)
+  "Return non-nil if STEPS is a list of seat and body."
+  (and (consp steps)
+       (let ((ok t))
+         (while (and ok (consp steps))
+           (let ((step (car steps)))
+             (if (and (harmless-plist-p step)
+                      (stringp (plist-get step :seat))
+                      (not (string-empty-p (plist-get step :seat)))
+                      (stringp (plist-get step :body))
+                      (not (string-empty-p (plist-get step :body))))
+                 (setq steps (cdr steps))
+               (setq ok nil))))
+         (and ok (null steps)))))
+
+(defun harmless-team--workflows-ok-p (rig)
+  "Return non-nil if RIG's workflows are readable.
+Nil means the rig has no workflow yet."
+  (let ((items (plist-get rig :workflows)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (seen nil)
+            (ids nil))
+        (while (and ok (consp items))
+          (let* ((item (car items))
+                 (steps (and (harmless-plist-p item)
+                             (plist-get item :steps)))
+                 (index (and (harmless-plist-p item)
+                             (plist-get item :index)))
+                 (row (and (harmless-plist-p item)
+                           (plist-get item :row))))
+            (if (and (harmless-plist-p item)
+                     (harmless-team--row-id-p (plist-get item :id))
+                     (not (member (plist-get item :id) ids))
+                     (harmless-team--member-name-p
+                      (plist-get item :name))
+                     (not (harmless-team--seen-p
+                           (plist-get item :name) seen))
+                     (harmless-team--workflow-steps-ok-p steps)
+                     (integerp index)
+                     (>= index 0)
+                     (<= index (length steps))
+                     (if (< index (length steps))
+                         (harmless-team--row-id-p row)
+                       (null row)))
+                (setq ids (cons (plist-get item :id) ids)
+                      seen (cons (plist-get item :name) seen)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -497,7 +551,8 @@ Nil means the rig has no intake yet."
        (harmless-team--room-ok-p rig)
        (harmless-team--paces-ok-p rig)
        (harmless-team--rows-ok-p rig)
-       (harmless-team--intake-ok-p rig)))
+       (harmless-team--intake-ok-p rig)
+       (harmless-team--workflows-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -2326,10 +2381,57 @@ A closed row is refused."
     (harmless-team--write (car loaded) stored)
     (harmless-team--public-row row)))
 
+(defun harmless-team--workflow-owns-p (stored id)
+  "Return non-nil if a workflow's current row is ID."
+  (let ((found nil))
+    (dolist (workflow (plist-get stored :workflows))
+      (when (equal (plist-get workflow :row) id)
+        (setq found t)))
+    found))
+
+(defun harmless-team--workflow-prepare (stored id)
+  "Resolve the next seat of each workflow that owns row ID.
+A missing seat signals before the row changes."
+  (dolist (workflow (plist-get stored :workflows))
+    (when (equal (plist-get workflow :row) id)
+      (let* ((steps (plist-get workflow :steps))
+             (next (1+ (plist-get workflow :index))))
+        (when (< next (length steps))
+          (harmless-team--endpoint
+           stored (plist-get (nth next steps) :seat)))))))
+
+(defun harmless-team--workflow-advance (stored workflow)
+  "Open WORKFLOW's next step in STORED, or finish it.
+Return the opened row, or nil when WORKFLOW is done."
+  (let* ((steps (plist-get workflow :steps))
+         (next (1+ (plist-get workflow :index))))
+    (if (>= next (length steps))
+        (progn
+          (plist-put workflow :index next)
+          (plist-put workflow :row nil)
+          nil)
+      (let* ((step (nth next steps))
+             (address (harmless-team--endpoint
+                       stored (plist-get step :seat)))
+             (row (list :id (harmless-team--next-row-id
+                             (plist-get stored :rows))
+                        :seat address
+                        :body (plist-get step :body)
+                        :state "open"
+                        :history
+                        (list (list :at (harmless-now-iso)
+                                    :text "opened")))))
+        (plist-put stored :rows
+                   (append (plist-get stored :rows) (list row)))
+        (plist-put workflow :index next)
+        (plist-put workflow :row (plist-get row :id))
+        row))))
+
 (defun harmless-team--row-close (rig id reason)
   "Close held row ID in RIG for REASON and return it.
-REASON records delivery.  Acceptance stays the next seat's
-verdict."
+REASON records delivery.  When the row is a workflow's current
+step, the next step's row opens in the same write.  Acceptance
+stays the next seat's verdict."
   (setq reason (harmless-team--row-reason reason))
   (setq rig (harmless-team--rig-name rig))
   (setq id (harmless-team--row-id id))
@@ -2341,9 +2443,13 @@ verdict."
      ((equal state "open") (error "team row is not held"))
      ((equal state "closed") (error "team row is closed"))
      ((equal state "parked") (error "team row is parked")))
+    (harmless-team--workflow-prepare stored id)
     (plist-put row :state "closed")
     (plist-put row :reason reason)
     (harmless-team--row-append row "delivered")
+    (dolist (workflow (plist-get stored :workflows))
+      (when (equal (plist-get workflow :row) id)
+        (harmless-team--workflow-advance stored workflow)))
     (harmless-team--write (car loaded) stored)
     (harmless-team--public-row row)))
 
@@ -2373,7 +2479,8 @@ A closed row is refused.  Return the row."
 ;;;###autoload
 (defun harmless-team-row-close (rig id reason)
   "Close held queue row ID in RIG for REASON.
-REASON records delivery.  Return the row."
+REASON records delivery.  A workflow's next step opens in the
+same write.  Return the row."
   (interactive
    (list (read-string "Rig: ")
          (read-string "Row: ")
@@ -2398,6 +2505,8 @@ The source closes and the destination opens in one write."
      ((equal state "open") (error "team row is not held"))
      ((equal state "closed") (error "team row is closed"))
      ((equal state "parked") (error "team row is parked")))
+    (when (harmless-team--workflow-owns-p stored id)
+      (error "team row is a workflow step"))
     (when (harmless-team--same-p address (plist-get row :seat))
       (error "team row hand is the same seat"))
     (plist-put row :state "closed")
@@ -2421,8 +2530,8 @@ The source closes and the destination opens in one write."
 ;;;###autoload
 (defun harmless-team-row-hand (rig id seat)
   "Hand held queue row ID in RIG to SEAT.
-The source closes and the destination opens together.  Return
-both rows."
+The source closes and the destination opens together.  A
+workflow's current step is refused.  Return both rows."
   (interactive
    (list (read-string "Rig: ")
          (read-string "Row: ")
@@ -2666,6 +2775,147 @@ VIEW is `held', `stalled', or `waiting'."
   (let ((rows (harmless-team--board rig view)))
     (message "%d rows" (length rows))
     rows))
+
+(defun harmless-team--workflow-name (name)
+  "Return NAME trimmed, or signal."
+  (harmless-team--token
+   name "team workflow is empty" "team workflow must be a string"
+   #'harmless-team--member-name-p "team workflow is not a name"))
+
+(defun harmless-team--workflow-body (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team workflow body is empty"))
+   ((not (stringp text))
+    (error "team workflow body must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team workflow body is empty")
+    text))
+
+(defun harmless-team--workflow-steps (steps)
+  "Return STEPS checked, or signal.
+Each step has a seat and a body.  Seats are not resolved yet."
+  (cond
+   ((null steps) (error "team workflow has no steps"))
+   ((not (listp steps))
+    (error "team workflow steps must be a list")))
+  (let ((out nil)
+        (items steps))
+    (while (consp items)
+      (let ((step (car items)))
+        (unless (and (harmless-plist-p step)
+                     (plist-member step :seat)
+                     (plist-member step :body))
+          (error "team workflow step is not a step"))
+        (setq out
+              (append out
+                      (list (list :seat (harmless-team--seat-text
+                                         (plist-get step :seat))
+                                  :body (harmless-team--workflow-body
+                                         (plist-get step :body))))))
+        (setq items (cdr items))))
+    (unless (null items)
+      (error "team workflow steps must be a list"))
+    out))
+
+(defun harmless-team--public-step (step)
+  "Return one workflow STEP with keys in a fixed order."
+  (list :seat (plist-get step :seat)
+        :body (plist-get step :body)))
+
+(defun harmless-team--public-workflow (item)
+  "Return one workflow ITEM with keys in a fixed order."
+  (list :id (plist-get item :id)
+        :name (plist-get item :name)
+        :steps (mapcar #'harmless-team--public-step
+                       (plist-get item :steps))
+        :index (plist-get item :index)
+        :row (plist-get item :row)))
+
+(defun harmless-team--workflow-add (rig name steps)
+  "Declare workflow NAME in RIG and open its first step.
+STEPS is a list of plists with :seat and :body.  Return the
+workflow and that row."
+  (setq name (harmless-team--workflow-name name))
+  (setq steps (harmless-team--workflow-steps steps))
+  (setq rig (harmless-team--rig-name rig))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (resolved nil))
+    (when (harmless-team--find-named
+           (plist-get stored :workflows) name)
+      (error "team workflow already exists"))
+    (dolist (step steps)
+      (setq resolved
+            (append resolved
+                    (list (list :seat (harmless-team--endpoint
+                                       stored (plist-get step :seat))
+                                :body (plist-get step :body))))))
+    (let* ((row-id (harmless-team--next-row-id
+                    (plist-get stored :rows)))
+           (first (car resolved))
+           (row (list :id row-id
+                      :seat (plist-get first :seat)
+                      :body (plist-get first :body)
+                      :state "open"
+                      :history (list (list :at (harmless-now-iso)
+                                           :text "opened"))))
+           (workflow (list :id (harmless-team--next-row-id
+                                (plist-get stored :workflows))
+                           :name name
+                           :steps resolved
+                           :index 0
+                           :row row-id)))
+      (plist-put stored :rows
+                 (append (plist-get stored :rows) (list row)))
+      (plist-put stored :workflows
+                 (append (plist-get stored :workflows)
+                         (list workflow)))
+      (harmless-team--write (car loaded) stored)
+      (list :workflow (harmless-team--public-workflow workflow)
+            :row (harmless-team--public-row row)))))
+
+(defun harmless-team--workflows (rig)
+  "Return RIG's workflows, oldest first."
+  (setq rig (harmless-team--rig-name rig))
+  (mapcar #'harmless-team--public-workflow
+          (plist-get (cdr (harmless-team--load rig)) :workflows)))
+
+(defun harmless-team--workflow-read-steps ()
+  "Read workflow steps until the seat is blank."
+  (let ((steps nil)
+        (seat (read-string "Seat: ")))
+    (while (not (string-empty-p (string-trim seat)))
+      (setq steps
+            (append steps
+                    (list (list :seat seat
+                                :body (read-string "Body: "))))
+            seat (read-string "Seat: ")))
+    steps))
+
+;;;###autoload
+(defun harmless-team-workflow (rig name steps)
+  "Declare workflow NAME in RIG and open its first step.
+STEPS is a list of plists with :seat and :body.  Closing the
+current step opens the next one.  Return both."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Name: ")
+         (harmless-team--workflow-read-steps)))
+  (let ((declared (harmless-team--workflow-add rig name steps)))
+    (message "Declared %s"
+             (plist-get (plist-get declared :workflow) :name))
+    declared))
+
+;;;###autoload
+(defun harmless-team-workflows (rig)
+  "Return RIG's workflows, oldest first."
+  (interactive (list (read-string "Rig: ")))
+  (let ((items (harmless-team--workflows rig)))
+    (message "%d workflows" (length items))
+    items))
 
 (provide 'harmless-team)
 

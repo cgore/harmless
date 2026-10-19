@@ -3133,3 +3133,292 @@
     (should (equal roots (harmless-team-test-roots)))
     (should (equal session-roots
                    (harmless-team-test-session-roots)))))
+
+(ert-deftest harmless-team-workflow-opens-the-next-step ()
+  "Closing a declared step opens the next row in that write."
+  (let* ((base (make-temp-file "harmless-team-workflow-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (steps (list (list :seat "qa.note" :body "fix the door")
+                      (list :seat "dev.build" :body "alpha\nbeta"))))
+    (make-directory elsewhere t)
+    (dolist (bad (list nil "" "   " "\n"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" bad steps)))
+                     "team workflow is empty")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow "workshop" 42 steps)))
+                   "team workflow must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "has-hyphen" steps)))
+                   "team workflow is not a name"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow "workshop" "repair" nil)))
+                   "team workflow has no steps"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow "workshop" "repair" 42)))
+                   "team workflow steps must be a list"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "repair" (list 42))))
+                   "team workflow step is not a step"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "repair"
+                       (list (list :body "fix")))))
+                   "team workflow step is not a step"))
+    (dolist (bad (list nil "" "   " "\n"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow
+                         "workshop" "repair"
+                         (list (list :seat "qa.note" :body bad)))))
+                     "team workflow body is empty")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "repair"
+                       (list (list :seat "qa.note" :body 42)))))
+                   "team workflow body must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "repair"
+                       (list (list :seat nil :body "fix")))))
+                   "team edge is empty"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "repair"
+                       (list (list :seat 42 :body "fix")))))
+                   "team edge must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow
+                       "workshop" "repair"
+                       (list (list :seat "nope" :body "fix")))))
+                   "team edge is not a seat"))
+    (let ((harmless-directory "/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" nil steps)))
+                     "team workflow is empty"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" "repair" steps)))
+                     "Refusing to store a team at /")))
+    (let ((harmless-directory "c:"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" "repair" steps)))
+                     "Refusing to store a team at c:")))
+    (let ((harmless-directory " c:/ "))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" "repair" steps)))
+                     "Refusing to store a team at c:/")))
+    (let ((harmless-directory "notes"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" "repair" steps)))
+                     "Harmless data directory must be absolute, not \"notes\"")))
+    (let ((harmless-directory "notes/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" "repair" steps)))
+                     "Harmless data directory must be absolute, not \"notes/\"")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow "workshop" "repair" steps)))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+    (should-not (file-exists-p (expand-file-name "notes" base)))
+    (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+    (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-workflow "workshop" "repair" steps)))
+                   "team seat is missing"))
+    (should (equal (harmless-team-rows "workshop") nil))
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (harmless-team-edge "workshop" "delegates_to" "dev.build" "qa.note")
+    (harmless-team-room-say "workshop" "general" "Ada" "hello room")
+    (harmless-team-intake "workshop" "a door")
+    (let* ((declared (harmless-team-workflow
+                      "workshop" "  repair  "
+                      (list (list :seat "qa.note"
+                                  :body "  fix the door  ")
+                            (list :seat "dev.build"
+                                  :body "alpha\nbeta"))))
+           (workflow (plist-get declared :workflow))
+           (row (plist-get declared :row)))
+      (should (equal (plist-get workflow :id) "1"))
+      (should (equal (plist-get workflow :name) "repair"))
+      (should (equal (plist-get workflow :index) 0))
+      (should (equal (plist-get workflow :row) "1"))
+      (should (equal (plist-get workflow :steps)
+                     (list (list :seat "qa-note@workshop"
+                                 :body "fix the door")
+                           (list :seat "dev-build@workshop"
+                                 :body "alpha\nbeta"))))
+      (should (equal (plist-get row :id) "1"))
+      (should (equal (plist-get row :state) "open"))
+      (should (equal (plist-get row :seat) "qa-note@workshop"))
+      (should (equal (plist-get row :body) "fix the door"))
+      (should (equal (mapcar (lambda (item) (plist-get item :text))
+                             (plist-get row :history))
+                     '("opened")))
+      (should (equal (harmless-team-workflows "workshop")
+                     (list workflow))))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-row-close
+                         "workshop" "1" "escalation")))
+                     "team row is not held"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (harmless-team-row-claim "workshop" "1")
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-row-hand
+                         "workshop" "1" "dev.build")))
+                     "team row is a workflow step"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (equal (plist-get (harmless-team-row-read "workshop" "1")
+                                :state)
+                     "held")))
+    (harmless-team-row-park "workshop" "1" "tests failed")
+    (harmless-team-row-resolve "workshop" "1" "continue")
+    (let ((closed (harmless-team-row-close
+                   "workshop" "1" "escalation")))
+      (should (equal (plist-get closed :state) "closed"))
+      (should (equal (plist-get closed :reason) "escalation"))
+      (should (equal (car (last (mapcar (lambda (item)
+                                          (plist-get item :text))
+                                        (plist-get closed :history))))
+                     "delivered")))
+    (let ((next (harmless-team-row-read "workshop" "2")))
+      (should (equal (plist-get next :state) "open"))
+      (should (equal (plist-get next :seat) "dev-build@workshop"))
+      (should (equal (plist-get next :body) "alpha\nbeta"))
+      (should (equal (mapcar (lambda (item) (plist-get item :text))
+                             (plist-get next :history))
+                     '("opened"))))
+    (let ((workflow (car (harmless-team-workflows "workshop"))))
+      (should (equal (plist-get workflow :index) 1))
+      (should (equal (plist-get workflow :row) "2")))
+    (should (equal (harmless-team-seat "workshop" "dev" "build")
+                   (harmless-team-test-seat "" work)))
+    (should (equal (harmless-team-edges "workshop") edge))
+    (should (equal (mapcar (lambda (line) (plist-get line :text))
+                           (harmless-team-room-history "workshop"))
+                   '("hello room")))
+    (should (equal (mapcar (lambda (item) (plist-get item :id))
+                           (harmless-team-intakes "workshop"))
+                   '("1")))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-row-close
+                         "workshop" "2" "denied")))
+                     "team row is not held"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (harmless-team-row-claim "workshop" "2")
+    (harmless-team-row-close "workshop" "2" "no-follow-on")
+    (let ((workflow (car (harmless-team-workflows "workshop"))))
+      (should (equal (plist-get workflow :index) 2))
+      (should (equal (plist-get workflow :row) nil))
+      (should (equal (length (harmless-team-rows "workshop")) 2)))
+    (harmless-team-row "workshop" "qa.note" "plain")
+    (harmless-team-row-claim "workshop" "3")
+    (harmless-team-row-close "workshop" "3" "canceled")
+    (let ((workflow (car (harmless-team-workflows "workshop"))))
+      (should (equal (plist-get workflow :row) nil))
+      (should (equal (length (harmless-team-rows "workshop")) 3)))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-workflow "workshop" "repair" steps)))
+                     "team workflow already exists"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (let ((declared (harmless-team-workflow
+                     "workshop" "once"
+                     (list (list :seat "qa.note" :body "only")))))
+      (should (equal (plist-get (plist-get declared :workflow) :id) "2"))
+      (should (equal (plist-get (plist-get declared :row) :id) "4"))
+      (harmless-team-row-claim "workshop" "4")
+      (harmless-team-row-close "workshop" "4" "canceled")
+      (let ((workflow (nth 1 (harmless-team-workflows "workshop"))))
+        (should (equal (plist-get workflow :name) "once"))
+        (should (equal (plist-get workflow :index) 1))
+        (should (equal (plist-get workflow :row) nil))
+        (should (equal (length (harmless-team-rows "workshop")) 4))))
+    (let ((saved (harmless-team-workflows "workshop")))
+      (harmless-team-occupy
+       "workshop" "dev" "build" harmless-team-test-session-a)
+      (harmless-team-release "workshop" "dev" "build")
+      (should (equal (harmless-team-workflows "workshop") saved))
+      (should (equal (harmless-team-remove "workshop" "qa" "note")
+                     (list :removed "qa-note@workshop"
+                           :fallback nil :work nil)))
+      (should (equal (harmless-team-workflows "workshop") saved)))
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (let* ((declared (harmless-team-workflow
+                      "workshop" "later"
+                      (list (list :seat "qa.note" :body "look")
+                            (list :seat "dev.build" :body "fix"))))
+           (row-id (plist-get (plist-get declared :row) :id)))
+      (harmless-team-row-claim "workshop" row-id)
+      (let ((obj (harmless-json-decode (harmless-team-test-read file))))
+        (plist-put (nth 1 (plist-get (nth 2 (plist-get obj :workflows))
+                                     :steps))
+                   :seat "gone-seat@workshop")
+        (harmless-team-test-write file (harmless-json-text obj)))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-row-close
+                           "workshop" row-id "denied")))
+                       "team seat is missing"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (plist-get
+                        (harmless-team-row-read "workshop" row-id)
+                        :state)
+                       "held"))))
+    (let ((obj (harmless-json-decode (harmless-team-test-read file))))
+      (plist-put (car (plist-get (car (plist-get obj :workflows))
+                                 :steps))
+                 :body "")
+      (harmless-team-test-write file (harmless-json-text obj))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-workflows "workshop")))
+                       "team rig is not valid"))
+        (should (equal (harmless-team-test-bytes file) bytes))))
+    (should (file-name-absolute-p file))
+    (should (harmless-directory-strictly-under-p file base))
+    (should-not (equal (file-truename file) (file-truename "/")))
+    (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+    (should (equal roots (harmless-team-test-roots)))
+    (should (equal session-roots
+                   (harmless-team-test-session-roots)))))

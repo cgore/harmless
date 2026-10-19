@@ -2229,6 +2229,8 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-intake
 @findex harmless-team-intakes
 @findex harmless-team-board
+@findex harmless-team-workflow
+@findex harmless-team-workflows
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2436,6 +2438,25 @@ does not write.  A blank view is refused: @samp{team board is
 empty}.  A view that is not text is refused: @samp{team board
 must be a string}.  Any other view is refused: @samp{team board
 is not a view}.
+
+@kbd{M-x harmless-team-workflow} declares an ordered list of
+steps and opens the first one.  @kbd{M-x harmless-team-workflows}
+reads them, oldest first.  Closing the current step opens the
+next step's row in the same write.  The owner decides that the
+step is done.  The reason records delivery of this step.  The
+next row stays open.  The last close opens no row.  Handing the
+current step is refused: @samp{team row is a workflow step}.
+A blank name is refused: @samp{team workflow is empty}.  A name
+that is not text is refused: @samp{team workflow must be a
+string}.  Any other name is refused: @samp{team workflow is not
+a name}.  No steps is refused: @samp{team workflow has no
+steps}.  Steps that are not a list are refused: @samp{team
+workflow steps must be a list}.  A step without a seat and a
+body is refused: @samp{team workflow step is not a step}.  A
+blank body is refused: @samp{team workflow body is empty}.  A
+body that is not text is refused: @samp{team workflow body must
+be a string}.  A workflow that already exists is refused:
+@samp{team workflow already exists}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2717,7 +2738,9 @@ each seat, the work each seat still holds, the text sent to
 each seat, the rig's chatroom, a pace that walks context into
 a seat, and a queue row of owned work that can be claimed,
 noted, closed, handed to another seat, or parked on one wake.
-The same file holds intake that nobody owns yet.
+The same file holds intake that nobody owns yet.  It also
+holds a declared workflow.  Closing its current step opens
+the next step.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/
