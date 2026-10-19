@@ -288,6 +288,11 @@ directory, which lives under the Harmless data directory.  Setting
     ("x_user_search" "users")
     ("mcp_list_resources" "resources")
     ("mcp_read_resource" "resource")
+    ("computer_screenshot" "screen")
+    ("computer_click" "click")
+    ("computer_type" "type")
+    ("computer_key" "key")
+    ("browser_open" "browser")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -349,6 +354,22 @@ directory, which lives under the Harmless data directory.  Setting
                    uri
                  (let ((server (harmless-tool-arg args :server)))
                    (if (stringp server) server "")))))
+            ("computer_screenshot" "")
+            ("computer_click"
+             (let ((x (harmless-tool-arg args :x))
+                   (y (harmless-tool-arg args :y)))
+               (if (and (integerp x) (integerp y))
+                   (format "%d,%d" x y)
+                 "")))
+            ("computer_type"
+             (let ((text (harmless-tool-arg args :text)))
+               (if (stringp text) text "")))
+            ("computer_key"
+             (let ((key (harmless-tool-arg args :key)))
+               (if (stringp key) key "")))
+            ("browser_open"
+             (let ((url (harmless-tool-arg args :url)))
+               (if (stringp url) url "")))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

@@ -382,7 +382,9 @@ description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
 query.  For a fetched page, it is the URL.  For an X search, it
 is the query or the post id.  For an MCP call, it is the resource
-uri or the server name.
+uri or the server name.  For a click, it is the point.  For typed
+text, it is the text.  For a key, it is the key.  For a browser,
+it is the URL.  A screenshot shows the tool name.
 
 @table @kbd
 @item y
@@ -525,6 +527,8 @@ It can search the web and fetch a page.  @xref{Web search}.
 It can search X for posts, a thread, and accounts.
 @xref{X search}.
 It can list and read MCP resources.  @xref{MCP}.
+It can see the screen, click, type, and open a browser.
+@xref{Computer use}.
 
 @menu
 * File tools::  Read, list, write, replace, and patch.
@@ -539,6 +543,7 @@ It can list and read MCP resources.  @xref{MCP}.
 * Fetch a page::  Read one http or https page.
 * X search::    Find posts, a thread, and accounts on X.
 * MCP::         Call a configured server and read its resources.
+* Computer use::  See the screen, click, type, and open a browser.
 @end menu
 
 @node File tools
@@ -772,6 +777,8 @@ It may also search the web.  @xref{Web search}.
 It may fetch a page.  @xref{Fetch a page}.
 It may search X.  @xref{X search}.
 It may list and read MCP resources.  @xref{MCP}.
+A read-only child is not offered computer control.
+@xref{Computer use}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1172,6 +1179,56 @@ failed}.  A command that is not a program is refused before it
 starts: @samp{MCP command is not a program}.  Nothing is written
 into the project.
 
+@node Computer use
+@section Computer use
+
+@cindex computer use
+@cindex computer_screenshot
+@cindex computer_click
+@cindex computer_type
+@cindex computer_key
+@cindex browser_open
+Harmless can see the screen, click, type, and open a browser the
+user can watch.
+
+@code{computer_screenshot} returns the width, the height, and a PNG
+path under the Harmless data directory, in @file{computer/}.  The
+file is not in the project.
+
+@code{computer_click} clicks at @code{x} and @code{y}.  A missing
+@code{button} is left.  Nil and a value that is not an integer are
+refused: @samp{x must be an integer} or @samp{y must be an
+integer}.  A negative integer is refused: @samp{x must be a
+non-negative integer}.  A button other than left, right, or middle
+is refused: @samp{button must be left, right, or middle}.
+
+@code{computer_type} types @code{text} into the focused window.
+Nil and a value that is not text are refused: @samp{text must be a
+string}.  @code{""} and whitespace are refused: @samp{text is
+empty}.  @code{/} and @code{c:/} are characters to type.
+
+@code{computer_key} presses one key, such as enter, tab, escape, a
+function key from f1 to f12, or one character.  Nil, @code{""}, and
+whitespace are refused: @samp{key is empty}.  A value that is not
+text is refused: @samp{key must be a string}.  Anything else,
+including @code{c:/}, is refused: @samp{key is not a key}.
+@code{/} is a key.
+
+@code{browser_open} opens @code{url} in the desktop browser.  Nil,
+@code{""}, and whitespace are refused: @samp{url is empty}.  A
+value that is not text is refused: @samp{url must be a string}.
+@code{/} and @code{c:/} are refused: @samp{url must be http or
+https}.
+
+The class is @code{shell}.  The tools ask in @code{ask} mode and in
+@code{accept-edits}.  @code{always-approve} does not ask.  In plan
+mode a click, typed text, a key, and the browser are refused before
+the question:
+@samp{Error: Plan mode is on. Computer control is refused}.
+A screenshot still runs.  A read-only subagent is not offered
+these tools.  A detached chat is offered them.  Nothing is written
+into the project.
+
 @node Instructions
 @chapter Instructions
 
@@ -1333,6 +1390,9 @@ tools, to write the plan only with @code{write_plan}, and to call
 can write is refused before any permission question:
 @samp{Error: Plan mode is on. A shell command that can write is refused}.
 A read-only shell command still runs.  @code{shell_kill} still asks.
+A click, typed text, a key, and a browser are refused:
+@samp{Error: Plan mode is on. Computer control is refused}.
+A screenshot still runs.  @xref{Computer use}.
 The header line shows @samp{plan}.
 @code{ask_user} can still ask a question.  @xref{Questions}.
 
@@ -1432,6 +1492,9 @@ An isolated checkout of that repository.  @xref{Worktrees}.
 @item memory/global/
 @itemx memory/workspaces/@var{project}/
 Notes.  @xref{Memory}.
+
+@item computer/
+Screenshots from @code{computer_screenshot}.  @xref{Computer use}.
 @end table
 
 @var{project} in a session path is the project directory encoded as one

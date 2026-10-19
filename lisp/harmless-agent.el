@@ -404,7 +404,7 @@ A failure to resolve the sandbox is `edit'."
   "Return TOOLS with a subagent's limits applied.
 A read-only subagent keeps read tools, `run_shell',
 `send_message', `web_search', `web_fetch', X search, and MCP
-resources."
+resources.  Computer control is left out."
   (if (not (eq (harmless-session-source session) 'agent))
       tools
     (let* ((agent (harmless-session-agent session))

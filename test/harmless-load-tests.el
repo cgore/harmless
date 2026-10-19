@@ -29,7 +29,12 @@
   (should (harmless-tool-by-name "x_thread_fetch"))
   (should (harmless-tool-by-name "x_user_search"))
   (should (harmless-tool-by-name "mcp_list_resources"))
-  (should (harmless-tool-by-name "mcp_read_resource")))
+  (should (harmless-tool-by-name "mcp_read_resource"))
+  (should (harmless-tool-by-name "computer_screenshot"))
+  (should (harmless-tool-by-name "computer_click"))
+  (should (harmless-tool-by-name "computer_type"))
+  (should (harmless-tool-by-name "computer_key"))
+  (should (harmless-tool-by-name "browser_open")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

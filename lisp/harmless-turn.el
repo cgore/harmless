@@ -100,6 +100,8 @@
                   (session tool args))
 (declare-function harmless-worktree-plan-refuses-p "harmless-worktree"
                   (session tool args))
+(declare-function harmless-computer-plan-refuses-p "harmless-computer"
+                  (session tool args))
 (declare-function harmless-message-flush "harmless-message" (session))
 
 (cl-defstruct (harmless-turn-batch
@@ -197,13 +199,19 @@ summarized before the provider sees TEXT."
   "Return the tools offered to SESSION.
 A detached chat can use global memory, ask the user a question,
 start a subagent, run a workflow, message another live session,
-search the web, fetch a page, look up X, and read MCP resources.
-It is not offered project files, a shell, or plan mode.  A
+search the web, fetch a page, look up X, read MCP resources, and
+see the screen, click, type, and open a browser.  It is not
+offered project files, a project shell, or plan mode.  A
 subagent is not offered `spawn_agent' or `run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
            (let ((allowed '("ask_user"
+                            "browser_open"
+                            "computer_click"
+                            "computer_key"
+                            "computer_screenshot"
+                            "computer_type"
                             "list_sessions"
                             "memory_read"
                             "memory_remember"
@@ -383,7 +391,18 @@ A tool's `classify' function may narrow one shell command to `read'."
   "Short description of TOOL with ARGS for a permission prompt."
   (pcase (harmless-tool-class tool)
     ('edit (or (harmless-tool-arg args :path) (harmless-tool-name tool)))
-    ('shell (or (harmless-tool-arg args :command) (harmless-tool-name tool)))
+    ('shell (or (harmless-tool-arg args :command)
+                (let ((text (harmless-tool-arg args :text)))
+                  (and (stringp text) text))
+                (let ((url (harmless-tool-arg args :url)))
+                  (and (stringp url) url))
+                (let ((key (harmless-tool-arg args :key)))
+                  (and (stringp key) key))
+                (let ((x (harmless-tool-arg args :x))
+                      (y (harmless-tool-arg args :y)))
+                  (and (integerp x) (integerp y)
+                       (format "%d,%d" x y)))
+                (harmless-tool-name tool)))
     ('network (or (harmless-tool-arg args :query)
                   (harmless-tool-arg args :url)
                   (harmless-tool-arg args :post_id)
@@ -508,6 +527,9 @@ from the registry."
                              session tool args))
                        (and (fboundp 'harmless-worktree-plan-refuses-p)
                             (harmless-worktree-plan-refuses-p
+                             session tool args))
+                       (and (fboundp 'harmless-computer-plan-refuses-p)
+                            (harmless-computer-plan-refuses-p
                              session tool args))))))
         (if (or agent-refusal plan-refusal)
             (harmless-turn--finish-call

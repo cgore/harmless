@@ -620,6 +620,11 @@
     (let ((names (mapcar #'harmless-tool-name
                          (harmless-tools-for-session b))))
       (should (equal '("ask_user"
+                       "browser_open"
+                       "computer_click"
+                       "computer_key"
+                       "computer_screenshot"
+                       "computer_type"
                        "list_sessions"
                        "mcp_list_resources"
                        "mcp_read_resource"

@@ -278,6 +278,17 @@ resources.  The class is `network`, so accepting edits still asks.
 A read-only subagent may read resources.  Nothing is written into
 the project.
 
+## Computer use
+
+`computer_screenshot` returns the size and a PNG path under the
+Harmless data directory.  `computer_click`, `computer_type`, and
+`computer_key` act on the desktop.  `browser_open` opens an http
+or https URL in the desktop browser.  The class is `shell`, so
+accepting edits still asks.  Plan mode refuses a click, typed
+text, a key, and the browser.  A screenshot still runs.  A
+read-only subagent cannot use these tools.  Nothing is written
+into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

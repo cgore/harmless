@@ -328,7 +328,9 @@ description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
 query.  For a fetched page, it is the URL. For an X search, it is the
 query or the post id.  For an MCP call, it is the resource uri or the
-server name.
+server name.  For a click, it is the point.  For typed text, it is the
+text.  For a key, it is the key.  For a browser, it is the URL. A
+screenshot shows the tool name.
 
 ‘y’
      Allow this call.
@@ -460,7 +462,8 @@ Questions::.  It can list live sessions and send one a finding.  *Note
 Messages::.  It can search the web and fetch a page.  *Note Web
 search::.  *Note Fetch a page::.  It can search X for posts, a thread,
 and accounts.  *Note X search::.  It can list and read MCP resources.
-*Note MCP::.
+*Note MCP::.  It can see the screen, click, type, and open a browser.
+*Note Computer use::.
 
 * Menu:
 
@@ -476,6 +479,7 @@ and accounts.  *Note X search::.  It can list and read MCP resources.
 * Fetch a page::  Read one http or https page.
 * X search::    Find posts, a thread, and accounts on X.
 * MCP::         Call a configured server and read its resources.
+* Computer use::  See the screen, click, type, and open a browser.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -691,7 +695,8 @@ shell command is not that refusal.  A read-only child may send a finding
 to another live session.  *Note Messages::.  It may also search the web.
 *Note Web search::.  It may fetch a page.  *Note Fetch a page::.  It may
 search X. *Note X search::.  It may list and read MCP resources.  *Note
-MCP::.  A workspace child uses the parent's permission mode.
+MCP::.  A read-only child is not offered computer control.  *Note
+Computer use::.  A workspace child uses the parent's permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -1003,7 +1008,7 @@ that does not succeed is ‘web request failed’.  Nothing is written into
 the project.
 
 
-File: harmless.info,  Node: MCP,  Prev: X search,  Up: Tools
+File: harmless.info,  Node: MCP,  Next: Computer use,  Prev: X search,  Up: Tools
 
 10.12 MCP
 =========
@@ -1049,6 +1054,48 @@ list and read resources.  A detached chat may do that too.  A failed
 call is ‘MCP call failed’.  A command that is not a program is refused
 before it starts: ‘MCP command is not a program’.  Nothing is written
 into the project.
+
+
+File: harmless.info,  Node: Computer use,  Prev: MCP,  Up: Tools
+
+10.13 Computer use
+==================
+
+Harmless can see the screen, click, type, and open a browser the user
+can watch.
+
+   ‘computer_screenshot’ returns the width, the height, and a PNG path
+under the Harmless data directory, in ‘computer/’.  The file is not in
+the project.
+
+   ‘computer_click’ clicks at ‘x’ and ‘y’.  A missing ‘button’ is left.
+Nil and a value that is not an integer are refused: ‘x must be an
+integer’ or ‘y must be an integer’.  A negative integer is refused: ‘x
+must be a non-negative integer’.  A button other than left, right, or
+middle is refused: ‘button must be left, right, or middle’.
+
+   ‘computer_type’ types ‘text’ into the focused window.  Nil and a
+value that is not text are refused: ‘text must be a string’.  ‘""’  and
+whitespace are refused: ‘text is empty’.  ‘/’ and ‘c:/’ are characters
+to type.
+
+   ‘computer_key’ presses one key, such as enter, tab, escape, a
+function key from f1 to f12, or one character.  Nil, ‘""’, and
+whitespace are refused: ‘key is empty’.  A value that is not text is
+refused: ‘key must be a string’.  Anything else, including ‘c:/’, is
+refused: ‘key is not a key’.  ‘/’ is a key.
+
+   ‘browser_open’ opens ‘url’ in the desktop browser.  Nil, ‘""’, and
+whitespace are refused: ‘url is empty’.  A value that is not text is
+refused: ‘url must be a string’.  ‘/’ and ‘c:/’ are refused: ‘url must
+be http or https’.
+
+   The class is ‘shell’.  The tools ask in ‘ask’ mode and in
+‘accept-edits’.  ‘always-approve’ does not ask.  In plan mode a click,
+typed text, a key, and the browser are refused before the question:
+‘Error: Plan mode is on. Computer control is refused’.  A screenshot
+still runs.  A read-only subagent is not offered these tools.  A
+detached chat is offered them.  Nothing is written into the project.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1190,8 +1237,10 @@ tools, to write the plan only with ‘write_plan’, and to call
 ‘apply_patch’ fail.  A shell command that can write is refused before
 any permission question: ‘Error: Plan mode is on. A shell command that
 can write is refused’.  A read-only shell command still runs.
-‘shell_kill’ still asks.  The header line shows ‘plan’.  ‘ask_user’ can
-still ask a question.  *Note Questions::.
+‘shell_kill’ still asks.  A click, typed text, a key, and a browser are
+refused: ‘Error: Plan mode is on. Computer control is refused’.  A
+screenshot still runs.  *Note Computer use::.  The header line shows
+‘plan’.  ‘ask_user’ can still ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -1284,6 +1333,9 @@ replaced with ‘/’.
 ‘memory/global/’
 ‘memory/workspaces/PROJECT/’
      Notes.  *Note Memory::.
+
+‘computer/’
+     Screenshots from ‘computer_screenshot’.  *Note Computer use::.
 
    PROJECT in a session path is the project directory encoded as one
 file name, not the project name you see in the buffer.
@@ -1513,32 +1565,33 @@ Node: Sessions4646
 Node: Transcript6143
 Node: Prompt9772
 Node: Permissions11013
-Node: Accounts12931
-Node: Models15176
-Node: Tools16272
-Node: File tools18188
-Node: Search19422
-Node: Shell21063
-Node: Questions23848
-Node: Subagents24618
-Node: Workflows28479
-Node: Worktrees33482
-Node: Messages36610
-Node: Web search38431
-Node: Fetch a page39286
-Node: X search40519
-Node: MCP42916
-Node: Instructions45599
-Node: Skills47345
-Node: Memory48494
-Node: Plan mode49759
-Node: Usage51442
-Node: Files52461
-Node: Keys53878
-Node: Trouble55101
-Node: Manual56355
-Node: Command Index57060
-Node: Key Index59973
+Node: Accounts13087
+Node: Models15332
+Node: Tools16428
+Node: File tools18490
+Node: Search19724
+Node: Shell21365
+Node: Questions24150
+Node: Subagents24920
+Node: Workflows28856
+Node: Worktrees33859
+Node: Messages36987
+Node: Web search38808
+Node: Fetch a page39663
+Node: X search40896
+Node: MCP43293
+Node: Computer use45997
+Node: Instructions47996
+Node: Skills49742
+Node: Memory50891
+Node: Plan mode52156
+Node: Usage54003
+Node: Files55022
+Node: Keys56528
+Node: Trouble57751
+Node: Manual59005
+Node: Command Index59710
+Node: Key Index62623
 
 End Tag Table
 
