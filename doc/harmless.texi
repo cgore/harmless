@@ -51,6 +51,7 @@ commands, keys, and files a user needs.
 * Output styles::       Role, tone, and format for one session.
 * Image generation::    Write a generated image into the project.
 * Headless::            One prompt, and a task that outlives Emacs.
+* Pages::               Publish Markdown or HTML as a page.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -2130,6 +2131,63 @@ failed}.  The task file then says @code{error} and keeps that text.
 A finished task stores the reply and the session id.  The transcript
 is the session file a window would have saved.  In batch Emacs, a
 tool that would ask is denied.  The turn still ends.
+
+@node Pages
+@chapter Pages
+
+@cindex pages
+@findex harmless-publish
+@kbd{M-x harmless-publish} writes one HTML page from a Markdown or
+HTML file in the project.  The source file is not modified.
+
+Nil PATH writes @file{.harmless/pages/NAME.html}, where NAME is the
+source file's name without its extension.  A relative destination
+stays inside the project.  An absolute destination is written only
+when its parent already exists.  @code{~} is not expanded.
+
+Markdown becomes a document.  A heading line is @code{#} through
+@code{######} followed by a space.  A blank line separates
+paragraphs.  A fenced block is three backticks.  Inline code is one
+backtick span.  A link is @code{[label](target)}.  Those parts are
+rendered.  The other text is escaped, so a @code{<script>} in the
+Markdown is text.
+
+An HTML file that already contains a document is copied.  A
+fragment is wrapped in a document.  Publishing again overwrites
+the page.
+
+Nil, @code{""}, and whitespace are refused: @samp{page directory
+is empty}.  A directory that is not text is refused: @samp{page
+directory must be a string}.  A relative project directory,
+including @code{~}, is refused and is not expanded: @samp{page
+directory must be absolute}.  @code{/} and a drive root are
+refused: @samp{page directory is the filesystem root}.  A missing
+project directory is refused: @samp{page directory is missing}.  A
+file is refused: @samp{page directory is not a directory}.
+
+Nil, @code{""}, and whitespace are refused: @samp{page source is
+empty}.  A source that is not text is refused: @samp{page source
+must be a string}.  @code{/} and a drive root are refused:
+@samp{page source is the filesystem root}.  @code{~} is refused
+and is not expanded: @samp{page source must be absolute}.  A
+relative source that leaves the project is refused: @samp{page
+source escapes the project: }, followed by the path.  A missing
+source is refused: @samp{page source is missing}.  A directory is
+refused: @samp{page source is not a file}.  A file that is not
+Markdown or HTML is refused: @samp{page source is not a page}.
+
+Nil is the default destination.  @code{""} and whitespace are
+refused: @samp{page path is empty}.  A path that is not text is
+refused: @samp{page path must be a string}.  @code{/} and a drive
+root are refused: @samp{page path is the filesystem root}.
+@code{~} is refused: @samp{page path must be absolute}.  A
+trailing slash is refused: @samp{page path is not a file}.  A
+relative path that leaves the project is refused: @samp{page path
+escapes the project: }, followed by the path.  A destination that
+is not @file{.html} or @file{.htm} is refused: @samp{page path is
+not a page}.  An absolute destination whose parent is missing is
+refused: @samp{page path is missing}.  The source file as the
+destination is refused: @samp{page path is the source}.
 
 @node Memory
 @chapter Memory

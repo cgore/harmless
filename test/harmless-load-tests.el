@@ -58,6 +58,7 @@
   (should (fboundp 'harmless-task-status))
   (should (fboundp 'harmless-headless-batch))
   (should (fboundp 'harmless-headless-work))
+  (should (fboundp 'harmless-publish))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

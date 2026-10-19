@@ -58,6 +58,7 @@
 ;;   M-x harmless-menu         ; transient
 ;;   M-x harmless-info         ; this manual
 ;;   M-x harmless-task-start   ; one prompt in another Emacs
+;;   M-x harmless-publish      ; publish Markdown or HTML as a page
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -113,6 +114,7 @@
 (require 'harmless-dashboard)
 (require 'harmless-transient)
 (require 'harmless-headless)
+(require 'harmless-page)
 
 (defvar harmless--config-loaded nil
   "Non-nil after the Harmless config file has been loaded.")
@@ -344,6 +346,28 @@ Emacs."
      (princ (error-message-string err))
      (princ "\n")
      (kill-emacs 1))))
+
+;;;###autoload
+(defun harmless-publish (source &optional directory path)
+  "Publish SOURCE as an HTML page and return the page path.
+DIRECTORY is the project.  Nil DIRECTORY uses the current
+project.  Nil PATH writes `.harmless/pages/NAME.html' inside
+the project.  Markdown is rendered.  HTML is copied.  An
+interactive call opens the page."
+  (interactive
+   (progn
+     (harmless-ensure-configured)
+     (list (read-file-name "Publish: "))))
+  (unless directory
+    (setq directory (harmless-current-cwd)))
+  (let ((page (harmless-page-publish directory source path)))
+    (when (called-interactively-p 'any)
+      (browse-url
+       (if (string-match-p "\\`[A-Za-z]:" page)
+           (concat "file:///" page)
+         (concat "file://" page))))
+    (message "Published %s" page)
+    page))
 
 (defun harmless-headless-work ()
   "Finish the task id in the remaining arguments and exit.

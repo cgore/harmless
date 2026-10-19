@@ -144,6 +144,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-delete-session` | Delete the session from disk (`X` in the transcript) |
 | `M-x harmless-task-start` | Run one prompt in another Emacs that keeps going after this one exits |
 | `M-x harmless-task-status` | Read that task's status |
+| `M-x harmless-publish` | Publish a Markdown or HTML file as a page |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -289,6 +290,16 @@ is `tasks/<id>.json` under `harmless-directory`.
 `emacs --batch -l harmless -f harmless-headless-batch` runs one
 prompt in the current process and prints the reply.  The next two
 arguments are the project directory and the prompt.
+
+## Pages
+
+`M-x harmless-publish` writes an HTML page from a Markdown or HTML
+file in the project.  Markdown headings, paragraphs, fenced code,
+inline code, and links are rendered, and the rest of the text is
+escaped.  An HTML document is copied.  An HTML fragment is wrapped
+in a document.  With no destination, the page is
+`.harmless/pages/NAME.html`.  A relative destination stays in the
+project.  The source file is left unchanged.
 
 ## Subagents
 

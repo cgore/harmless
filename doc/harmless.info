@@ -42,6 +42,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Output styles::       Role, tone, and format for one session.
 * Image generation::    Write a generated image into the project.
 * Headless::            One prompt, and a task that outlives Emacs.
+* Pages::               Publish Markdown or HTML as a page.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -1835,7 +1836,7 @@ successful call reports the absolute path and the number of bytes
 written.
 
 
-File: harmless.info,  Node: Headless,  Next: Memory,  Prev: Image generation,  Up: Top
+File: harmless.info,  Node: Headless,  Next: Pages,  Prev: Image generation,  Up: Top
 
 16 Headless
 ***********
@@ -1891,9 +1892,61 @@ is the session file a window would have saved.  In batch Emacs, a tool
 that would ask is denied.  The turn still ends.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Headless,  Up: Top
+File: harmless.info,  Node: Pages,  Next: Memory,  Prev: Headless,  Up: Top
 
-17 Memory
+17 Pages
+********
+
+‘M-x harmless-publish’ writes one HTML page from a Markdown or HTML file
+in the project.  The source file is not modified.
+
+   Nil PATH writes ‘.harmless/pages/NAME.html’, where NAME is the source
+file's name without its extension.  A relative destination stays inside
+the project.  An absolute destination is written only when its parent
+already exists.  ‘~’ is not expanded.
+
+   Markdown becomes a document.  A heading line is ‘#’ through ‘######’
+followed by a space.  A blank line separates paragraphs.  A fenced block
+is three backticks.  Inline code is one backtick span.  A link is
+‘[label](target)’.  Those parts are rendered.  The other text is
+escaped, so a ‘<script>’ in the Markdown is text.
+
+   An HTML file that already contains a document is copied.  A fragment
+is wrapped in a document.  Publishing again overwrites the page.
+
+   Nil, ‘""’, and whitespace are refused: ‘page directory is empty’.  A
+directory that is not text is refused: ‘page directory must be a
+string’.  A relative project directory, including ‘~’, is refused and is
+not expanded: ‘page directory must be absolute’.  ‘/’ and a drive root
+are refused: ‘page directory is the filesystem root’.  A missing project
+directory is refused: ‘page directory is missing’.  A file is refused:
+‘page directory is not a directory’.
+
+   Nil, ‘""’, and whitespace are refused: ‘page source is empty’.  A
+source that is not text is refused: ‘page source must be a string’.  ‘/’
+and a drive root are refused: ‘page source is the filesystem root’.  ‘~’
+is refused and is not expanded: ‘page source must be absolute’.  A
+relative source that leaves the project is refused: ‘page source escapes
+the project: ’, followed by the path.  A missing source is refused:
+‘page source is missing’.  A directory is refused: ‘page source is not a
+file’.  A file that is not Markdown or HTML is refused: ‘page source is
+not a page’.
+
+   Nil is the default destination.  ‘""’  and whitespace are refused:
+‘page path is empty’.  A path that is not text is refused: ‘page path
+must be a string’.  ‘/’ and a drive root are refused: ‘page path is the
+filesystem root’.  ‘~’ is refused: ‘page path must be absolute’.  A
+trailing slash is refused: ‘page path is not a file’.  A relative path
+that leaves the project is refused: ‘page path escapes the project: ’,
+followed by the path.  A destination that is not ‘.html’ or ‘.htm’ is
+refused: ‘page path is not a page’.  An absolute destination whose
+parent is missing is refused: ‘page path is missing’.  The source file
+as the destination is refused: ‘page path is the source’.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Pages,  Up: Top
+
+18 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -1961,7 +2014,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-18 Plan mode
+19 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2026,7 +2079,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-19 Usage
+20 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2050,7 +2103,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-20 Files
+21 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2104,7 +2157,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-21 Keys
+22 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2216,7 +2269,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-22 Trouble
+23 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2243,7 +2296,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-23 Manual
+24 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2303,6 +2356,7 @@ Command Index
 * harmless-plugin-install:               Plugins.              (line  6)
 * harmless-prompt-mode:                  Prompt.               (line  6)
 * harmless-prompt-send:                  Prompt.               (line  6)
+* harmless-publish:                      Pages.                (line  6)
 * harmless-reload-all-harmless:          Trouble.              (line  6)
 * harmless-remember:                     Memory.               (line  6)
 * harmless-rename:                       Sessions.             (line 31)
@@ -2363,49 +2417,50 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2036
-Node: Installation2767
-Node: Starting4371
-Node: Sessions4910
-Node: Transcript8091
-Node: Prompt11852
-Node: Permissions13093
-Node: Accounts20399
-Node: Models22644
-Node: Tools23740
-Node: File tools28088
-Node: Search32595
-Node: Shell34491
-Node: Questions37276
-Node: Subagents38046
-Node: Workflows42195
-Node: Worktrees47198
-Node: Messages50326
-Node: Web search52147
-Node: Fetch a page53002
-Node: X search54235
-Node: MCP56632
-Node: Computer use59336
-Node: Monitors61352
-Node: Schedules64356
-Node: Todos66822
-Node: Review69477
-Node: Language server73060
-Node: Instructions76247
-Node: Skills79355
-Node: Plugins81685
-Node: Output styles83735
-Node: Image generation85746
-Node: Headless87588
-Node: Memory90277
-Node: Plan mode92871
-Node: Usage95857
-Node: Files96876
-Node: Keys98519
-Node: Trouble100201
-Node: Manual101455
-Node: Command Index102160
-Node: Key Index106387
+Node: Introduction2096
+Node: Installation2827
+Node: Starting4431
+Node: Sessions4970
+Node: Transcript8151
+Node: Prompt11912
+Node: Permissions13153
+Node: Accounts20459
+Node: Models22704
+Node: Tools23800
+Node: File tools28148
+Node: Search32655
+Node: Shell34551
+Node: Questions37336
+Node: Subagents38106
+Node: Workflows42255
+Node: Worktrees47258
+Node: Messages50386
+Node: Web search52207
+Node: Fetch a page53062
+Node: X search54295
+Node: MCP56692
+Node: Computer use59396
+Node: Monitors61412
+Node: Schedules64416
+Node: Todos66882
+Node: Review69537
+Node: Language server73120
+Node: Instructions76307
+Node: Skills79415
+Node: Plugins81745
+Node: Output styles83795
+Node: Image generation85806
+Node: Headless87648
+Node: Pages90336
+Node: Memory93175
+Node: Plan mode95766
+Node: Usage98752
+Node: Files99771
+Node: Keys101414
+Node: Trouble103096
+Node: Manual104350
+Node: Command Index105055
+Node: Key Index109355
 
 End Tag Table
 
