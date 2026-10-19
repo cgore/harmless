@@ -115,6 +115,12 @@
 ;;   M-x harmless-context-profile ; compose a situation and count tokens
 ;;   M-x harmless-skill-loadout ; reconcile one directory's skills
 ;;   M-x harmless-plugin-inspect ; list one plugin's skills and servers
+;;   M-x harmless-machine-add ; register another machine's data directory
+;;   M-x harmless-machine-list ; list those machines
+;;   M-x harmless-machine-show ; read one machine
+;;   M-x harmless-machine-remove ; forget a machine, and keep its files
+;;   M-x harmless-machine-call ; run a team command on one machine
+;;   M-x harmless-machine-copy ; copy one file from one machine to another
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -172,6 +178,7 @@
 (require 'harmless-headless)
 (require 'harmless-page)
 (require 'harmless-team)
+(require 'harmless-machine)
 (require 'harmless-scope)
 (require 'harmless-context)
 

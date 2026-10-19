@@ -44,6 +44,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Headless::            One prompt, and a task that outlives Emacs.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
+* Machines::            Other hosts and one file copied between them.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -1990,7 +1991,7 @@ parent is missing is refused: ‘page path is missing’.  The source file
 as the destination is refused: ‘page path is the source’.
 
 
-File: harmless.info,  Node: Team,  Next: Scope,  Prev: Pages,  Up: Top
+File: harmless.info,  Node: Team,  Next: Machines,  Prev: Pages,  Up: Top
 
 18 Team
 *******
@@ -2316,9 +2317,65 @@ seat is refused: ‘team seat is missing’.  A broken rig file is refused:
 team at ’, followed by that directory.
 
 
-File: harmless.info,  Node: Scope,  Next: Context,  Prev: Team,  Up: Top
+File: harmless.info,  Node: Machines,  Next: Scope,  Prev: Team,  Up: Top
 
-19 Scope
+19 Machines
+***********
+
+A machine is a name and a directory.  The directory is that host's
+Harmless data.  ‘M-x harmless-machine-add’ records both.  It does not
+open a connection, start a process, or store a secret.  ‘M-x
+harmless-machine-list’ returns the names.  ‘M-x harmless-machine-show’
+returns the name and the directory.  ‘M-x harmless-machine-remove’
+forgets the name and leaves the directory on disk.
+
+   The registry is ‘machines.json’ under the local Harmless data
+directory.  A missing file is an empty registry.
+
+   ‘M-x harmless-machine-call’ runs one public team command with that
+host's directory as ‘harmless-directory’.  The verb is a command whose
+name starts with ‘harmless-team-’.  A private helper is refused.  An
+interactive call prompts for the verb's own arguments.  The registry
+stays on this machine.
+
+   ‘M-x harmless-machine-copy’ copies one relative file from one host
+directory to another.  A directory is refused.  A file that is already
+at the destination is refused.  ‘..’, ‘~’, and an absolute path are
+refused and are not opened.
+
+   Nil, ‘""’, and whitespace are refused: ‘machine name is empty’.  A
+value that is not text is refused: ‘machine name must be a string’.  A
+path, ‘~’, and the filesystem root are refused: ‘machine name is not a
+name’.  A second registration is refused: ‘machine is already
+registered: ’, followed by the name.  A missing machine is refused: ‘no
+machine named ’, followed by the name.
+
+   Nil, ‘""’, and whitespace are refused: ‘machine directory is empty’.
+A value that is not text is refused: ‘machine directory must be a
+string’.  A relative path, including ‘~’, is refused and is not
+expanded: ‘machine directory must be absolute’.  ‘/’ and a drive root
+are refused: ‘machine directory is the filesystem root’.  A missing
+directory is refused: ‘machine directory is missing’.  A file is
+refused: ‘machine directory is not a directory’.  A trailing slash names
+the same directory.
+
+   A verb that is not a public team command is refused: ‘machine verb is
+not a team verb’.  A broken registry is refused: ‘machines are not
+valid’.  That file is left unchanged.  The registry is refused at the
+filesystem root: ‘Refusing to store a machine at ’, followed by that
+directory.
+
+   Nil, ‘""’, and whitespace are refused: ‘machine file is empty’.  A
+value that is not text is refused: ‘machine file must be a string’.  A
+path that leaves the host is refused: ‘machine file escapes the
+machine’.  A missing file is refused: ‘machine file is missing’.  A
+directory is refused: ‘machine file is not a file’.  An existing
+destination is refused: ‘machine file is already there’.
+
+
+File: harmless.info,  Node: Scope,  Next: Context,  Prev: Machines,  Up: Top
+
+20 Scope
 ********
 
 A project directory holds missions, and a mission holds slices.  ‘M-x
@@ -2388,7 +2445,7 @@ by that path.
 
 File: harmless.info,  Node: Context,  Next: Memory,  Prev: Scope,  Up: Top
 
-20 Context
+21 Context
 **********
 
 A project holds context packs under ‘packs/NAME/PACK.md’.  ‘M-x
@@ -2443,7 +2500,7 @@ context at ’, followed by that path.
 
 File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Context,  Up: Top
 
-21 Memory
+22 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2511,7 +2568,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-22 Plan mode
+23 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2576,7 +2633,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-23 Usage
+24 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2600,7 +2657,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-24 Files
+25 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2686,7 +2743,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-25 Keys
+26 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2798,7 +2855,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-26 Trouble
+27 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2825,7 +2882,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-27 Manual
+28 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2877,6 +2934,12 @@ Command Index
 * harmless-login:                        Accounts.             (line  6)
 * harmless-logout:                       Accounts.             (line  6)
 * harmless-lsp:                          Language server.      (line  6)
+* harmless-machine-add:                  Machines.             (line  6)
+* harmless-machine-call:                 Machines.             (line  6)
+* harmless-machine-copy:                 Machines.             (line  6)
+* harmless-machine-list:                 Machines.             (line  6)
+* harmless-machine-remove:               Machines.             (line  6)
+* harmless-machine-show:                 Machines.             (line  6)
 * harmless-make-anthropic:               Installation.         (line 17)
 * harmless-make-openai:                  Installation.         (line 17)
 * harmless-make-openai-compat:           Installation.         (line 17)
@@ -3011,53 +3074,54 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2275
-Node: Installation3006
-Node: Starting4610
-Node: Sessions5149
-Node: Transcript8330
-Node: Prompt12091
-Node: Permissions13332
-Node: Accounts20638
-Node: Models22883
-Node: Tools23979
-Node: File tools28327
-Node: Search32834
-Node: Shell34730
-Node: Questions37515
-Node: Subagents38285
-Node: Workflows42434
-Node: Worktrees47437
-Node: Messages50565
-Node: Web search52386
-Node: Fetch a page53241
-Node: X search54474
-Node: MCP56871
-Node: Computer use59575
-Node: Monitors61591
-Node: Schedules64595
-Node: Todos67061
-Node: Review69716
-Node: Language server73299
-Node: Instructions76486
-Node: Skills79594
-Node: Plugins83754
-Node: Output styles86606
-Node: Image generation88617
-Node: Headless90459
-Node: Pages93147
-Node: Team95984
-Node: Scope115879
-Node: Context119886
-Node: Memory123021
-Node: Plan mode125614
-Node: Usage128600
-Node: Files129619
-Node: Keys133015
-Node: Trouble134697
-Node: Manual135951
-Node: Command Index136656
-Node: Key Index145701
+Node: Introduction2345
+Node: Installation3076
+Node: Starting4680
+Node: Sessions5219
+Node: Transcript8400
+Node: Prompt12161
+Node: Permissions13402
+Node: Accounts20708
+Node: Models22953
+Node: Tools24049
+Node: File tools28397
+Node: Search32904
+Node: Shell34800
+Node: Questions37585
+Node: Subagents38355
+Node: Workflows42504
+Node: Worktrees47507
+Node: Messages50635
+Node: Web search52456
+Node: Fetch a page53311
+Node: X search54544
+Node: MCP56941
+Node: Computer use59645
+Node: Monitors61661
+Node: Schedules64665
+Node: Todos67131
+Node: Review69786
+Node: Language server73369
+Node: Instructions76556
+Node: Skills79664
+Node: Plugins83824
+Node: Output styles86676
+Node: Image generation88687
+Node: Headless90529
+Node: Pages93217
+Node: Team96054
+Node: Machines115952
+Node: Scope118818
+Node: Context122829
+Node: Memory125964
+Node: Plan mode128557
+Node: Usage131543
+Node: Files132562
+Node: Keys135958
+Node: Trouble137640
+Node: Manual138894
+Node: Command Index139599
+Node: Key Index149082
 
 End Tag Table
 

@@ -525,6 +525,24 @@ and tells the room.  The seat must already be at that wall.
 first.  The transcript summary is `M-x harmless-compact`.
 Nothing is started.
 
+## Machines
+
+A machine is a name and a directory.  The directory is that
+host's Harmless data.  `M-x harmless-machine-add` records both.
+It does not open a connection or store a secret.
+`M-x harmless-machine-list` returns the names.
+`M-x harmless-machine-show` returns one.
+`M-x harmless-machine-remove` forgets the name and leaves the
+directory in place.  The registry is `machines.json` under the
+local Harmless data directory.
+
+`M-x harmless-machine-call` runs one public team command with
+that host's directory as the data directory.  The same verbs
+are the `harmless-team-` commands.  The registry stays local.
+`M-x harmless-machine-copy` copies one relative file from one
+host to another.  A directory, a path that leaves the host, and
+a file that is already there are refused.  Nothing is started.
+
 ## Scope
 
 A project directory holds missions, and a mission holds slices.

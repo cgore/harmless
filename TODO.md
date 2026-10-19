@@ -62,7 +62,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] Work on disk as a tree: a project holds missions, a mission holds slices. Intent composes down the tree. The slice is the only unit that is specified and proved. Proof is evidence in the tree, with attributed judgments. Progress is derived from that evidence.
 - [x] Context packs addressed by ref, including one section of a file. Compose a profile for a fresh seat, a handover, or a return from compaction, and report the token total instead of truncating it.
 - [x] Reconcile the skill loadout for one working directory, and inspect a plugin's skills, hooks, and MCP servers. Installing a plugin stays an explicit copy.
-- [ ] A registry of other machines. The same team verbs run against a registered host, and one file can be copied between hosts.
+- [x] A registry of other machines. The same team verbs run against a registered host, and one file can be copied between hosts.
 - [ ] A person is an address. A queue row to that address is how the team asks for a decision, and the row's history is the receipt. Slack is the first connector. Secrets stay out of the team config.
 - [ ] The model can boot, inspect, message, snapshot, and restore the team through tools, with the same guards as the commands a person runs.
 - [ ] Named auth profiles per runtime. Switch a seat to another account without stranding its conversation. The team record never stores the token.
