@@ -150,8 +150,9 @@ In the transcript, a tool run is a collapsed line.  `TAB` toggles the
 entry at point, `Left` closes it, `Right` opens it, and `S-TAB` toggles
 every entry.  A run of reads and searches is one `explored` line.
 
-Permission modes: `ask` (default), `accept-edits`, `always-approve`.  Shell
-commands still prompt in `accept-edits`.
+Permission modes: `ask` (default), `accept-edits`, `always-approve`,
+and `auto`.  Shell commands still prompt in `accept-edits`.  In `auto`,
+a reviewer allows ordinary calls and escalates the rest.
 
 ## Layout
 
@@ -334,7 +335,11 @@ a per-project allow list that survives the session.  One rule per
 line.  A missing file creates nothing.
 `harmless-dangerous-commands` refuses those programs before the
 question.  An allow rule does not override it.  `rm` of `/`, a
-drive root, `~`, or `/*` is refused too.
+drive root, `~`, or `/*` is refused too.  `auto` mode asks a
+classifier, or the reviewer model when the classifier is nil,
+before a call that would otherwise prompt.  `allow` skips the
+question.  Anything else asks.  An allow rule skips the reviewer.
+A deny, a dangerous command, and plan mode still refuse first.
 
 ## Plan mode
 

@@ -375,6 +375,15 @@ Edits proceed.  Shell commands and network calls still ask.
 
 @item always-approve
 Edits, shell commands, and network calls proceed.
+
+@item auto
+A reviewer decides an escalation.  A call that would ask is
+checked first.  @code{allow} skips the question.
+@code{escalate} asks.  An allow rule skips the reviewer.  A
+deny, a dangerous command, and a shell write in plan mode still
+refuse before the reviewer.  @code{ask}, @code{accept-edits},
+and @code{always-approve} do not call the reviewer.  A read
+still does not ask.
 @end table
 
 @kbd{M-x harmless-set-permission-mode} sets the mode for the current
@@ -465,6 +474,23 @@ root, @code{~}, or @code{/*} is refused too.  A longer path is not.
 The model receives @samp{Error: dangerous command refused: },
 followed by the program name.  In plan mode a command that can
 write is still refused as a plan-mode write.
+
+@vindex harmless-auto-review-function
+In @code{auto} mode the reviewer runs only when the call would
+ask and no allow rule matches.  @code{harmless-auto-review-function},
+when set, is that classifier.  It is called with the session,
+the tool, and the arguments, and it returns @code{allow} or
+@code{escalate}.  Any other return, or an error, escalates.
+Nil asks the reviewer model.  The model sees the tool name and
+the arguments and is given no tools.  Only a reply that is
+exactly @code{allow} or @code{escalate} is kept.  A missing
+provider, an error, a tool call, or any other reply escalates.
+The reviewer does not run the tool.  The classifier is not saved
+on the session.  The mode is saved.  @kbd{M-x
+harmless-set-permission-mode} accepts @code{auto}.  Nil uses the
+default mode.  An unknown mode is refused: @samp{permission mode
+is not a mode}.  A saved mode Harmless does not know is loaded
+as @code{ask}.
 
 @node Accounts
 @chapter Accounts

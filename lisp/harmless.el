@@ -403,17 +403,22 @@ Empty input clears the session override so the default is used."
 
 ;;;###autoload
 (defun harmless-set-permission-mode (mode)
-  "Set the current session's permission MODE."
+  "Set the current session's permission MODE.
+MODE is `ask', `accept-edits', `always-approve', or `auto'.
+An unknown mode is refused and the session is left unchanged."
   (interactive
-   (list (intern (completing-read "Permission mode: "
-                                  '("ask" "accept-edits" "always-approve")
-                                  nil t
-                                  (format "%s"
-                                          (and (harmless--context-session)
-                                               (harmless-session-permission-mode
-                                                (harmless--context-session))))))))
+   (list (intern (completing-read
+                  "Permission mode: "
+                  '("ask" "accept-edits" "always-approve" "auto")
+                  nil t
+                  (format "%s"
+                          (and (harmless--context-session)
+                               (harmless-session-permission-mode
+                                (harmless--context-session))))))))
   (let ((session (or (harmless--context-session)
                      (user-error "No Harmless session"))))
+    (unless (harmless-session-permission-mode-p mode)
+      (error "permission mode is not a mode"))
     (setf (harmless-session-permission-mode session) mode)
     (harmless-session-save session)
     (message "Harmless permissions: %s" mode)))

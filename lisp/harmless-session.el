@@ -74,12 +74,34 @@ location.  A relative path or the filesystem root is refused."
   :type 'directory
   :group 'harmless)
 
+(defconst harmless-permission-modes
+  '(ask accept-edits always-approve auto)
+  "Permission modes a session can store.
+`auto' asks a reviewer before a call that would otherwise prompt.")
+
+(defun harmless-session-permission-mode-p (mode)
+  "Return non-nil when MODE is a permission mode."
+  (and (symbolp mode) (memq mode harmless-permission-modes)))
+
+(defun harmless-session--permission-mode-from-summary (value)
+  "Return a permission mode loaded from VALUE.
+Nil, \"\", and an unknown name are `ask'.  `auto' is kept."
+  (let ((mode (cond
+               ((or (null value)
+                    (and (stringp value) (string-empty-p value)))
+                'ask)
+               ((symbolp value) value)
+               ((stringp value) (intern value))
+               (t 'ask))))
+    (if (harmless-session-permission-mode-p mode) mode 'ask)))
+
 (defcustom harmless-permission-mode 'ask
   "Default permission mode for new sessions.
-`ask', `accept-edits', or `always-approve'."
+`ask', `accept-edits', `always-approve', or `auto'."
   :type '(choice (const ask)
                  (const accept-edits)
-                 (const always-approve))
+                 (const always-approve)
+                 (const auto))
   :group 'harmless)
 
 (defvar harmless--sessions (make-hash-table :test 'equal)
@@ -336,8 +358,13 @@ combined with :cwd."
                    :status 'idle
                    :parent-id (plist-get args :parent-id)
                    :source (or (plist-get args :source) 'user)
-                   :permission-mode (or (plist-get args :permission-mode)
-                                        harmless-permission-mode)
+                   :permission-mode (let ((mode
+                                          (or (plist-get args :permission-mode)
+                                              harmless-permission-mode)))
+                                      (unless (harmless-session-permission-mode-p
+                                               mode)
+                                        (error "permission mode is not a mode"))
+                                      mode)
                    :allow-classes nil
                    :prompt-tokens 0
                    :completion-tokens 0
@@ -596,9 +623,9 @@ Signal when that path would be /NAME or outside the sessions root."
                               (plist-get summary :status))
                      :parent-id (plist-get summary :parent-id)
                      :source (intern (or (plist-get summary :source) "user"))
-                     :permission-mode (intern
-                                       (or (plist-get summary :permission-mode)
-                                           "ask"))
+                     :permission-mode
+                     (harmless-session--permission-mode-from-summary
+                      (plist-get summary :permission-mode))
                      :allow-classes nil
                      :prompt-tokens (or (plist-get summary :prompt-tokens) 0)
                      :completion-tokens (or (plist-get summary :completion-tokens) 0)

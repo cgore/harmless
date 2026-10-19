@@ -40,6 +40,7 @@
 ;; tools with permission, call the provider again until a text stop.
 ;; Tool calls from one reply start together.  Permission is one question
 ;; at a time, and an allowed call starts before the next question.
+;; In auto mode a reviewer decides whether that question is asked.
 
 ;;; Code:
 
@@ -56,6 +57,7 @@
 (require 'harmless-tools)
 (require 'harmless-tools-shell)
 (require 'harmless-perm)
+(require 'harmless-auto)
 (require 'harmless-usage)
 
 (defvar harmless--perm-callback)
@@ -513,6 +515,42 @@ from the registry."
            (harmless-mcp-tool-by-name session name))
       (harmless-tool-by-name name)))
 
+(defun harmless-turn--permit (batch index call tool args class auto-allow)
+  "Confirm CALL, allowing it when AUTO-ALLOW or a rule says so.
+CLASS is the permission class.  AUTO-ALLOW non-nil skips the
+question the way an allow rule does."
+  (let* ((session (harmless-turn-batch-session batch))
+         (harmless-perm-ask-function
+          (if (or auto-allow
+                  (harmless-perm-rule-allows-p session tool args))
+              (lambda (_session _class _item callback)
+                (funcall callback 'allow))
+            harmless-perm-ask-function)))
+    (harmless-perm-confirm
+     session
+     class
+     (harmless-turn--item-for tool args)
+     (lambda (decision)
+       (setf (harmless-turn-batch-waiting-perm batch) nil)
+       (cond
+        ((harmless-turn-batch-aborted batch) nil)
+        ((eq decision 'deny)
+         (harmless-turn--finish-call
+          batch index
+          (harmless-turn--tool-message
+           call "Error: user denied this tool call")))
+        (t
+         (harmless-session-set-status session 'streaming)
+         (harmless-turn--invoke
+          tool session args
+          (lambda (result)
+            (harmless-turn--finish-call
+             batch index
+             (harmless-turn--tool-message call result))))))
+       (unless (or (harmless-turn-batch-launching batch)
+                   (harmless-turn-batch-aborted batch))
+         (harmless-turn--launch batch))))))
+
 (defun harmless-turn--start-one (batch index)
   "Start call INDEX in BATCH."
   (let* ((session (harmless-turn-batch-session batch))
@@ -569,35 +607,20 @@ from the registry."
               call (or agent-refusal plan-refusal
                        dangerous-refusal rule-refusal)))
           (setf (harmless-turn-batch-waiting-perm batch) t)
-          (let ((harmless-perm-ask-function
-                 (if (harmless-perm-rule-allows-p session tool args)
-                     (lambda (_session _class _item callback)
-                       (funcall callback 'allow))
-                   harmless-perm-ask-function)))
-            (harmless-perm-confirm
-             session
-             class
-             (harmless-turn--item-for tool args)
-             (lambda (decision)
-             (setf (harmless-turn-batch-waiting-perm batch) nil)
-             (cond
-              ((harmless-turn-batch-aborted batch) nil)
-              ((eq decision 'deny)
-               (harmless-turn--finish-call
-                batch index
-                (harmless-turn--tool-message
-                 call "Error: user denied this tool call")))
-              (t
-               (harmless-session-set-status session 'streaming)
-               (harmless-turn--invoke
-                tool session args
-                (lambda (result)
-                  (harmless-turn--finish-call
-                   batch index
-                   (harmless-turn--tool-message call result))))))
-             (unless (or (harmless-turn-batch-launching batch)
-                         (harmless-turn-batch-aborted batch))
-               (harmless-turn--launch batch)))))))))))
+          (if (and (eq (harmless-session-permission-mode session) 'auto)
+                   (harmless-perm-needed-p session class)
+                   (not (harmless-perm-rule-allows-p session tool args)))
+              (progn
+                (harmless-session-set-status session 'waiting-permission)
+                (harmless-auto-review
+                 session tool args
+                 (lambda (decision)
+                   (unless (harmless-turn-batch-aborted batch)
+                     (harmless-turn--permit
+                      batch index call tool args class
+                      (eq decision 'allow))))))
+            (harmless-turn--permit
+             batch index call tool args class nil))))))))
 
 (provide 'harmless-turn)
 

@@ -322,6 +322,14 @@ prompt.  Accepting edits does not ask.  *Note Schedules::.
 ‘always-approve’
      Edits, shell commands, and network calls proceed.
 
+‘auto’
+     A reviewer decides an escalation.  A call that would ask is checked
+     first.  ‘allow’ skips the question.  ‘escalate’ asks.  An allow
+     rule skips the reviewer.  A deny, a dangerous command, and a shell
+     write in plan mode still refuse before the reviewer.  ‘ask’,
+     ‘accept-edits’, and ‘always-approve’ do not call the reviewer.  A
+     read still does not ask.
+
    ‘M-x harmless-set-permission-mode’ sets the mode for the current
 session.  The menu key is ‘p’.  New sessions take the value of
 ‘harmless-permission-mode’, which defaults to ‘ask’.
@@ -399,6 +407,19 @@ override the list.  The match is the lower-case file name.  ‘sudo’ and
 is not.  The model receives ‘Error: dangerous command refused: ’,
 followed by the program name.  In plan mode a command that can write is
 still refused as a plan-mode write.
+
+   In ‘auto’ mode the reviewer runs only when the call would ask and no
+allow rule matches.  ‘harmless-auto-review-function’, when set, is that
+classifier.  It is called with the session, the tool, and the arguments,
+and it returns ‘allow’ or ‘escalate’.  Any other return, or an error,
+escalates.  Nil asks the reviewer model.  The model sees the tool name
+and the arguments and is given no tools.  Only a reply that is exactly
+‘allow’ or ‘escalate’ is kept.  A missing provider, an error, a tool
+call, or any other reply escalates.  The reviewer does not run the tool.
+The classifier is not saved on the session.  The mode is saved.  ‘M-x
+harmless-set-permission-mode’ accepts ‘auto’.  Nil uses the default
+mode.  An unknown mode is refused: ‘permission mode is not a mode’.  A
+saved mode Harmless does not know is loaded as ‘ask’.
 
 
 File: harmless.info,  Node: Accounts,  Next: Models,  Prev: Permissions,  Up: Top
@@ -1724,35 +1745,35 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts16267
-Node: Models18512
-Node: Tools19608
-Node: File tools21830
-Node: Search23064
-Node: Shell24705
-Node: Questions27490
-Node: Subagents28260
-Node: Workflows32409
-Node: Worktrees37412
-Node: Messages40540
-Node: Web search42361
-Node: Fetch a page43216
-Node: X search44449
-Node: MCP46846
-Node: Computer use49550
-Node: Monitors51566
-Node: Schedules54499
-Node: Instructions56951
-Node: Skills58697
-Node: Memory59846
-Node: Plan mode61111
-Node: Usage63148
-Node: Files64167
-Node: Keys65712
-Node: Trouble66935
-Node: Manual68189
-Node: Command Index68894
-Node: Key Index71807
+Node: Accounts17555
+Node: Models19800
+Node: Tools20896
+Node: File tools23118
+Node: Search24352
+Node: Shell25993
+Node: Questions28778
+Node: Subagents29548
+Node: Workflows33697
+Node: Worktrees38700
+Node: Messages41828
+Node: Web search43649
+Node: Fetch a page44504
+Node: X search45737
+Node: MCP48134
+Node: Computer use50838
+Node: Monitors52854
+Node: Schedules55787
+Node: Instructions58239
+Node: Skills59985
+Node: Memory61134
+Node: Plan mode62399
+Node: Usage64436
+Node: Files65455
+Node: Keys67000
+Node: Trouble68223
+Node: Manual69477
+Node: Command Index70182
+Node: Key Index73095
 
 End Tag Table
 

@@ -88,7 +88,7 @@ The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `a
 - [x] A per-project allow list that survives the session.
 - [x] A denylist for dangerous commands.
 - [x] Classify read-only shell commands so they can skip a prompt. A command Harmless does not recognize still asks. A redirect, a command substitution, and a subshell still ask.
-- [ ] Auto-review. A reviewer model or a classifier decides an escalation (Codex auto-review, Claude Code auto mode, Grok Build auto-review).
+- [x] Auto-review. A reviewer model or a classifier decides an escalation (Codex auto-review, Claude Code auto mode, Grok Build auto-review).
 - [ ] Hooks that can block a tool call, or replace the result the model sees. Claude Code also runs a hook as an HTTP request, an MCP call, a prompt, or a subagent.
 - [ ] An OS sandbox for the shell (Landlock on Linux). Codex defaults to workspace-write and asks before the network. Grok Build's sandbox is off unless asked.
 - [ ] Extra directories, outside the project root, that this session may read or edit (Claude Code `--add-dir`).
