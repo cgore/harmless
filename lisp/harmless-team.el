@@ -57,7 +57,10 @@
 ;; shows held rows, rows stalled after a claim, and rows
 ;; waiting on a person.  A declared workflow opens its first
 ;; step.  Closing that step opens the next step in the same
-;; write.  The owner decides that the step is done.  This file
+;; write.  The owner decides that the step is done.  A watchdog
+;; is a reminder, a pool of artifacts, a nudge, an idle queue,
+;; or a seat near its context wall.  The job stays in the rig
+;; file.  It does not arm a timer or a schedule.  This file
 ;; does not register another machine.
 
 ;;; Code:
@@ -533,6 +536,88 @@ Nil means the rig has no workflow yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defconst harmless-team--watchdog-kinds
+  '("reminder" "artifacts" "nudge" "idle" "wall")
+  "Watchdog kinds a rig can store.
+The job stays in the rig file.  It is not a session schedule.")
+
+(defun harmless-team--watchdog-kind-p (kind)
+  "Return non-nil if KIND is one watchdog kind."
+  (and (stringp kind) (member kind harmless-team--watchdog-kinds)))
+
+(defun harmless-team--watchdog-due-p (text)
+  "Return non-nil if TEXT is one UTC time stamp."
+  (and (stringp text)
+       (string-match-p
+        (concat "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}"
+                "T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}Z\\'")
+        text)))
+
+(defun harmless-team--watchdog-pool-p (pool)
+  "Return non-nil if POOL is a list of artifact text."
+  (and (consp pool)
+       (let ((ok t))
+         (while (and ok (consp pool))
+           (if (and (stringp (car pool))
+                    (not (string-empty-p (car pool))))
+               (setq pool (cdr pool))
+             (setq ok nil)))
+         (and ok (null pool)))))
+
+(defun harmless-team--watchdog-job-p (item)
+  "Return non-nil if ITEM is one stored watchdog."
+  (and (harmless-plist-p item)
+       (harmless-team--row-id-p (plist-get item :id))
+       (harmless-team--watchdog-kind-p (plist-get item :kind))
+       (let ((kind (plist-get item :kind))
+             (seat (plist-get item :seat))
+             (target (plist-get item :target))
+             (text (plist-get item :text))
+             (due (plist-get item :due))
+             (pool (plist-get item :pool))
+             (percent (plist-get item :percent)))
+         (cond
+          ((equal kind "reminder")
+           (and (stringp seat) (not (string-empty-p seat))
+                (stringp text) (not (string-empty-p text))
+                (harmless-team--watchdog-due-p due)
+                (null target) (null pool) (null percent)))
+          ((equal kind "artifacts")
+           (and (null seat) (null target) (null text)
+                (null due) (null percent)
+                (harmless-team--watchdog-pool-p pool)))
+          ((equal kind "nudge")
+           (and (null seat) (null text) (null due)
+                (null pool) (null percent)
+                (harmless-team--member-name-p target)))
+          ((equal kind "idle")
+           (and (stringp seat) (not (string-empty-p seat))
+                (null target) (null text) (null due)
+                (null pool) (null percent)))
+          ((equal kind "wall")
+           (and (stringp seat) (not (string-empty-p seat))
+                (null target) (null text) (null due)
+                (null pool)
+                (integerp percent)
+                (>= percent 1) (<= percent 100)))))))
+
+(defun harmless-team--watchdogs-ok-p (rig)
+  "Return non-nil if RIG's watchdogs are readable.
+Nil means the rig has no watchdog yet."
+  (let ((items (plist-get rig :watchdogs)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (ids nil))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-team--watchdog-job-p item)
+                     (not (member (plist-get item :id) ids)))
+                (setq ids (cons (plist-get item :id) ids)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -552,7 +637,8 @@ Nil means the rig has no workflow yet."
        (harmless-team--paces-ok-p rig)
        (harmless-team--rows-ok-p rig)
        (harmless-team--intake-ok-p rig)
-       (harmless-team--workflows-ok-p rig)))
+       (harmless-team--workflows-ok-p rig)
+       (harmless-team--watchdogs-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -1553,6 +1639,7 @@ work stay.  Return the binding that was cleared."
 (declare-function harmless-session-get "harmless-session" (id))
 (declare-function harmless-session-p "harmless-session" (object))
 (declare-function harmless-session-status "harmless-session" (session))
+(declare-function harmless-usage-context-window "harmless-usage" (model))
 (declare-function harmless-session-append-user "harmless-session"
                   (session text))
 
@@ -2915,6 +3002,291 @@ current step opens the next one.  Return both."
   (interactive (list (read-string "Rig: ")))
   (let ((items (harmless-team--workflows rig)))
     (message "%d workflows" (length items))
+    items))
+
+(defun harmless-team--watchdog-kind (kind)
+  "Return KIND trimmed, or signal."
+  (cond
+   ((null kind) (error "team watchdog is empty"))
+   ((not (stringp kind))
+    (error "team watchdog must be a string")))
+  (setq kind (string-trim kind))
+  (cond
+   ((string-empty-p kind) (error "team watchdog is empty"))
+   ((not (harmless-team--watchdog-kind-p kind))
+    (error "team watchdog is not a kind"))
+   (t kind)))
+
+(defun harmless-team--watchdog-text (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team watchdog text is empty"))
+   ((not (stringp text))
+    (error "team watchdog text must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team watchdog text is empty")
+    text))
+
+(defun harmless-team--watchdog-due (text)
+  "Return TEXT trimmed, or signal."
+  (cond
+   ((null text) (error "team watchdog due is empty"))
+   ((not (stringp text))
+    (error "team watchdog due must be a string")))
+  (setq text (string-trim text))
+  (cond
+   ((string-empty-p text) (error "team watchdog due is empty"))
+   ((not (harmless-team--watchdog-due-p text))
+    (error "team watchdog due is not a time"))
+   (t text)))
+
+(defun harmless-team--watchdog-target (text)
+  "Return TEXT trimmed, or signal."
+  (harmless-team--token
+   text "team watchdog target is empty"
+   "team watchdog target must be a string"
+   #'harmless-team--member-name-p
+   "team watchdog target is not a name"))
+
+(defun harmless-team--watchdog-percent (value)
+  "Return VALUE, or signal when it is not a percent."
+  (cond
+   ((null value) (error "team watchdog percent is empty"))
+   ((not (and (integerp value) (>= value 1) (<= value 100)))
+    (error "team watchdog percent is not a percent"))
+   (t value)))
+
+(defun harmless-team--watchdog-pool (pool)
+  "Return POOL trimmed, or signal.
+The text is stored.  A path is not opened."
+  (cond
+   ((null pool) (error "team watchdog pool is empty"))
+   ((not (listp pool))
+    (error "team watchdog pool must be a list")))
+  (let ((out nil)
+        (items pool))
+    (while (consp items)
+      (let ((item (car items)))
+        (cond
+         ((null item) (error "team watchdog artifact is empty"))
+         ((not (stringp item))
+          (error "team watchdog artifact must be a string")))
+        (setq item (string-trim item))
+        (when (string-empty-p item)
+          (error "team watchdog artifact is empty"))
+        (setq out (append out (list item))
+              items (cdr items))))
+    (unless (null items)
+      (error "team watchdog pool must be a list"))
+    (when (null out)
+      (error "team watchdog pool is empty"))
+    out))
+
+(defun harmless-team--watchdog-spec (kind spec)
+  "Return SPEC checked for KIND, or signal.
+Seats and workflows are not resolved yet."
+  (unless (harmless-plist-p spec)
+    (error "team watchdog spec is not a spec"))
+  (cond
+   ((equal kind "reminder")
+    (list :seat (harmless-team--seat-text (plist-get spec :seat))
+          :text (harmless-team--watchdog-text (plist-get spec :text))
+          :due (harmless-team--watchdog-due (plist-get spec :due))))
+   ((equal kind "artifacts")
+    (list :pool (harmless-team--watchdog-pool (plist-get spec :pool))))
+   ((equal kind "nudge")
+    (list :target (harmless-team--watchdog-target
+                   (plist-get spec :target))))
+   ((equal kind "idle")
+    (list :seat (harmless-team--seat-text (plist-get spec :seat))))
+   (t
+    (list :seat (harmless-team--seat-text (plist-get spec :seat))
+          :percent (harmless-team--watchdog-percent
+                    (plist-get spec :percent))))))
+
+(defun harmless-team--public-watchdog (item)
+  "Return one watchdog ITEM with keys in a fixed order."
+  (list :id (plist-get item :id)
+        :kind (plist-get item :kind)
+        :seat (plist-get item :seat)
+        :target (plist-get item :target)
+        :text (plist-get item :text)
+        :due (plist-get item :due)
+        :pool (plist-get item :pool)
+        :percent (plist-get item :percent)))
+
+(defun harmless-team--seat-named (stored address)
+  "Return the seat in STORED whose address is ADDRESS, or nil."
+  (let ((found nil))
+    (dolist (pod (plist-get stored :pods))
+      (dolist (seat (plist-get pod :seats))
+        (when (and (not found)
+                   (harmless-team--same-p
+                    (plist-get seat :address) address))
+          (setq found seat))))
+    found))
+
+(defun harmless-team--watchdog-build (kind spec address target)
+  "Return a stored watchdog for KIND from SPEC.
+ADDRESS and TARGET are already resolved.  The id is filled
+by the caller."
+  (list :id nil
+        :kind kind
+        :seat address
+        :target target
+        :text (plist-get spec :text)
+        :due (plist-get spec :due)
+        :pool (plist-get spec :pool)
+        :percent (plist-get spec :percent)))
+
+(defun harmless-team--watchdog-add (rig kind spec)
+  "Record one watchdog of KIND in RIG and return it.
+SPEC is a plist.  The job is the rig file.  Nothing is armed."
+  (setq kind (harmless-team--watchdog-kind kind))
+  (setq spec (harmless-team--watchdog-spec kind spec))
+  (setq rig (harmless-team--rig-name rig))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (address nil)
+         (target nil))
+    (when (plist-get spec :seat)
+      (setq address (harmless-team--endpoint
+                     stored (plist-get spec :seat))))
+    (when (equal kind "nudge")
+      (setq target (plist-get spec :target))
+      (unless (harmless-team--find-named
+               (plist-get stored :workflows) target)
+        (error "team workflow is missing")))
+    (let ((job (harmless-team--watchdog-build
+                kind spec address target)))
+      (plist-put job :id (harmless-team--next-row-id
+                          (plist-get stored :watchdogs)))
+      (plist-put stored :watchdogs
+                 (append (plist-get stored :watchdogs) (list job)))
+      (harmless-team--write (car loaded) stored)
+      (harmless-team--public-watchdog job))))
+
+(defun harmless-team--watchdogs (rig)
+  "Return RIG's watchdogs, oldest first."
+  (setq rig (harmless-team--rig-name rig))
+  (mapcar #'harmless-team--public-watchdog
+          (plist-get (cdr (harmless-team--load rig)) :watchdogs)))
+
+(defun harmless-team--watchdog-wall-due-p (stored job)
+  "Return non-nil if JOB's seat has reached its context wall.
+This reads a summary already on disk.  It does not start a turn."
+  (let* ((seat (harmless-team--seat-named stored (plist-get job :seat)))
+         (session (and seat (plist-get seat :session)))
+         (runtime (and seat (plist-get seat :runtime))))
+    (and (equal runtime "harmless")
+         (stringp session)
+         (string-match-p harmless-team--session-re session)
+         (condition-case nil
+             (let* ((dir (harmless-team--harmless-session session))
+                    (path (expand-file-name "summary.json" dir))
+                    (obj (harmless-json-decode-safe
+                          (harmless-team--read-text path)))
+                    (used (and (harmless-plist-p obj)
+                               (plist-get obj :last-prompt-tokens)))
+                    (window
+                     (and (fboundp 'harmless-usage-context-window)
+                          (harmless-usage-context-window
+                           (plist-get obj :model)))))
+               (and (numberp used)
+                    (numberp window)
+                    (> window 0)
+                    (>= (* used 100)
+                        (* window (plist-get job :percent)))))
+           (error nil)))))
+
+(defun harmless-team--watchdog-due-now-p (stored job)
+  "Return non-nil if JOB needs attention now.
+A reminder compares its time.  An artifact pool is waiting.
+A nudge waits while its workflow has a row.  An idle job
+waits while its seat has an open row."
+  (let ((kind (plist-get job :kind)))
+    (cond
+     ((equal kind "reminder")
+      (not (string-lessp (harmless-now-iso) (plist-get job :due))))
+     ((equal kind "artifacts")
+      (consp (plist-get job :pool)))
+     ((equal kind "nudge")
+      (let ((workflow (harmless-team--find-named
+                       (plist-get stored :workflows)
+                       (plist-get job :target))))
+        (and workflow (stringp (plist-get workflow :row)))))
+     ((equal kind "idle")
+      (let ((found nil))
+        (dolist (row (plist-get stored :rows))
+          (when (and (equal (plist-get row :state) "open")
+                     (harmless-team--same-p
+                      (plist-get row :seat)
+                      (plist-get job :seat)))
+            (setq found t)))
+        found))
+     (t (harmless-team--watchdog-wall-due-p stored job)))))
+
+(defun harmless-team--watchdog-check (rig)
+  "Return RIG's watchdogs that are due, oldest first.
+This reads the rig file.  It does not arm a timer, a schedule,
+or a monitor, and it does not start a turn."
+  (setq rig (harmless-team--rig-name rig))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (out nil))
+    (dolist (job (plist-get stored :watchdogs))
+      (when (harmless-team--watchdog-due-now-p stored job)
+        (setq out (append out
+                          (list (harmless-team--public-watchdog job))))))
+    out))
+
+(defun harmless-team--watchdog-read (kind)
+  "Read a watchdog spec for KIND from the minibuffer."
+  (cond
+   ((equal kind "reminder")
+    (list :seat (read-string "Seat: ")
+          :text (read-string "Text: ")
+          :due (read-string "Due: ")))
+   ((equal kind "artifacts")
+    (list :pool (list (read-string "Artifact: "))))
+   ((equal kind "nudge")
+    (list :target (read-string "Workflow: ")))
+   ((equal kind "idle")
+    (list :seat (read-string "Seat: ")))
+   ((equal kind "wall")
+    (list :seat (read-string "Seat: ")
+          :percent (read-number "Percent: ")))
+   (t nil)))
+
+;;;###autoload
+(defun harmless-team-watchdog (rig kind spec)
+  "Record one watchdog of KIND on RIG and return it.
+SPEC is a plist.  The job stays in the rig file."
+  (interactive
+   (let ((kind (read-string "Kind: ")))
+     (list (read-string "Rig: ")
+           kind
+           (harmless-team--watchdog-read (string-trim kind)))))
+  (let ((job (harmless-team--watchdog-add rig kind spec)))
+    (message "Watchdog %s" (plist-get job :id))
+    job))
+
+;;;###autoload
+(defun harmless-team-watchdogs (rig)
+  "Return RIG's watchdogs, oldest first."
+  (interactive (list (read-string "Rig: ")))
+  (let ((items (harmless-team--watchdogs rig)))
+    (message "%d watchdogs" (length items))
+    items))
+
+;;;###autoload
+(defun harmless-team-watchdog-check (rig)
+  "Return RIG's watchdogs that are due, oldest first.
+The check reads the rig file and does not arm a job."
+  (interactive (list (read-string "Rig: ")))
+  (let ((items (harmless-team--watchdog-check rig)))
+    (message "%d due" (length items))
     items))
 
 (provide 'harmless-team)

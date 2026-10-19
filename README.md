@@ -182,6 +182,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-board` | Read held, stalled, or waiting rows |
 | `M-x harmless-team-workflow` | Declare steps; closing one opens the next |
 | `M-x harmless-team-workflows` | Read those declared workflows |
+| `M-x harmless-team-watchdog` | Record a job that stays in the rig file |
+| `M-x harmless-team-watchdogs` | Read those jobs, oldest first |
+| `M-x harmless-team-watchdog-check` | Read the jobs that are due |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -446,6 +449,14 @@ them, oldest first.  Closing the current step opens the next
 step's row in the same write.  The owner decides that the step
 is done.  The next row stays open.  The last close opens no
 row.  Handing the current step is refused.
+
+`M-x harmless-team-watchdog` records a reminder, a pool of
+artifacts, a nudge to a workflow, an idle queue, or a seat
+near its context wall.  `M-x harmless-team-watchdogs` reads
+them.  `M-x harmless-team-watchdog-check` reads the ones that
+are due.  The job is in the rig file, so it is still there
+after Emacs restarts.  The check does not arm a timer, a
+schedule, or a monitor.
 
 ## Subagents
 

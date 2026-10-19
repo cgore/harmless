@@ -3422,3 +3422,272 @@
     (should (equal roots (harmless-team-test-roots)))
     (should (equal session-roots
                    (harmless-team-test-session-roots)))))
+
+(ert-deftest harmless-team-watchdog-survives-in-the-rig-file ()
+  "A watchdog stays in the rig file and check does not arm one."
+  (let* ((base (make-temp-file "harmless-team-watchdog-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (timers (copy-sequence timer-list))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (summary (expand-file-name
+                   (concat "sessions/proj/"
+                           harmless-team-test-session-a
+                           "/summary.json")
+                   base)))
+    (make-directory elsewhere t)
+    (dolist (bad (list nil "" "   "))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog "workshop" bad nil)))
+                     "team watchdog is empty")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog "workshop" 42 nil)))
+                   "team watchdog must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog "workshop" "Wall" nil)))
+                   "team watchdog is not a kind"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog "workshop" "reminder" nil)))
+                   "team watchdog spec is not a spec"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "reminder"
+                       (list :seat "qa.note" :text nil
+                             :due "2020-01-01T00:00:00Z"))))
+                   "team watchdog text is empty"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "reminder"
+                       (list :seat "qa.note" :text 42
+                             :due "2020-01-01T00:00:00Z"))))
+                   "team watchdog text must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "reminder"
+                       (list :seat "qa.note" :text "look" :due nil))))
+                   "team watchdog due is empty"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "reminder"
+                       (list :seat "qa.note" :text "look" :due 42))))
+                   "team watchdog due must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "reminder"
+                       (list :seat "qa.note" :text "look"
+                             :due "2020-01-01"))))
+                   "team watchdog due is not a time"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "artifacts" (list :pool nil))))
+                   "team watchdog pool is empty"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "artifacts" (list :pool 42))))
+                   "team watchdog pool must be a list"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "artifacts" (list :pool (list 42)))))
+                   "team watchdog artifact must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "artifacts" (list :pool (list "  ")))))
+                   "team watchdog artifact is empty"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "nudge" (list :target nil))))
+                   "team watchdog target is empty"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "nudge" (list :target "has-hyphen"))))
+                   "team watchdog target is not a name"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "wall"
+                       (list :seat "qa.note" :percent nil))))
+                   "team watchdog percent is empty"))
+    (dolist (bad (list 0 101 "80" 80.0))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog
+                         "workshop" "wall"
+                         (list :seat "qa.note" :percent bad))))
+                     "team watchdog percent is not a percent")))
+    (let ((harmless-directory "/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog "workshop" nil nil)))
+                     "team watchdog is empty"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog
+                         "workshop" "reminder"
+                         (list :seat "qa.note" :text "look"
+                               :due "2020-01-01T00:00:00Z"))))
+                     "Refusing to store a team at /")))
+    (let ((harmless-directory "c:"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog
+                         "workshop" "idle" (list :seat "qa.note"))))
+                     "Refusing to store a team at c:")))
+    (let ((harmless-directory "notes"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog
+                         "workshop" "idle" (list :seat "qa.note"))))
+                     "Harmless data directory must be absolute, not \"notes\"")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "idle" (list :seat "qa.note"))))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-watchdog
+                       "workshop" "nudge" (list :target "repair"))))
+                   "team workflow is missing"))
+    (should (equal (harmless-team-watchdogs "workshop") nil))
+    (harmless-team-edge "workshop" "delegates_to" "dev.build" "qa.note")
+    (harmless-team-room-say "workshop" "general" "Ada" "hello room")
+    (harmless-team-intake "workshop" "a door")
+    (harmless-team-workflow
+     "workshop" "repair"
+     (list (list :seat "qa.note" :body "fix the door")))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-watchdog
+                         "workshop" "wall"
+                         (list :seat "no.such" :percent 80))))
+                     "team seat is missing"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (let ((past (harmless-team-watchdog
+                 "workshop" "reminder"
+                 (list :seat "qa.note" :text "  look again  "
+                       :due "  2020-01-01T00:00:00Z  "))))
+      (should (equal (plist-get past :id) "1"))
+      (should (equal (plist-get past :kind) "reminder"))
+      (should (equal (plist-get past :seat) "qa-note@workshop"))
+      (should (equal (plist-get past :text) "look again"))
+      (should (equal (plist-get past :due) "2020-01-01T00:00:00Z"))
+      (should (equal (plist-get past :pool) nil))
+      (should (equal (plist-get past :percent) nil))
+      (harmless-team-watchdog
+       "workshop" "reminder"
+       (list :seat "dev.build" :text "later"
+             :due "2099-01-01T00:00:00Z"))
+      (let ((pool (harmless-team-watchdog
+                   "workshop" "artifacts"
+                   (list :pool (list "  /  " "notes")))))
+        (should (equal (plist-get pool :pool) '("/" "notes"))))
+      (harmless-team-watchdog
+       "workshop" "nudge" (list :target "  repair  "))
+      (harmless-team-watchdog
+       "workshop" "idle" (list :seat "qa.note"))
+      (harmless-team-watchdog
+       "workshop" "wall" (list :seat "dev.build" :percent 80))
+      (should (equal (mapcar (lambda (job) (plist-get job :id))
+                             (harmless-team-watchdogs "workshop"))
+                     '("1" "2" "3" "4" "5" "6")))
+      (should (equal (mapcar (lambda (job) (plist-get job :id))
+                             (harmless-team-watchdog-check "workshop"))
+                     '("1" "3" "4" "5")))
+      (should (equal (car (harmless-team-watchdogs "workshop")) past)))
+    (harmless-team-row-claim "workshop" "1")
+    (should (equal (mapcar (lambda (job) (plist-get job :id))
+                           (harmless-team-watchdog-check "workshop"))
+                   '("1" "3" "4")))
+    (harmless-team-row-close "workshop" "1" "canceled")
+    (should (equal (mapcar (lambda (job) (plist-get job :id))
+                           (harmless-team-watchdog-check "workshop"))
+                   '("1" "3")))
+    (make-directory (file-name-directory summary) t)
+    (harmless-team-test-write
+     summary
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 1000)))
+    (harmless-team-adopt
+     "workshop" "dev" "build" "harmless" harmless-team-test-session-a)
+    (should (equal (mapcar (lambda (job) (plist-get job :id))
+                           (harmless-team-watchdog-check "workshop"))
+                   '("1" "3")))
+    (harmless-team-test-write
+     summary
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 400000)))
+    (should (equal (mapcar (lambda (job) (plist-get job :id))
+                           (harmless-team-watchdog-check "workshop"))
+                   '("1" "3" "6")))
+    (harmless-team-release "workshop" "dev" "build")
+    (should (equal (mapcar (lambda (job) (plist-get job :id))
+                           (harmless-team-watchdog-check "workshop"))
+                   '("1" "3")))
+    (should (equal (length (harmless-team-watchdogs "workshop")) 6))
+    (should-not (file-exists-p "/notes"))
+    (should-not (file-directory-p (expand-file-name "notes" elsewhere)))
+    (should (equal (harmless-team-seat "workshop" "dev" "build")
+                   (harmless-team-test-seat "" work)))
+    (should (equal (harmless-team-edges "workshop") edge))
+    (should (equal (mapcar (lambda (line) (plist-get line :text))
+                           (harmless-team-room-history "workshop"))
+                   '("hello room")))
+    (should (equal (mapcar (lambda (item) (plist-get item :id))
+                           (harmless-team-intakes "workshop"))
+                   '("1")))
+    (should (equal (plist-get (car (harmless-team-workflows "workshop"))
+                              :row)
+                   nil))
+    (let ((saved (harmless-team-watchdogs "workshop")))
+      (should (equal (harmless-team-remove "workshop" "qa" "note")
+                     (list :removed "qa-note@workshop"
+                           :fallback nil :work nil)))
+      (should (equal (harmless-team-watchdogs "workshop") saved)))
+    (let ((obj (harmless-json-decode (harmless-team-test-read file))))
+      (plist-put (car (plist-get obj :watchdogs)) :kind "nope")
+      (harmless-team-test-write file (harmless-json-text obj))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-watchdog-check "workshop")))
+                       "team rig is not valid"))
+        (should (equal (harmless-team-test-bytes file) bytes))))
+    (should (equal timer-list timers))
+    (should (file-name-absolute-p file))
+    (should (file-name-absolute-p summary))
+    (should (harmless-directory-strictly-under-p file base))
+    (should (harmless-directory-strictly-under-p summary base))
+    (should-not (equal (file-truename file) (file-truename "/")))
+    (should-not (equal (file-truename summary) (file-truename "/")))
+    (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+    (should (equal roots (harmless-team-test-roots)))
+    (should (equal session-roots
+                   (harmless-team-test-session-roots)))))

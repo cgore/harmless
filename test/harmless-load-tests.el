@@ -96,6 +96,9 @@
   (should (fboundp 'harmless-team-board))
   (should (fboundp 'harmless-team-workflow))
   (should (fboundp 'harmless-team-workflows))
+  (should (fboundp 'harmless-team-watchdog))
+  (should (fboundp 'harmless-team-watchdogs))
+  (should (fboundp 'harmless-team-watchdog-check))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

@@ -2231,6 +2231,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-board
 @findex harmless-team-workflow
 @findex harmless-team-workflows
+@findex harmless-team-watchdog
+@findex harmless-team-watchdogs
+@findex harmless-team-watchdog-check
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2457,6 +2460,24 @@ blank body is refused: @samp{team workflow body is empty}.  A
 body that is not text is refused: @samp{team workflow body must
 be a string}.  A workflow that already exists is refused:
 @samp{team workflow already exists}.
+
+@kbd{M-x harmless-team-watchdog} records one job on the rig:
+a reminder, a pool of artifacts, a nudge to a workflow, an
+idle queue, or a seat near its context wall.
+@kbd{M-x harmless-team-watchdogs} reads them, oldest first.
+@kbd{M-x harmless-team-watchdog-check} reads the jobs that are
+due.  The job stays in the rig file, so it is still there
+after Emacs restarts.  The check does not arm a timer, a
+schedule, or a monitor, and it does not start a turn.  A
+reminder is due when its time has arrived.  An artifact pool
+is stored text and is not opened.  A nudge is due while that
+workflow still has a row.  An idle job is due while its seat
+has an open row.  A wall is due when the seat's last prompt
+reaches the recorded percent of the known context window.  A
+blank kind is refused: @samp{team watchdog is empty}.  A kind
+that is not text is refused: @samp{team watchdog must be a
+string}.  Any other kind is refused: @samp{team watchdog is
+not a kind}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2740,7 +2761,8 @@ a seat, and a queue row of owned work that can be claimed,
 noted, closed, handed to another seat, or parked on one wake.
 The same file holds intake that nobody owns yet.  It also
 holds a declared workflow.  Closing its current step opens
-the next step.
+the next step.  It also holds watchdog jobs that remain after
+Emacs restarts.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

@@ -89,6 +89,8 @@
 ;;   M-x harmless-team-board   ; held, stalled, or waiting rows
 ;;   M-x harmless-team-workflow ; declare steps; close opens the next
 ;;   M-x harmless-team-workflows ; read those declared workflows
+;;   M-x harmless-team-watchdog ; record a job that survives a restart
+;;   M-x harmless-team-watchdog-check ; read the jobs that are due
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

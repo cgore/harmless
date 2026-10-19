@@ -54,7 +54,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] Park a row on a real blocker, with one wake. Resolving it records the decision and wakes the owner. A park that asks a person includes a plain-language summary and a pointer to the evidence.
 - [x] An intake stream for observations nobody owns yet, and views over the board: what is held, what is stalled after a claim, and what is waiting on a person.
 - [x] A declared workflow. When the seat that owns a step closes it, the next step's row is created in the same transaction. The owner decides that the step is done.
-- [ ] Watchdog jobs that survive a restart: a reminder, a pool of artifacts, a nudge to a workflow, an idle queue, or a seat approaching its context wall.
+- [x] Watchdog jobs that survive a restart: a reminder, a pool of artifacts, a nudge to a workflow, an idle queue, or a seat approaching its context wall.
 - [ ] Snapshot a rig and restore it by name. The report says, per seat, whether it resumed, was rebuilt, started fresh, is waiting on a decision, or failed. A fresh start is a choice, and it is labeled as one. Check whether a restore can succeed before running it.
 - [ ] Hand one seat to a successor and keep its name, its edges, and its inbound work. Write that seat's recap of decisions at the boundary.
 - [ ] An agent image: capture a productive seat and start another seat from it. A restore packet carries what a seat knows across a change of runtime.
