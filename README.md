@@ -248,6 +248,23 @@ it is present.  `source` is a relative path inside the marketplace.
 Without that file, a child directory whose `plugin.json` name matches
 the directory is a plugin.  The name is a plugin id, not a path.
 
+## Output styles
+
+An output style is a session-wide role, tone, and format.
+`M-x harmless-output-style` switches it.  The project instruction
+files are not edited.
+
+`default` and an empty name clear the style.  A style file is
+markdown.  The name is a style id, not a path.  Later turns send
+the body.
+
+User styles live in `output-styles` under the Harmless data
+directory, and in `~/.claude/output-styles`.  Project styles live
+in `.harmless/output-styles` and `.claude/output-styles` under the
+session directory only.  A project style wins over a user style.
+In the project, `.harmless` wins over `.claude`.  The chosen text
+is saved with the session.  A fork keeps it.
+
 ## Subagents
 
 `spawn_agent` starts a child session with its own transcript and waits

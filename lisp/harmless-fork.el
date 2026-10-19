@@ -49,6 +49,8 @@
 (require 'harmless-ui)
 
 (declare-function harmless--context-session "harmless")
+(declare-function harmless-output-style-copy "harmless-output-style"
+                  (session child))
 
 (defun harmless-fork-split (messages turn)
   "Return the prefix of MESSAGES through user turn TURN.
@@ -165,6 +167,8 @@ and signals.  SESSION is not modified."
                 (copy-tree (harmless-session-todos session)))
           (setf (harmless-session-review child)
                 (copy-tree (harmless-session-review session)))
+          (when (fboundp 'harmless-output-style-copy)
+            (harmless-output-style-copy session child))
           (harmless-session-save child)
           child)
       (error

@@ -81,6 +81,7 @@
 (require 'harmless-skills)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
+(require 'harmless-output-style)
 (require 'harmless-media)
 (require 'harmless-tools-shell)
 (require 'harmless-perm)
@@ -236,6 +237,26 @@ hooks, and MCP servers in that copy are what the session sees."
            (completing-read "Scope: " '("project" "user")
                             nil t nil nil "project"))))
   (harmless-plugin--install session marketplace plugin scope))
+
+;;;###autoload
+(defun harmless-output-style (session name)
+  "Switch SESSION to output style NAME.
+NAME is a style id, not a path.  Nil, \"\", and \"default\" clear
+the style.  The body is the role, tone, and format for later
+turns.  Project instruction files are not edited."
+  (interactive
+   (progn
+     (harmless-ensure-configured)
+     (let ((session (or (harmless--context-session) (harmless-current))))
+       (list session
+             (completing-read
+              "Output style: "
+              (cons "default"
+                    (mapcar (lambda (style)
+                              (plist-get style :name))
+                            (harmless-output-style-list session)))
+              nil t nil nil "default")))))
+  (harmless-output-style-set session name))
 
 ;;;###autoload
 (defun harmless-current ()

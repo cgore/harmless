@@ -56,6 +56,8 @@
 
 (declare-function harmless-plugin-skill-directories "harmless-plugin" (ancestor))
 (declare-function harmless-plugin-user-skill-directories "harmless-plugin" ())
+(declare-function harmless-output-style-place "harmless-output-style"
+                  (messages session))
 
 (defconst harmless-skill-vendors
   '("agents" "codex" "claude" "grok" "harmless")
@@ -262,26 +264,36 @@ STOP is passed to `harmless-skills-discover'."
       (harmless-harness-prepend messages)
     messages))
 
+(defun harmless-context--finish (messages session)
+  "Return MESSAGES with SESSION's output style, then the harness.
+The harness stays first.  The style is a role, tone, and format.
+Project text that follows it wins when they disagree."
+  (when (fboundp 'harmless-output-style-place)
+    (setq messages (harmless-output-style-place messages session)))
+  (harmless-context--with-harness messages))
+
 (defun harmless-context-messages (dir messages &optional stop model session)
   "Return MESSAGES with the harness prompt, instructions, and context.
 STOP bounds the instruction and skill walks.  MODEL selects whether
 `CLAUDE.md' is included.  Path rules, when loaded, come from
 `.claude/rules/' in DIR.  SESSION's loaded skill, if any, is included.
-The harness prompt is first.  Later project text wins when it
-disagrees.  The transcript is not modified.  A missing or relative
-DIR is a detached chat: it does not walk `default-directory', so a
-missing directory is not /."
+SESSION's output style, if any, comes after the harness and before
+project text.  The harness prompt is first.  Later project text wins
+when it disagrees.  The transcript is not modified.  A missing or
+relative DIR is a detached chat: it does not walk `default-directory',
+so a missing directory is not /."
   (if (not (and (stringp dir)
                 (not (string-empty-p dir))
                 (file-name-absolute-p dir)))
-      (harmless-context--with-harness
+      (harmless-context--finish
        (harmless-context-append
         (harmless-context-append
          (harmless-context-append
           messages harmless-detached-chat-instructions)
          (harmless-memory-catalog nil))
-        (harmless-skill-context-block session)))
-    (harmless-context--with-harness
+        (harmless-skill-context-block session))
+       session)
+    (harmless-context--finish
      (harmless-context-append
       (harmless-context-append
        (harmless-context-append
@@ -291,7 +303,8 @@ missing directory is not /."
               (harmless-path-rules-text dir messages)))
         (harmless-skills-catalog dir stop))
        (harmless-skill-context-block session))
-      (harmless-memory-catalog dir)))))
+      (harmless-memory-catalog dir))
+     session)))
 
 (defvar harmless-skill-active (make-hash-table :test 'equal)
   "Loaded skill plists, keyed by session id.

@@ -69,6 +69,10 @@
                   (session summary))
 (declare-function harmless-perm-install-configured-rules "harmless-perm"
                   (session))
+(declare-function harmless-output-style-summary "harmless-output-style"
+                  (session))
+(declare-function harmless-output-style-restore "harmless-output-style"
+                  (session raw))
 
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
@@ -546,7 +550,9 @@ Timers are not included."
    (when (fboundp 'harmless-todo-summary)
      (harmless-todo-summary session))
    (when (fboundp 'harmless-review-summary)
-     (harmless-review-summary session))))
+     (harmless-review-summary session))
+   (when (fboundp 'harmless-output-style-summary)
+     (harmless-output-style-summary session))))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -669,6 +675,9 @@ Signal when that path would be /NAME or outside the sessions root."
         (harmless-todo-restore session (plist-get summary :todos)))
       (when (fboundp 'harmless-review-restore)
         (harmless-review-restore session (plist-get summary :review)))
+      (when (fboundp 'harmless-output-style-restore)
+        (harmless-output-style-restore
+         session (plist-get summary :output-style)))
       session)))
 
 (defun harmless-session-list-on-disk ()

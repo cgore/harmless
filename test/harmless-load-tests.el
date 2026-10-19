@@ -49,7 +49,8 @@
   (should (boundp 'harmless-harness-prompt))
   (should (harmless-tool-by-name "skill"))
   (should (fboundp 'harmless-load-skill))
-  (should (fboundp 'harmless-plugin-install)))
+  (should (fboundp 'harmless-plugin-install))
+  (should (fboundp 'harmless-output-style)))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)
