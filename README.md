@@ -161,6 +161,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-send` | Append text to a seat, a pod, or the whole rig |
 | `M-x harmless-team-capture` | Read the text on a seat's screen |
 | `M-x harmless-team-transcript` | Read text sent to a seat across every occupant |
+| `M-x harmless-team-room-say` | Append a line to the rig's chatroom |
+| `M-x harmless-team-room-history` | Read that room, or one topic |
+| `M-x harmless-team-room-wait` | Wait until someone speaks in a topic |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -369,6 +372,14 @@ A process id has no file, so the capture is the transcript.
 `M-x harmless-team-transcript` reads every text sent to the seat,
 including text sent to an earlier occupant.  Release and removal do
 not delete that history.
+
+`M-x harmless-team-room-say` appends one line to the rig's chatroom.
+A topic is letters and digits.  The speaker is any text.  The line
+stays in the rig file.  `M-x harmless-team-room-history` reads every
+topic, or one topic.  `M-x harmless-team-room-wait` blocks until a new
+line arrives in that topic.  Lines already stored do not count.
+Nobody speaking within `harmless-team-room-wait-seconds` (default 10)
+stops the wait.  The room does not start a turn.
 
 ## Subagents
 

@@ -44,8 +44,9 @@
 ;; can boot a rig.  Preview does not write.  A seat can adopt a
 ;; session that is already running.  Release clears that binding
 ;; and does not stop the session.  Send appends text to a seat's
-;; screen and keeps a transcript across occupants.  This file
-;; does not register another machine.
+;; screen and keeps a transcript across occupants.  The rig has
+;; a chatroom: history, topics, and a wait for the next line.
+;; This file does not register another machine.
 
 ;;; Code:
 
@@ -313,6 +314,28 @@ Nil means the rig has no transcript yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--room-ok-p (rig)
+  "Return non-nil if RIG's chatroom is readable.
+Nil means the rig has no room yet."
+  (let ((items (plist-get rig :room)))
+    (if (null items)
+        t
+      (let ((ok t))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-plist-p item)
+                     (harmless-team--member-name-p
+                      (plist-get item :topic))
+                     (stringp (plist-get item :speaker))
+                     (not (string-empty-p (plist-get item :speaker)))
+                     (stringp (plist-get item :text))
+                     (not (string-empty-p (plist-get item :text)))
+                     (stringp (plist-get item :at))
+                     (not (string-empty-p (plist-get item :at))))
+                (setq items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -327,7 +350,8 @@ Nil means the rig has no transcript yet."
              (setq ok nil)))
          (and ok (null pods)))
        (harmless-team--edges-ok-p rig)
-       (harmless-team--transcript-ok-p rig)))
+       (harmless-team--transcript-ok-p rig)
+       (harmless-team--room-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -1645,6 +1669,149 @@ Each line is :seat, :runtime, :session, and :text."
   (let ((lines (harmless-team--transcript rig pod seat)))
     (message "%d lines" (length lines))
     lines))
+
+(defvar harmless-team-room-wait-seconds 10
+  "Seconds a room wait looks for a new line.
+Zero checks once and does not wait.")
+
+(defun harmless-team--room-topic (topic)
+  "Return TOPIC trimmed, or signal."
+  (harmless-team--token
+   topic "team room topic is empty"
+   "team room topic must be a string"
+   #'harmless-team--member-name-p
+   "team room topic is not a name"))
+
+(defun harmless-team--room-speaker (speaker)
+  "Return SPEAKER trimmed, or signal."
+  (cond
+   ((null speaker) (error "team room speaker is empty"))
+   ((not (stringp speaker))
+    (error "team room speaker must be a string")))
+  (setq speaker (string-trim speaker))
+  (if (string-empty-p speaker)
+      (error "team room speaker is empty")
+    speaker))
+
+(defun harmless-team--room-text (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team room text is empty"))
+   ((not (stringp text))
+    (error "team room text must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team room text is empty")
+    text))
+
+(defun harmless-team--public-room (item)
+  "Return one room ITEM with keys in a fixed order."
+  (list :topic (plist-get item :topic)
+        :speaker (plist-get item :speaker)
+        :text (plist-get item :text)
+        :at (plist-get item :at)))
+
+(defun harmless-team--room-lines (rig topic)
+  "Return RIG's room lines.
+TOPIC nil returns every topic.  Otherwise only that topic."
+  (let ((out nil))
+    (dolist (item (plist-get rig :room))
+      (when (or (null topic)
+                (harmless-team--same-p
+                 (plist-get item :topic) topic))
+        (setq out (append out
+                          (list (harmless-team--public-room item))))))
+    out))
+
+(defun harmless-team--room-say (rig topic speaker text)
+  "Append TEXT from SPEAKER to TOPIC in RIG and return the line."
+  (setq rig (harmless-team--rig-name rig))
+  (setq topic (harmless-team--room-topic topic))
+  (setq speaker (harmless-team--room-speaker speaker))
+  (setq text (harmless-team--room-text text))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (line (list :topic topic
+                     :speaker speaker
+                     :text text
+                     :at (harmless-now-iso))))
+    (plist-put stored :room
+               (append (plist-get stored :room) (list line)))
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-room line)))
+
+(defun harmless-team--room-history (rig &optional topic)
+  "Return RIG's room lines, oldest first.
+TOPIC limits the lines.  Nil returns every topic."
+  (setq rig (harmless-team--rig-name rig))
+  (when topic
+    (setq topic (harmless-team--room-topic topic)))
+  (harmless-team--room-lines
+   (cdr (harmless-team--load rig)) topic))
+
+(defun harmless-team--room-wait (rig topic)
+  "Return the next line said in TOPIC of RIG.
+Lines already stored do not count.  This looks until someone
+speaks, or until `harmless-team-room-wait-seconds' runs out."
+  (setq rig (harmless-team--rig-name rig))
+  (setq topic (harmless-team--room-topic topic))
+  (let* ((limit (if (numberp harmless-team-room-wait-seconds)
+                    harmless-team-room-wait-seconds
+                  10))
+         (seen (length (harmless-team--room-lines
+                        (cdr (harmless-team--load rig)) topic)))
+         (deadline (+ (float-time) (if (> limit 0) limit 0)))
+         (found nil))
+    (while (not found)
+      (let ((lines (harmless-team--room-lines
+                    (cdr (harmless-team--load rig)) topic)))
+        (when (> (length lines) seen)
+          (setq found (nth seen lines))))
+      (unless found
+        (when (or (<= limit 0) (>= (float-time) deadline))
+          (error "team room is still quiet"))
+        (accept-process-output nil 0.05)))
+    found))
+
+;;;###autoload
+(defun harmless-team-room-say (rig topic speaker text)
+  "Append TEXT from SPEAKER to TOPIC in RIG's room.
+Return that line.  This does not start a turn."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Topic: ")
+         (read-string "Speaker: ")
+         (read-string "Text: ")))
+  (let ((line (harmless-team--room-say rig topic speaker text)))
+    (message "Said %s" (plist-get line :topic))
+    line))
+
+;;;###autoload
+(defun harmless-team-room-history (rig &optional topic)
+  "Return RIG's room lines, oldest first.
+TOPIC limits the lines.  Nil returns every topic."
+  (interactive
+   (list (read-string "Rig: ")
+         (let ((answer (read-string "Topic: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))))
+  (let ((lines (harmless-team--room-history rig topic)))
+    (message "%d lines" (length lines))
+    lines))
+
+;;;###autoload
+(defun harmless-team-room-wait (rig topic)
+  "Return the next line said in TOPIC of RIG.
+Lines already in the room do not count.  The wait stops if
+nobody speaks within `harmless-team-room-wait-seconds'."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Topic: ")))
+  (let ((line (harmless-team--room-wait rig topic)))
+    (message "Heard %s" (plist-get line :topic))
+    line))
 
 (provide 'harmless-team)
 

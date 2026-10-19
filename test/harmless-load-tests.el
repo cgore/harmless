@@ -75,6 +75,9 @@
   (should (fboundp 'harmless-team-send))
   (should (fboundp 'harmless-team-capture))
   (should (fboundp 'harmless-team-transcript))
+  (should (fboundp 'harmless-team-room-say))
+  (should (fboundp 'harmless-team-room-history))
+  (should (fboundp 'harmless-team-room-wait))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

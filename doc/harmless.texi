@@ -2210,6 +2210,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-send
 @findex harmless-team-capture
 @findex harmless-team-transcript
+@findex harmless-team-room-say
+@findex harmless-team-room-history
+@findex harmless-team-room-wait
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2298,6 +2301,25 @@ that is not text is refused: @samp{team send must be a string}.
 A target that names nothing is refused: @samp{team send is not
 a target}.  A missing seat is refused: @samp{team seat is
 missing}.
+
+@kbd{M-x harmless-team-room-say} appends one line to the rig's
+chatroom.  The line records the topic, the speaker, the text,
+and the time.  A topic is letters and digits.  The speaker is
+any text.  The room is kept in the rig file.  It does not start
+a turn.  @kbd{M-x harmless-team-room-history} reads the lines,
+oldest first.  With no topic, it reads every topic.
+@kbd{M-x harmless-team-room-wait} blocks until someone speaks
+in that topic.  Lines already stored do not count.  The wait
+stops when nobody has spoken within
+@code{harmless-team-room-wait-seconds} (10 seconds):
+@samp{team room is still quiet}.
+
+A blank topic is refused: @samp{team room topic is empty}.  A
+topic that is not text is refused: @samp{team room topic must
+be a string}.  Any other topic is refused: @samp{team room
+topic is not a name}.  A speaker uses the empty and
+must-be-a-string sentences, with @code{speaker} in place of
+@code{topic}.  The text uses them too, with @code{text}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2575,8 +2597,8 @@ One headless task.  @xref{Headless}.
 
 @item teams/@var{rig}.json
 One rig: its pods, its seats, its edges, the session occupying
-each seat, the work each seat still holds, and the text sent
-to each seat.
+each seat, the work each seat still holds, the text sent to
+each seat, and the rig's chatroom.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

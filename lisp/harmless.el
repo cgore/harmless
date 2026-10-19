@@ -70,6 +70,9 @@
 ;;   M-x harmless-team-send    ; type text onto a seat, a pod, or the rig
 ;;   M-x harmless-team-capture ; read the text on a seat's screen
 ;;   M-x harmless-team-transcript ; read text sent across occupants
+;;   M-x harmless-team-room-say  ; append a line to the rig's room
+;;   M-x harmless-team-room-history ; read that room, or one topic
+;;   M-x harmless-team-room-wait ; block until someone speaks
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

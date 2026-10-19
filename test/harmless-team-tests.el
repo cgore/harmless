@@ -1662,3 +1662,270 @@
       (should (equal roots (harmless-team-test-roots)))
       (should (equal session-roots
                      (harmless-team-test-session-roots))))))
+
+(ert-deftest harmless-team-room-keeps-history-and-waits ()
+  (let* ((base (make-temp-file "harmless-team-room-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (harmless-team-room-wait-seconds 0))
+    (make-directory elsewhere t)
+    (cl-letf (((symbol-function 'start-process)
+               (lambda (&rest _) (error "team room started a process")))
+              ((symbol-function 'make-process)
+               (lambda (&rest _) (error "team room started a process")))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (error "team room started a process")))
+              ((symbol-function 'delete-process)
+               (lambda (&rest _) (error "team room killed a process")))
+              ((symbol-function 'signal-process)
+               (lambda (&rest _) (error "team room killed a process")))
+              ((symbol-function 'w32-shell-execute)
+               (lambda (&rest _) (error "team room started a process")))
+              ((symbol-function 'harmless-turn-run)
+               (lambda (&rest _) (error "team room started a turn"))))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" bad "Ada" "hi")))
+                       "team room topic is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-say
+                         "workshop" 42 "Ada" "hi")))
+                     "team room topic must be a string"))
+      (dolist (bad (list "/" "c:/" "notes/" "sub/" ".." "c:" "\\"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" bad "Ada" "hi")))
+                       "team room topic is not a name")))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" "general" bad "hi")))
+                       "team room speaker is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-say
+                         "workshop" "general" 42 "hi")))
+                     "team room speaker must be a string"))
+      (dolist (bad (list nil "" "   " "\n"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" "general" "Ada" bad)))
+                       "team room text is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-say
+                         "workshop" "general" "Ada" 42)))
+                     "team room text must be a string"))
+      (let ((harmless-directory "/"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" nil "Ada" "hi")))
+                       "team room topic is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" "general" "Ada" "hi")))
+                       "Refusing to store a team at /")))
+      (let ((harmless-directory "c:"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" "general" "Ada" "hi")))
+                       "Refusing to store a team at c:")))
+      (let ((harmless-directory " c:/ "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" "general" "Ada" "hi")))
+                       "Refusing to store a team at c:/")))
+      (let ((harmless-directory "notes"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-say
+                           "workshop" "general" "Ada" "hi")))
+                       "Harmless data directory must be absolute, not \"notes\"")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-say
+                         "workshop" "general" "Ada" "hi")))
+                     "team rig is missing"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-wait "workshop" "general")))
+                     "team rig is missing"))
+      (should-not (file-directory-p teams))
+      (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+      (should-not (file-exists-p (expand-file-name "notes" base)))
+      (should-not (file-exists-p (expand-file-name "sub" elsewhere)))
+      (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+      (harmless-team-add-seat "workshop" "qa" "note" "notes")
+      (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+      (harmless-team-edge
+       "workshop" "delegates_to" "dev.build" "qa.note")
+      (should-not (harmless-team-room-history "workshop"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-history "workshop" "")))
+                     "team room topic is empty"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-wait "workshop" nil)))
+                     "team room topic is empty"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-room-wait "workshop" "absent")))
+                     "team room is still quiet"))
+      (let ((hello (harmless-team-room-say
+                    "workshop" " general " "  Ada  " "  hello room  ")))
+        (should (equal (plist-get hello :topic) "general"))
+        (should (equal (plist-get hello :speaker) "Ada"))
+        (should (equal (plist-get hello :text) "hello room"))
+        (should (string-match-p
+                 "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}Z\\'"
+                 (plist-get hello :at)))
+        (should (equal (harmless-team-room-history "workshop" "general")
+                       (list hello)))
+        (should (equal (harmless-team-room-history "workshop" "GENERAL")
+                       (list hello)))
+        (should (equal (harmless-team-room-history "workshop")
+                       (list hello))))
+      (let ((deploy (harmless-team-room-say
+                     "workshop" "deploy" "Ada" "  alpha\nbeta\n  ")))
+        (should (equal (plist-get deploy :text) "alpha\nbeta"))
+        (should (equal (harmless-team-room-history "workshop" "deploy")
+                       (list deploy)))
+        (should (equal (mapcar (lambda (line) (plist-get line :text))
+                               (harmless-team-room-history "workshop"))
+                       '("hello room" "alpha\nbeta"))))
+      (should (equal (harmless-team-seat "workshop" "dev" "build")
+                     (harmless-team-test-seat "" work)))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-wait
+                           "workshop" "general")))
+                       "team room is still quiet"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (let ((harmless-directory "/"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-room-say
+                             "workshop" "general" "Ada" "root")))
+                         "Refusing to store a team at /")))
+        (should (equal (harmless-team-test-bytes file) bytes)))
+      (let* ((harmless-team-room-wait-seconds 2)
+             (timer (run-with-timer
+                     0.05 nil
+                     (lambda ()
+                       (harmless-team-room-say
+                        "workshop" "general" "Bea" "spoke"))))
+             (heard nil))
+        (unwind-protect
+            (setq heard (harmless-team-room-wait "workshop" "general"))
+          (cancel-timer timer))
+        (should (equal (plist-get heard :topic) "general"))
+        (should (equal (plist-get heard :speaker) "Bea"))
+        (should (equal (plist-get heard :text) "spoke"))
+        (should (equal (mapcar (lambda (line) (plist-get line :text))
+                               (harmless-team-room-history
+                                "workshop" "general"))
+                       '("hello room" "spoke"))))
+      (let ((harmless-team-room-wait-seconds 0))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-room-wait
+                           "workshop" "general")))
+                       "team room is still quiet")))
+      (let* ((harmless-team-room-wait-seconds 0.25)
+             (before (harmless-team-room-history "workshop" "deploy"))
+             (timer (run-with-timer
+                     0.05 nil
+                     (lambda ()
+                       (harmless-team-room-say
+                        "workshop" "general" "Bea" "other topic")))))
+        (unwind-protect
+            (should (equal (harmless-team-test-signal
+                            (lambda ()
+                              (harmless-team-room-wait
+                               "workshop" "deploy")))
+                           "team room is still quiet"))
+          (cancel-timer timer))
+        (should (equal (harmless-team-room-history "workshop" "deploy")
+                       before))
+        (should (member "other topic"
+                        (mapcar (lambda (line) (plist-get line :text))
+                                (harmless-team-room-history
+                                 "workshop" "general")))))
+      (harmless-team-room-say
+       "workshop" "notes" "Ada" "say \"hi\"\nnext")
+      (should (equal (plist-get (car (harmless-team-room-history
+                                      "workshop" "notes"))
+                                :text)
+                     "say \"hi\"\nnext"))
+      (let ((drive (harmless-team-room-say
+                    "workshop" "c" "Ada" "drive letter")))
+        (should (equal (plist-get drive :topic) "c"))
+        (should (equal (harmless-team-room-history "workshop" "c")
+                       (list drive))))
+      (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+      (should-not (file-directory-p (expand-file-name "notes" base)))
+      (let ((lines (harmless-team-room-history "workshop")))
+        (should (equal (harmless-team-remove "workshop" "qa" "note")
+                       (list :removed "qa-note@workshop"
+                             :fallback nil
+                             :work nil)))
+        (should (equal (harmless-team-room-history "workshop") lines))
+        (should (equal (harmless-team-edges "workshop") nil))
+        (should (equal (harmless-team-seat "workshop" "dev" "build")
+                       (harmless-team-test-seat "" work))))
+      (harmless-team-add-seat "bare" "ops" "run" "runner")
+      (harmless-team-remove "bare" "ops" "run")
+      (let ((said (harmless-team-room-say
+                   "bare" "general" "Ada" "empty rig")))
+        (should (equal (harmless-team-room-history "bare")
+                       (list said))))
+      (let* ((obj (harmless-json-decode (harmless-team-test-read file)))
+             (kept (harmless-team-test-bytes
+                    (expand-file-name "teams/bare.json" base))))
+        (harmless-team-test-write
+         file
+         (harmless-json-text
+          (plist-put obj :room
+                     (list (list :topic "general"
+                                 :speaker "Ada"
+                                 :text ""
+                                 :at "2026-10-19T00:00:00Z")))))
+        (let ((bytes (harmless-team-test-bytes file)))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-room-say
+                             "workshop" "general" "Ada" "after bad")))
+                         "team rig is not valid"))
+          (should (equal (harmless-team-test-bytes file) bytes))
+          (should (equal (harmless-team-test-bytes
+                          (expand-file-name "teams/bare.json" base))
+                         kept))))
+      (should (file-name-absolute-p file))
+      (should (harmless-directory-strictly-under-p file base))
+      (should-not (equal (file-truename file) (file-truename "/")))
+      (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+      (should (equal roots (harmless-team-test-roots)))
+      (should (equal session-roots
+                     (harmless-team-test-session-roots))))))
