@@ -415,8 +415,19 @@ command runs at once.
 @code{harmless-permission-denies} are lists of rules copied onto a
 session when it is created and when it is loaded.  A rule set only
 on that session is not saved, and loading the session replaces it
-with these lists.  This is not a per-project list that survives
-the session.
+with these lists.
+
+@file{.harmless/permissions} in the project is an allow list that
+survives the session.  One rule per line.  A blank line is
+ignored.  A line that starts with @code{#} is a comment.  Those
+rules are copied onto every session in that project, including
+one that is loaded again.  A detached chat has no project file.
+Nil, @code{""}, a relative path, and the filesystem root are not
+a project.  A missing file adds no rules and creates nothing.  A
+directory at that path is refused: @samp{permissions file is a
+directory}.  A bad line is refused with the file path, a colon,
+and the rule error.  The file is not copied into the session,
+and saving the session does not write it.
 
 A rule is @code{Bash(PATTERN)}, @code{Edit(PATTERN)}, or
 @code{WebFetch(domain:HOST)}.  @code{Bash(npm run *)} matches a

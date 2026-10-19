@@ -356,8 +356,18 @@ command runs at once.
    ‘harmless-permission-rules’ and ‘harmless-permission-denies’ are
 lists of rules copied onto a session when it is created and when it is
 loaded.  A rule set only on that session is not saved, and loading the
-session replaces it with these lists.  This is not a per-project list
-that survives the session.
+session replaces it with these lists.
+
+   ‘.harmless/permissions’ in the project is an allow list that survives
+the session.  One rule per line.  A blank line is ignored.  A line that
+starts with ‘#’ is a comment.  Those rules are copied onto every session
+in that project, including one that is loaded again.  A detached chat
+has no project file.  Nil, ‘""’, a relative path, and the filesystem
+root are not a project.  A missing file adds no rules and creates
+nothing.  A directory at that path is refused: ‘permissions file is a
+directory’.  A bad line is refused with the file path, a colon, and the
+rule error.  The file is not copied into the session, and saving the
+session does not write it.
 
    A rule is ‘Bash(PATTERN)’, ‘Edit(PATTERN)’, or
 ‘WebFetch(domain:HOST)’.  ‘Bash(npm run *)’ matches a shell command, and
@@ -1705,35 +1715,35 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts15078
-Node: Models17323
-Node: Tools18419
-Node: File tools20641
-Node: Search21875
-Node: Shell23516
-Node: Questions26301
-Node: Subagents27071
-Node: Workflows31220
-Node: Worktrees36223
-Node: Messages39351
-Node: Web search41172
-Node: Fetch a page42027
-Node: X search43260
-Node: MCP45657
-Node: Computer use48361
-Node: Monitors50377
-Node: Schedules53310
-Node: Instructions55762
-Node: Skills57508
-Node: Memory58657
-Node: Plan mode59922
-Node: Usage61959
-Node: Files62978
-Node: Keys64523
-Node: Trouble65746
-Node: Manual67000
-Node: Command Index67705
-Node: Key Index70618
+Node: Accounts15697
+Node: Models17942
+Node: Tools19038
+Node: File tools21260
+Node: Search22494
+Node: Shell24135
+Node: Questions26920
+Node: Subagents27690
+Node: Workflows31839
+Node: Worktrees36842
+Node: Messages39970
+Node: Web search41791
+Node: Fetch a page42646
+Node: X search43879
+Node: MCP46276
+Node: Computer use48980
+Node: Monitors50996
+Node: Schedules53929
+Node: Instructions56381
+Node: Skills58127
+Node: Memory59276
+Node: Plan mode60541
+Node: Usage62578
+Node: Files63597
+Node: Keys65142
+Node: Trouble66365
+Node: Manual67619
+Node: Command Index68324
+Node: Key Index71237
 
 End Tag Table
 

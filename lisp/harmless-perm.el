@@ -38,8 +38,9 @@
 ;;
 ;; Decide whether a tool class needs a prompt, and ask through
 ;; `harmless-perm-ask-function'.  Allow and deny rules can skip that
-;; question or refuse the call.  They live on the session.  They are
-;; not saved.
+;; question or refuse the call.  Emacs settings and
+;; `.harmless/permissions' are copied onto the session.  A rule set
+;; only on the session is not saved.
 
 ;;; Code:
 
@@ -179,12 +180,67 @@ Nil is an empty list.  Any other non-list is refused."
                 (harmless-perm--parse text decision))
               texts))))
 
+(defun harmless-perm--project-file (session)
+  "Return SESSION's `.harmless/permissions' path, or nil.
+Nil, \"\", a relative directory, and the filesystem root have
+none.  The path is not expanded against `default-directory'."
+  (let ((cwd (harmless-session-cwd session)))
+    (when (and (stringp cwd)
+               (not (string-empty-p cwd))
+               (file-name-absolute-p cwd)
+               (not (harmless-filesystem-root-p cwd)))
+      (let ((file (expand-file-name ".harmless/permissions" cwd)))
+        (when (and (file-name-absolute-p file)
+                   (not (harmless-filesystem-root-p file))
+                   (not (harmless-filesystem-root-p
+                         (file-name-directory file))))
+          file)))))
+
+(defun harmless-perm--read-project-file (file)
+  "Return allow rules read from FILE.
+A missing file has none.  A directory is refused.  A bad line
+names FILE and the rule error."
+  (cond
+   ((not (file-exists-p file)) nil)
+   ((file-directory-p file)
+    (error "permissions file is a directory"))
+   ((not (file-readable-p file))
+    (error "Cannot read %s" file))
+   (t
+    (let (lines)
+      (with-temp-buffer
+        (let ((coding-system-for-read 'utf-8-unix))
+          (insert-file-contents file))
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((line (string-trim
+                       (buffer-substring
+                        (line-beginning-position)
+                        (line-end-position)))))
+            (when (and (not (string-empty-p line))
+                       (not (string-prefix-p "#" line)))
+              (condition-case err
+                  (push (harmless-perm--parse line 'allow) lines)
+                (error
+                 (error "%s: %s"
+                        file (error-message-string err))))))
+          (forward-line 1)))
+      (nreverse lines)))))
+
+(defun harmless-perm--project-rules (session)
+  "Return allow rules from SESSION's project file, or nil."
+  (let ((file (harmless-perm--project-file session)))
+    (and file (harmless-perm--read-project-file file))))
+
 (defun harmless-perm-install-configured-rules (session)
-  "Copy the configured allow and deny rules onto SESSION.
-The previous in-memory rules are replaced.  Nothing is saved."
+  "Copy configured and project rules onto SESSION.
+Allow rules from Emacs come first, then `.harmless/permissions',
+then deny rules.  The previous in-memory rules are replaced.
+Nothing is saved."
   (let ((rules (append
                 (harmless-perm--parse-list
                  harmless-permission-rules 'allow)
+                (harmless-perm--project-rules session)
                 (harmless-perm--parse-list
                  harmless-permission-denies 'deny))))
     (setf (harmless-session-rules session) rules)))

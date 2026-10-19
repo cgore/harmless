@@ -45,8 +45,8 @@
 ;; is a list of one-shot prompts still waiting.  Each item is :id,
 ;; :prompt, and :at.  A timer is not stored on the item.  `rules' is
 ;; the allow and deny list for this session.  It is not saved.
-;; Configured rules are copied when the session is created and when
-;; it is loaded.
+;; Configured rules and `.harmless/permissions' are copied when the
+;; session is created and when it is loaded.
 
 ;;; Code:
 

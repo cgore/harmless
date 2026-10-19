@@ -329,7 +329,9 @@ A rule is `Bash(PATTERN)`, `Edit(PATTERN)`, or
 refuses before the question, including in accept-edits and
 always-approve, and a deny wins.  Plan mode still refuses a shell
 command that can write.  `/` and `c:/` are not edit paths.  A rule
-set only on the session is not saved.
+set only on the session is not saved.  `.harmless/permissions` is
+a per-project allow list that survives the session.  One rule per
+line.  A missing file creates nothing.
 
 ## Plan mode
 
