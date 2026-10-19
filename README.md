@@ -171,6 +171,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-row` | Open one unit of owned work aimed at one seat |
 | `M-x harmless-team-rows` | Read those rows, or one seat's rows |
 | `M-x harmless-team-row-read` | Read one row by its id |
+| `M-x harmless-team-row-claim` | Hold an open queue row |
+| `M-x harmless-team-row-note` | Append a note to an open or held row |
+| `M-x harmless-team-row-close` | Close a held row with a delivery reason |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -401,6 +404,15 @@ The row stays in the rig file when that seat's session is
 replaced, released, or removed.  `M-x harmless-team-rows` reads
 the rows, or one seat's rows.  `M-x harmless-team-row-read` reads
 one row by its id.
+
+`M-x harmless-team-row-claim` holds an open row.  The history
+gains `claimed`.  `M-x harmless-team-row-note` appends one note
+to an open or held row.  `M-x harmless-team-row-close` closes a
+held row.  The reason is `handed_off_to`, `blocked_on`,
+`denied`, `canceled`, `no-follow-on`, or `escalation`.  The
+history gains `delivered`, and the reason is stored.  Closing
+records delivery.  Acceptance stays the next seat's verdict, and
+the close does not open another row.
 
 ## Subagents
 

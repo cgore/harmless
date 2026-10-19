@@ -48,7 +48,10 @@
 ;; a chatroom: history, topics, and a wait for the next line.
 ;; A pace walks context into one seat, one piece at a time.
 ;; A queue row is owned work on the rig.  Replacing the seat
-;; does not drop it.  This file does not register another machine.
+;; does not drop it.  A claim holds a row.  A note appends
+;; history.  Closing records delivery.  Acceptance stays the
+;; next seat's verdict.  This file does not register another
+;; machine.
 
 ;;; Code:
 
@@ -368,6 +371,23 @@ Nil means the rig has no pace yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defconst harmless-team--row-reasons
+  '("handed_off_to" "blocked_on" "denied" "canceled"
+    "no-follow-on" "escalation")
+  "Reasons that can close a queue row.
+Closing records delivery.")
+
+(defun harmless-team--row-state-p (item)
+  "Return non-nil if ITEM's state and reason agree.
+Open and held rows have no reason.  A closed row has one."
+  (let ((state (plist-get item :state))
+        (reason (plist-get item :reason)))
+    (and (member state '("open" "held" "closed"))
+         (if (equal state "closed")
+             (and (stringp reason)
+                  (member reason harmless-team--row-reasons))
+           (null reason)))))
+
 (defun harmless-team--row-id-p (id)
   "Return non-nil if ID is a row id."
   (and (stringp id) (string-match-p "\\`[1-9][0-9]*\\'" id)))
@@ -389,7 +409,7 @@ Nil means the rig has no row yet."
                      (not (string-empty-p (plist-get item :seat)))
                      (stringp (plist-get item :body))
                      (not (string-empty-p (plist-get item :body)))
-                     (equal (plist-get item :state) "open")
+                     (harmless-team--row-state-p item)
                      (harmless-team--row-history-p
                       (plist-get item :history)))
                 (setq seen (cons (plist-get item :id) seen)
@@ -2069,7 +2089,8 @@ Internal newlines stay."
         :body (plist-get item :body)
         :state (plist-get item :state)
         :history (mapcar #'harmless-team--public-history
-                         (plist-get item :history))))
+                         (plist-get item :history))
+        :reason (plist-get item :reason)))
 
 (defun harmless-team--next-row-id (rows)
   "Return the next row id after ROWS."
@@ -2161,6 +2182,136 @@ SEAT limits the rows.  Nil returns every row."
          (read-string "Row: ")))
   (let ((row (harmless-team--row-read rig id)))
     (message "Row %s" (plist-get row :id))
+    row))
+
+(defun harmless-team--row-note-text (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team row note is empty"))
+   ((not (stringp text))
+    (error "team row note must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team row note is empty")
+    text))
+
+(defun harmless-team--row-reason (reason)
+  "Return REASON trimmed, or signal."
+  (cond
+   ((null reason) (error "team row reason is empty"))
+   ((not (stringp reason))
+    (error "team row reason must be a string")))
+  (setq reason (string-trim reason))
+  (cond
+   ((string-empty-p reason) (error "team row reason is empty"))
+   ((not (member reason harmless-team--row-reasons))
+    (error "team row reason is not a reason"))
+   (t reason)))
+
+(defun harmless-team--row-stored (stored id)
+  "Return the row ID inside STORED, or signal."
+  (let ((found nil))
+    (dolist (row (plist-get stored :rows))
+      (when (and (not found)
+                 (equal (plist-get row :id) id))
+        (setq found row)))
+    (unless found
+      (error "team row is missing"))
+    found))
+
+(defun harmless-team--row-append (row text)
+  "Append TEXT to ROW's history and return ROW."
+  (plist-put row :history
+             (append (plist-get row :history)
+                     (list (list :at (harmless-now-iso)
+                                 :text text))))
+  row)
+
+(defun harmless-team--row-claim (rig id)
+  "Hold open row ID in RIG and return it."
+  (setq rig (harmless-team--rig-name rig))
+  (setq id (harmless-team--row-id id))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (row (harmless-team--row-stored stored id))
+         (state (plist-get row :state)))
+    (cond
+     ((equal state "held") (error "team row is held"))
+     ((equal state "closed") (error "team row is closed")))
+    (plist-put row :state "held")
+    (harmless-team--row-append row "claimed")
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-row row)))
+
+(defun harmless-team--row-note (rig id text)
+  "Append TEXT to row ID in RIG and return it.
+A closed row is refused."
+  (setq text (harmless-team--row-note-text text))
+  (setq rig (harmless-team--rig-name rig))
+  (setq id (harmless-team--row-id id))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (row (harmless-team--row-stored stored id)))
+    (when (equal (plist-get row :state) "closed")
+      (error "team row is closed"))
+    (harmless-team--row-append row text)
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-row row)))
+
+(defun harmless-team--row-close (rig id reason)
+  "Close held row ID in RIG for REASON and return it.
+REASON records delivery.  Acceptance stays the next seat's
+verdict."
+  (setq reason (harmless-team--row-reason reason))
+  (setq rig (harmless-team--rig-name rig))
+  (setq id (harmless-team--row-id id))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (row (harmless-team--row-stored stored id))
+         (state (plist-get row :state)))
+    (cond
+     ((equal state "open") (error "team row is not held"))
+     ((equal state "closed") (error "team row is closed")))
+    (plist-put row :state "closed")
+    (plist-put row :reason reason)
+    (harmless-team--row-append row "delivered")
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-row row)))
+
+;;;###autoload
+(defun harmless-team-row-claim (rig id)
+  "Hold open queue row ID in RIG.
+The history records the claim.  Return the row."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")))
+  (let ((row (harmless-team--row-claim rig id)))
+    (message "Claimed %s" (plist-get row :id))
+    row))
+
+;;;###autoload
+(defun harmless-team-row-note (rig id text)
+  "Append TEXT to queue row ID in RIG.
+A closed row is refused.  Return the row."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")
+         (read-string "Note: ")))
+  (let ((row (harmless-team--row-note rig id text)))
+    (message "Noted %s" (plist-get row :id))
+    row))
+
+;;;###autoload
+(defun harmless-team-row-close (rig id reason)
+  "Close held queue row ID in RIG for REASON.
+REASON records delivery.  Return the row."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")
+         (read-string "Reason: ")))
+  (let ((row (harmless-team--row-close rig id reason)))
+    (message "Closed %s" (plist-get row :id))
     row))
 
 (provide 'harmless-team)

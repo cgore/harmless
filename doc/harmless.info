@@ -2074,6 +2074,24 @@ refused: ‘team row is empty’.  An id that is not text is refused: ‘team
 row must be a string’.  Any other id is refused: ‘team row is not an
 id’.  A missing row is refused: ‘team row is missing’.
 
+   ‘M-x harmless-team-row-claim’ holds an open row.  The history gains
+one line, ‘claimed’.  A held row is refused: ‘team row is held’.  A
+closed row is refused: ‘team row is closed’.  ‘M-x
+harmless-team-row-note’ appends one note to an open or held row.  A
+closed row is refused: ‘team row is closed’.  A blank note is refused:
+‘team row note is empty’.  A note that is not text is refused: ‘team row
+note must be a string’.
+
+   ‘M-x harmless-team-row-close’ closes a held row.  An open row is
+refused: ‘team row is not held’.  The reason is ‘handed_off_to’,
+‘blocked_on’, ‘denied’, ‘canceled’, ‘no-follow-on’, or ‘escalation’.
+The history gains one line, ‘delivered’, and the reason is stored.
+Closing records delivery.  Acceptance stays the next seat's verdict, and
+this command does not open another row.  A blank reason is refused:
+‘team row reason is empty’.  A reason that is not text is refused: ‘team
+row reason must be a string’.  Any other reason is refused: ‘team row
+reason is not a reason’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2320,7 +2338,8 @@ replaced with ‘/’.
      One rig: its pods, its seats, its edges, the session occupying each
      seat, the work each seat still holds, the text sent to each seat,
      the rig's chatroom, a pace that walks context into a seat, and a
-     queue row of owned work.  *Note Team::.
+     queue row of owned work that can be claimed, noted, and closed.
+     *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2576,6 +2595,9 @@ Command Index
 * harmless-team-room-say:                Team.                 (line  6)
 * harmless-team-room-wait:               Team.                 (line  6)
 * harmless-team-row:                     Team.                 (line  6)
+* harmless-team-row-claim:               Team.                 (line  6)
+* harmless-team-row-close:               Team.                 (line  6)
+* harmless-team-row-note:                Team.                 (line  6)
 * harmless-team-row-read:                Team.                 (line  6)
 * harmless-team-rows:                    Team.                 (line  6)
 * harmless-team-seat:                    Team.                 (line  6)
@@ -2663,15 +2685,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory103567
-Node: Plan mode106157
-Node: Usage109143
-Node: Files110162
-Node: Keys112086
-Node: Trouble113768
-Node: Manual115022
-Node: Command Index115727
-Node: Key Index121925
+Node: Memory104653
+Node: Plan mode107243
+Node: Usage110229
+Node: Files111248
+Node: Keys113215
+Node: Trouble114897
+Node: Manual116151
+Node: Command Index116856
+Node: Key Index123273
 
 End Tag Table
 

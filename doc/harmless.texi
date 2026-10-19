@@ -2220,6 +2220,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-row
 @findex harmless-team-rows
 @findex harmless-team-row-read
+@findex harmless-team-row-claim
+@findex harmless-team-row-note
+@findex harmless-team-row-close
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2364,6 +2367,27 @@ a string}.  A blank id is refused: @samp{team row is empty}.
 An id that is not text is refused: @samp{team row must be a
 string}.  Any other id is refused: @samp{team row is not an
 id}.  A missing row is refused: @samp{team row is missing}.
+
+@kbd{M-x harmless-team-row-claim} holds an open row.  The
+history gains one line, @code{claimed}.  A held row is refused:
+@samp{team row is held}.  A closed row is refused: @samp{team
+row is closed}.  @kbd{M-x harmless-team-row-note} appends one
+note to an open or held row.  A closed row is refused:
+@samp{team row is closed}.  A blank note is refused:
+@samp{team row note is empty}.  A note that is not text is
+refused: @samp{team row note must be a string}.
+
+@kbd{M-x harmless-team-row-close} closes a held row.  An open
+row is refused: @samp{team row is not held}.  The reason is
+@code{handed_off_to}, @code{blocked_on}, @code{denied},
+@code{canceled}, @code{no-follow-on}, or @code{escalation}.
+The history gains one line, @code{delivered}, and the reason
+is stored.  Closing records delivery.  Acceptance stays the
+next seat's verdict, and this command does not open another
+row.  A blank reason is refused: @samp{team row reason is
+empty}.  A reason that is not text is refused: @samp{team row
+reason must be a string}.  Any other reason is refused:
+@samp{team row reason is not a reason}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2643,7 +2667,8 @@ One headless task.  @xref{Headless}.
 One rig: its pods, its seats, its edges, the session occupying
 each seat, the work each seat still holds, the text sent to
 each seat, the rig's chatroom, a pace that walks context into
-a seat, and a queue row of owned work.
+a seat, and a queue row of owned work that can be claimed,
+noted, and closed.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

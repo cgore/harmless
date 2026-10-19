@@ -79,6 +79,9 @@
 ;;   M-x harmless-team-row     ; open owned work aimed at one seat
 ;;   M-x harmless-team-rows    ; read those rows, or one seat's rows
 ;;   M-x harmless-team-row-read ; read one row by its id
+;;   M-x harmless-team-row-claim ; hold an open queue row
+;;   M-x harmless-team-row-note ; append a note to a row
+;;   M-x harmless-team-row-close ; close a held row with a reason
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

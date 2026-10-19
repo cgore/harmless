@@ -85,6 +85,9 @@
   (should (fboundp 'harmless-team-row))
   (should (fboundp 'harmless-team-rows))
   (should (fboundp 'harmless-team-row-read))
+  (should (fboundp 'harmless-team-row-claim))
+  (should (fboundp 'harmless-team-row-note))
+  (should (fboundp 'harmless-team-row-close))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
