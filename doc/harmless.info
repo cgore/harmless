@@ -533,7 +533,9 @@ tools.  You see each call in the transcript.  Permission rules are in
 one call at a time.  An allowed call starts before the next question, so
 several shell commands overlap.  Results are added to the transcript in
 the order the model requested them.  Abort cancels the calls that are
-still running.
+still running.  A review reads the working tree, a base branch, or one
+commit and records findings.  It does not edit the project.  *Note
+Review::.
 
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -590,6 +592,7 @@ can keep a todo list.  *Note Todos::.
 * Monitors::    Wake when a line in a file or a stream matches.
 * Schedules::   Send one prompt at a later time.
 * Todos::       A list of work with status and dependencies.
+* Review::      A read-only review.  Findings are not applied.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -1318,7 +1321,7 @@ chat is offered them.  Nothing is written into the project.  Forking a
 session does not copy its schedules.
 
 
-File: harmless.info,  Node: Todos,  Prev: Schedules,  Up: Tools
+File: harmless.info,  Node: Todos,  Next: Review,  Prev: Schedules,  Up: Tools
 
 10.16 Todos
 ===========
@@ -1364,6 +1367,69 @@ does not ask.  Plan mode does not refuse it.  A read-only subagent may
 update its own list.  A detached chat is offered the tool.  Nothing is
 written into the project.  The session header shows how many items are
 pending or in progress.
+
+
+File: harmless.info,  Node: Review,  Prev: Todos,  Up: Tools
+
+10.17 Review
+============
+
+‘M-x harmless-review’ reads the working tree, a base branch, or one
+commit.  The menu key is ‘R’.  The model uses the same choice through
+‘review’.  Omit ‘base’ and ‘commit’ to read the working tree.  ‘base’ is
+a branch name, and the diff is that branch compared with ‘HEAD’.
+‘commit’ is one commit, such as ‘HEAD’ or a hash.  Passing both is
+refused: ‘review has both a base and a commit’.
+
+   Nil, ‘""’, and whitespace are refused: ‘review base is empty’ or
+‘review commit is empty’.  A value that is not text is refused: ‘review
+base must be a string’ or ‘review commit must be a string’.  ‘/’, ‘c:/’,
+a drive root, ‘~’, ‘..’, a leading dash, and any other absolute path are
+refused and are not resolved: ‘review base is not a branch’ or ‘review
+commit is not a commit’.  A name git does not know is refused the same
+way.  A range is not one commit.
+
+   ‘findings’ records the result.  Omit it and the tool returns the
+diff, cut at ‘harmless-review-max-bytes’ (100000).  A cut diff ends with
+‘[truncated]’.  The stored review is left unchanged.  JSON null and ‘[]’
+record an empty list, and the result is ‘No findings’.  A missing list
+is refused: ‘review findings must be a list’.  A value that is not a
+list is refused the same way.  An entry that is not a finding is
+refused: ‘review finding must be an item’.
+
+   Each finding has a severity, text, and an optional file and line.
+Severity is ‘high’, ‘medium’, or ‘low’.  Anything else is refused:
+‘review severity is not a severity’.  Nil, ‘""’, and whitespace are
+refused: ‘review finding is empty’.  A value that is not text is
+refused: ‘review finding must be a string’.  A file that is present and
+empty is refused: ‘review file is empty’.  A file that is not text is
+refused: ‘review file must be a string’.  A line that is present and is
+not a positive integer is refused: ‘review line is not a line’.  ‘/’,
+‘c:/’, ‘notes’, and ‘sub/’ are text, not paths.  They are not resolved,
+and they do not create a file or a directory.
+
+   The list replaces the previous review.  It is saved with the session.
+A fork copies it.  A subagent starts without one.  Loading a session
+keeps the review.  A saved review that is not usable is dropped.  A
+saved finding that is not usable is dropped.  The class is ‘read’, so
+the tool does not ask.  Plan mode does not refuse it.  A read-only
+subagent may review the project.  A detached chat is not offered the
+tool.  Git is used only to read.  Nothing is written into the project,
+and a finding is not applied as an edit.
+
+   A project that is not a git repository is refused: ‘this project is
+not a git repository’.  A missing directory is not created.  Nil, ‘""’,
+a relative path, ‘~’, ‘/’, and a drive root are refused: ‘This chat is
+not attached to a project’.  They are not resolved.  When git cannot be
+found: ‘git is not available’.  When a diff cannot be read: ‘review
+could not read the diff’.
+
+   ‘harmless-review-function’, when set, is called by ‘M-x
+harmless-review’ as ‘(session args diff)’.  A list of findings is
+recorded.  Nil leaves the stored review unchanged and the command
+returns the diff.  The tool does not call it.  It must not start a turn,
+and it must not edit the project.  The session header shows how many
+findings are recorded.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1510,7 +1576,8 @@ refused: ‘Error: Plan mode is on. Computer control is refused’.  A
 screenshot still runs.  *Note Computer use::.  A file watch and a
 read-only command still run.  A command that can write is refused.
 *Note Monitors::.  Scheduling a prompt still runs.  The later turn obeys
-plan mode.  *Note Schedules::.  The header line shows ‘plan’.
+plan mode.  *Note Schedules::.  A review still runs, and it does not
+edit the project.  *Note Review::.  The header line shows ‘plan’.
 ‘ask_user’ can still ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
@@ -1598,7 +1665,7 @@ replaced with ‘/’.
 
 ‘sessions/PROJECT/ID/summary.json’
      The session's model, status, totals, plan flag, schedules that are
-     still waiting, and its todo list.
+     still waiting, its todo list, and its latest review.
 
 ‘sessions/PROJECT/ID/messages.jsonl’
      The transcript, one JSON object per line.  A finding from another
@@ -1664,6 +1731,9 @@ also open it with ‘m’ in the transcript or ‘C-c C-k’ in the prompt.
 
 ‘f’
      Fork through the turn at point.
+
+‘R’
+     Review the working tree, a base branch, or one commit.
 
 ‘+’
      Add a directory outside the project.  In the transcript buffer, ‘+’
@@ -1779,7 +1849,7 @@ Command Index
 * exit_plan_mode:                        Plan mode.            (line  6)
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
-* harmless-add-directory:                Tools.                (line 22)
+* harmless-add-directory:                Tools.                (line 24)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 43)
 * harmless-current:                      Sessions.             (line  6)
@@ -1802,6 +1872,7 @@ Command Index
 * harmless-prompt-send:                  Prompt.               (line  6)
 * harmless-reload-all-harmless:          Trouble.              (line  6)
 * harmless-remember:                     Memory.               (line  6)
+* harmless-review:                       Review.               (line  6)
 * harmless-rewind:                       Transcript.           (line 60)
 * harmless-session-mode:                 Transcript.           (line  6)
 * harmless-set-model:                    Models.               (line  6)
@@ -1813,6 +1884,7 @@ Command Index
 * harmless-usage:                        Usage.                (line  6)
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
+* review:                                Review.               (line  6)
 * write_plan:                            Plan mode.            (line  6)
 
 
@@ -1825,7 +1897,7 @@ Key Index
 * Menu:
 
 * ! (permission):                        Permissions.          (line  6)
-* + (transcript):                        Tools.                (line 22)
+* + (transcript):                        Tools.                (line 24)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 70)
@@ -1838,6 +1910,7 @@ Key Index
 * M-x harmless-login:                    Accounts.             (line  6)
 * M-x harmless-logout:                   Accounts.             (line  6)
 * n (permission):                        Permissions.          (line  6)
+* R (Harmless menu):                     Review.               (line  6)
 * RIGHT (transcript):                    Transcript.           (line  6)
 * S-TAB (transcript):                    Transcript.           (line  6)
 * TAB (transcript):                      Transcript.           (line  6)
@@ -1857,33 +1930,34 @@ Node: Permissions11011
 Node: Accounts18317
 Node: Models20562
 Node: Tools21658
-Node: File tools25276
-Node: Search26682
-Node: Shell28578
-Node: Questions31363
-Node: Subagents32133
-Node: Workflows36282
-Node: Worktrees41285
-Node: Messages44413
-Node: Web search46234
-Node: Fetch a page47089
-Node: X search48322
-Node: MCP50719
-Node: Computer use53423
-Node: Monitors55439
-Node: Schedules58443
-Node: Todos60909
-Node: Instructions63549
-Node: Skills65295
-Node: Memory66444
-Node: Plan mode67709
-Node: Usage70480
-Node: Files71499
-Node: Keys73059
-Node: Trouble74408
-Node: Manual75662
-Node: Command Index76367
-Node: Key Index79353
+Node: File tools25472
+Node: Search26878
+Node: Shell28774
+Node: Questions31559
+Node: Subagents32329
+Node: Workflows36478
+Node: Worktrees41481
+Node: Messages44609
+Node: Web search46430
+Node: Fetch a page47285
+Node: X search48518
+Node: MCP50915
+Node: Computer use53619
+Node: Monitors55635
+Node: Schedules58639
+Node: Todos61105
+Node: Review63760
+Node: Instructions67319
+Node: Skills69065
+Node: Memory70214
+Node: Plan mode71479
+Node: Usage74323
+Node: Files75342
+Node: Keys76921
+Node: Trouble78339
+Node: Manual79593
+Node: Command Index80298
+Node: Key Index83430
 
 End Tag Table
 

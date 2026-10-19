@@ -613,7 +613,9 @@ Tool calls in one reply run together.  Harmless asks for permission
 one call at a time.  An allowed call starts before the next question,
 so several shell commands overlap.  Results are added to the
 transcript in the order the model requested them.  Abort cancels the
-calls that are still running.
+calls that are still running.  A review reads the working tree, a
+base branch, or one commit and records findings.  It does not edit
+the project.  @xref{Review}.
 
 Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -678,6 +680,7 @@ It can keep a todo list.  @xref{Todos}.
 * Monitors::    Wake when a line in a file or a stream matches.
 * Schedules::   Send one prompt at a later time.
 * Todos::       A list of work with status and dependencies.
+* Review::      A read-only review.  Findings are not applied.
 @end menu
 
 @node File tools
@@ -1539,6 +1542,80 @@ may update its own list.  A detached chat is offered the tool.
 Nothing is written into the project.  The session header shows
 how many items are pending or in progress.
 
+@node Review
+@section Review
+
+@findex harmless-review
+@findex review
+@vindex harmless-review-function
+@vindex harmless-review-max-bytes
+@kindex R @r{(Harmless menu)}
+@cindex review
+@kbd{M-x harmless-review} reads the working tree, a base branch, or
+one commit.  The menu key is @kbd{R}.  The model uses the same
+choice through @code{review}.  Omit @code{base} and @code{commit}
+to read the working tree.  @code{base} is a branch name, and the
+diff is that branch compared with @code{HEAD}.  @code{commit} is
+one commit, such as @code{HEAD} or a hash.  Passing both is
+refused: @samp{review has both a base and a commit}.
+
+Nil, @code{""}, and whitespace are refused: @samp{review base is
+empty} or @samp{review commit is empty}.  A value that is not
+text is refused: @samp{review base must be a string} or
+@samp{review commit must be a string}.  @code{/}, @code{c:/}, a
+drive root, @code{~}, @code{..}, a leading dash, and any other
+absolute path are refused and are not resolved: @samp{review base
+is not a branch} or @samp{review commit is not a commit}.  A
+name git does not know is refused the same way.  A range is not
+one commit.
+
+@code{findings} records the result.  Omit it and the tool returns
+the diff, cut at @code{harmless-review-max-bytes} (100000).  A
+cut diff ends with @samp{[truncated]}.  The stored review is left
+unchanged.  JSON null and @code{[]} record an empty list, and
+the result is @samp{No findings}.  A missing list is refused:
+@samp{review findings must be a list}.  A value that is not a
+list is refused the same way.  An entry that is not a finding is
+refused: @samp{review finding must be an item}.
+
+Each finding has a severity, text, and an optional file and line.
+Severity is @code{high}, @code{medium}, or @code{low}.  Anything
+else is refused: @samp{review severity is not a severity}.  Nil,
+@code{""}, and whitespace are refused: @samp{review finding is
+empty}.  A value that is not text is refused: @samp{review
+finding must be a string}.  A file that is present and empty is
+refused: @samp{review file is empty}.  A file that is not text is
+refused: @samp{review file must be a string}.  A line that is
+present and is not a positive integer is refused: @samp{review
+line is not a line}.  @code{/}, @code{c:/}, @code{notes}, and
+@code{sub/} are text, not paths.  They are not resolved, and
+they do not create a file or a directory.
+
+The list replaces the previous review.  It is saved with the
+session.  A fork copies it.  A subagent starts without one.
+Loading a session keeps the review.  A saved review that is not
+usable is dropped.  A saved finding that is not usable is
+dropped.  The class is @code{read}, so the tool does not ask.
+Plan mode does not refuse it.  A read-only subagent may review
+the project.  A detached chat is not offered the tool.  Git is
+used only to read.  Nothing is written into the project, and a
+finding is not applied as an edit.
+
+A project that is not a git repository is refused: @samp{this
+project is not a git repository}.  A missing directory is not
+created.  Nil, @code{""}, a relative path, @code{~}, @code{/},
+and a drive root are refused: @samp{This chat is not attached to
+a project}.  They are not resolved.  When git cannot be found:
+@samp{git is not available}.  When a diff cannot be read:
+@samp{review could not read the diff}.
+
+@code{harmless-review-function}, when set, is called by
+@kbd{M-x harmless-review} as @code{(session args diff)}.  A list
+of findings is recorded.  Nil leaves the stored review unchanged
+and the command returns the diff.  The tool does not call it.
+It must not start a turn, and it must not edit the project.
+The session header shows how many findings are recorded.
+
 @node Instructions
 @chapter Instructions
 
@@ -1707,6 +1784,8 @@ A file watch and a read-only command still run.  A command that
 can write is refused.  @xref{Monitors}.
 Scheduling a prompt still runs.  The later turn obeys plan mode.
 @xref{Schedules}.
+A review still runs, and it does not edit the project.
+@xref{Review}.
 The header line shows @samp{plan}.
 @code{ask_user} can still ask a question.  @xref{Questions}.
 
@@ -1802,7 +1881,7 @@ OAuth tokens for each connection.  Mode 0600.
 
 @item sessions/@var{project}/@var{id}/summary.json
 The session's model, status, totals, plan flag, schedules that
-are still waiting, and its todo list.
+are still waiting, its todo list, and its latest review.
 
 @item sessions/@var{project}/@var{id}/messages.jsonl
 The transcript, one JSON object per line.  A finding from another
@@ -1870,6 +1949,9 @@ Edit the prompt at point and rerun from there.
 
 @item f
 Fork through the turn at point.
+
+@item R
+Review the working tree, a base branch, or one commit.
 
 @item +
 Add a directory outside the project.  In the transcript buffer,

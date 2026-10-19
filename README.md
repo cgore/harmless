@@ -319,6 +319,17 @@ session.  A fork copies it.  A subagent starts empty.  The class
 is `read`, so it does not ask.  Plan mode does not refuse it.
 Nothing is written into the project.
 
+## Review
+
+`review` reads the working tree, a base branch, or one commit.
+`M-x harmless-review` does the same.  The menu key is `R`.
+Omit `base` and `commit` for the working tree.  `findings`
+records the result.  Omit findings and the tool returns the
+diff.  The list is saved with the session.  A fork copies it.
+A subagent starts without one.  The class is `read`, so it does
+not ask.  Plan mode does not refuse it.  A finding is not
+applied as an edit.  Nothing is written into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

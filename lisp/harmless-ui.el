@@ -58,6 +58,12 @@
 (declare-function harmless-info "harmless")
 (declare-function harmless-add-directory "harmless-tools-fs" (directory))
 (declare-function harmless-message-user-p "harmless-session" (msg))
+(declare-function harmless-review--has "harmless-review" (plist key))
+(declare-function harmless-review--get "harmless-review" (plist key))
+(declare-function harmless-review-format "harmless-review" (findings))
+(declare-function harmless-review-header "harmless-review" (session))
+(declare-function harmless-todo-format "harmless-todo" (items))
+(declare-function harmless-todo-header "harmless-todo" (session))
 
 (defface harmless-user-face
   '((t :inherit font-lock-keyword-face :weight bold))
@@ -172,6 +178,9 @@
        (if (harmless-session-plan-mode s) "  plan" "")
        (if (fboundp 'harmless-todo-header)
            (harmless-todo-header s)
+         "")
+       (if (fboundp 'harmless-review-header)
+           (harmless-review-header s)
          "")))))
 
 (defun harmless-ui--short-id (session)
@@ -303,6 +312,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("schedule" "schedule")
     ("schedule_cancel" "cancel")
     ("todo_write" "todo")
+    ("review" "review")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -409,6 +419,25 @@ directory, which lives under the Harmless data directory.  Setting
                         ""))
                     todos ", ")
                  "")))
+            ("review"
+             (if (and (fboundp 'harmless-review--has)
+                      (harmless-review--has args :findings)
+                      (listp (harmless-review--get args :findings))
+                      (not (harmless-plist-p
+                            (harmless-review--get args :findings))))
+                 (mapconcat
+                  (lambda (item)
+                    (if (listp item)
+                        (let ((text (harmless-tool-arg item :text)))
+                          (if (stringp text) text ""))
+                      ""))
+                  (harmless-review--get args :findings) ", ")
+               (let ((base (harmless-tool-arg args :base))
+                     (commit (harmless-tool-arg args :commit)))
+                 (cond
+                  ((stringp base) base)
+                  ((stringp commit) commit)
+                  (t "working tree")))))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)
@@ -826,6 +855,12 @@ A summary before the first user turn is left unmarked."
                  (harmless-session-todos session))
         (harmless-ui--insert-label "Todos" 'harmless-assistant-face)
         (insert (harmless-todo-format (harmless-session-todos session))
+                "\n\n"))
+      (when (and (fboundp 'harmless-review-format)
+                 (harmless-session-review session))
+        (harmless-ui--insert-label "Review" 'harmless-assistant-face)
+        (insert (harmless-review-format
+                 (plist-get (harmless-session-review session) :findings))
                 "\n\n"))
       (while msgs
         (let ((msg (car msgs)))

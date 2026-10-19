@@ -95,6 +95,7 @@
 (require 'harmless-monitor)
 (require 'harmless-schedule)
 (require 'harmless-todo)
+(require 'harmless-review)
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-compact)

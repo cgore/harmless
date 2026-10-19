@@ -99,7 +99,7 @@ Plan mode already has `enter_plan_mode`, `write_plan`, and `exit_plan_mode`, wit
 
 - [x] Comment on a line or range of `plan.md` during review (Grok Build).
 - [x] A todo list the model updates while it works, with status and dependencies (Claude Code tasks, Grok Build todos).
-- [ ] A read-only review of the working tree, a base branch, or one commit. The result is a list of findings the session does not apply as edits (Codex `/review`, Claude Code `ReportFindings`).
+- [x] A read-only review of the working tree, a base branch, or one commit. The result is a list of findings the session does not apply as edits (Codex `/review`, Claude Code `ReportFindings`).
 
 ## 8. Search, reading, and the harness prompt
 
