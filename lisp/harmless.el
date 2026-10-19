@@ -113,6 +113,8 @@
 ;;   M-x harmless-context-show ; read one pack's manifest
 ;;   M-x harmless-context-get ; read a pack, a file, or a section
 ;;   M-x harmless-context-profile ; compose a situation and count tokens
+;;   M-x harmless-skill-loadout ; reconcile one directory's skills
+;;   M-x harmless-plugin-inspect ; list one plugin's skills and servers
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

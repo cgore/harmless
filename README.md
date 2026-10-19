@@ -300,12 +300,26 @@ directory, later entries in this list replace earlier ones:
 `/etc/codex/skills` is included when it exists, at the lowest priority.
 Codex's own bundled skills are not on disk and are not read.
 
+A working directory can name the skills it wants in
+`.harmless/loadout`, one skill id per line.  Blank lines are
+skipped.  `M-x harmless-skill-loadout` reports which of those names
+are present in that directory, which are missing, and which
+discovered skills were not declared.  It reads only that directory:
+vendor `skills` folders there, then installed plugins there.  A
+parent directory, `/etc/codex/skills`, and user plugins are not
+part of this reconciliation.  A prefix argument writes
+`.harmless/loadout.managed` with the present names, one per line.
+It does not copy a skill and it does not install a plugin.
+
 ## Plugins
 
 A plugin is one directory of skills, agents, `hooks.json`, and
 `mcp.json`.  `M-x harmless-plugin-install` copies that directory.  It
 does not merge the files into `.harmless/skills`, `.harmless/agents`,
-or the project's `mcp.json`.
+or the project's `mcp.json`.  `M-x harmless-plugin-inspect` reads one
+plugin directory and lists its skill ids, its hooks, and its MCP
+server names.  That command does not copy the directory.  Installing
+stays an explicit copy.
 
 A project copy is `.harmless/plugins/NAME`.  A user copy is
 `plugins/NAME` under the Harmless data directory.  A later plugin

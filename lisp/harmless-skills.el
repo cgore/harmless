@@ -43,6 +43,10 @@
 ;; instructions and reads Harmless, Grok, Claude, and Codex layouts.
 ;; A directory closer to the session wins.  In one directory the
 ;; later vendor wins: agents, codex, claude, grok, then harmless.
+;; A loadout is `.harmless/loadout' in one working directory.  It
+;; names the skills that directory wants.  Reconciling reports
+;; which are present.  Applying writes only
+;; `.harmless/loadout.managed'.  Ancestors are not searched.
 
 ;;; Code:
 
@@ -451,6 +455,183 @@ A skill with no allowed-tools list does not narrow TOOLS."
     :fn #'harmless-skill--tool)))
 
 (harmless-skill-register)
+
+(defun harmless-skill--loadout-directory (directory)
+  "Return DIRECTORY for a skill loadout, or signal.
+Nil and \"\" are empty.  A non-string is refused.  A relative
+path and \"~\" are not expanded.  \"/\" and a drive root are
+refused.  A missing path and a file are refused."
+  (cond
+   ((null directory) (error "skill loadout directory is empty"))
+   ((not (stringp directory))
+    (error "skill loadout directory must be a string"))
+   (t
+    (setq directory (string-trim directory))
+    (cond
+     ((string-empty-p directory)
+      (error "skill loadout directory is empty"))
+     ((or (harmless-filesystem-root-p directory)
+          (harmless-extra-root-text-p directory))
+      (error "skill loadout directory is the filesystem root"))
+     ((or (string-prefix-p "~" directory)
+          (not (file-name-absolute-p directory)))
+      (error "skill loadout directory must be absolute"))
+     (t
+      (setq directory (directory-file-name (expand-file-name directory)))
+      (cond
+       ((or (harmless-filesystem-root-p directory)
+            (harmless-extra-root-text-p directory))
+        (error "skill loadout directory is the filesystem root"))
+       ((not (file-exists-p directory))
+        (error "skill loadout directory is missing"))
+       ((not (file-directory-p directory))
+        (error "skill loadout directory is not a directory"))
+       (t directory)))))))
+
+(defun harmless-skill--loadout-flag (apply)
+  "Return APPLY as nil or t, or signal."
+  (cond
+   ((null apply) nil)
+   ((eq apply t) t)
+   (t (error "skill loadout apply is not a flag"))))
+
+(defun harmless-skill--loadout-file (directory name)
+  "Return NAME under DIRECTORY's `.harmless' directory.
+Signal when that path is the filesystem root or leaves DIRECTORY."
+  (let ((file (expand-file-name
+               name (expand-file-name ".harmless" directory))))
+    (when (or (harmless-filesystem-root-p file)
+              (harmless-extra-root-text-p file)
+              (not (harmless-directory-strictly-under-p file directory)))
+      (error "skill loadout directory is the filesystem root"))
+    file))
+
+(defun harmless-skill--loadout-parse (text)
+  "Return skill ids in TEXT, in file order, or signal.
+Blank lines are skipped.  A non-name, including a comment, and
+a duplicate are not valid.  A file with no names is empty."
+  (let ((names nil)
+        (seen (make-hash-table :test 'equal)))
+    (dolist (line (split-string (or text "") "\n"))
+      (setq line (string-trim line))
+      (unless (string-empty-p line)
+        (unless (harmless-skill-name-p line)
+          (error "skill loadout is not valid"))
+        (when (gethash line seen)
+          (error "skill loadout is not valid"))
+        (puthash line t seen)
+        (push line names)))
+    (setq names (nreverse names))
+    (unless names
+      (error "skill loadout is empty"))
+    names))
+
+(defun harmless-skill--loadout-names (directory)
+  "Return skill ids declared in DIRECTORY, in file order."
+  (let ((file (harmless-skill--loadout-file directory "loadout")))
+    (cond
+     ((not (file-exists-p file))
+      (error "skill loadout is missing"))
+     ((not (file-regular-p file))
+      (error "skill loadout is not valid"))
+     (t
+      (harmless-skill--loadout-parse
+       (with-temp-buffer
+         (let ((coding-system-for-read 'utf-8-unix))
+           (insert-file-contents file))
+         (buffer-string)))))))
+
+(defun harmless-skill--loadout-roots (directory)
+  "Return skill directories in DIRECTORY only, lowest priority first.
+Ancestors, the admin skill directory, and user plugins are not
+included.  A plugin in this directory wins over a vendor skill."
+  (let ((roots nil))
+    (dolist (vendor harmless-skill-vendors)
+      (let ((root (expand-file-name
+                   "skills"
+                   (expand-file-name (concat "." vendor) directory))))
+        (unless (or (harmless-filesystem-root-p root)
+                    (harmless-extra-root-text-p root))
+          (setq roots (append roots (list root))))))
+    (when (fboundp 'harmless-plugin-skill-directories)
+      (dolist (root (harmless-plugin-skill-directories directory))
+        (unless (or (harmless-filesystem-root-p root)
+                    (harmless-extra-root-text-p root))
+          (setq roots (append roots (list root))))))
+    roots))
+
+(defun harmless-skill--loadout-found (directory)
+  "Return a hash table of skill ids discovered in DIRECTORY."
+  (let ((found (make-hash-table :test 'equal))
+        (seen (make-hash-table :test 'equal)))
+    (dolist (root (harmless-skill--loadout-roots directory))
+      (dolist (file (harmless-skills--find root seen))
+        (when-let* ((skill (harmless-skill--parse file)))
+          (puthash (plist-get skill :name) t found))))
+    found))
+
+(defun harmless-skill--loadout-write (directory names)
+  "Write NAMES to DIRECTORY's managed loadout and return that path.
+An empty NAMES writes an empty file.  Nothing else is written."
+  (let ((file (harmless-skill--loadout-file directory "loadout.managed")))
+    (when (equal (file-truename file) (file-truename "/"))
+      (error "skill loadout directory is the filesystem root"))
+    (make-directory (file-name-directory file) t)
+    (let ((coding-system-for-write 'utf-8-unix)
+          (text (if names
+                    (concat (mapconcat #'identity names "\n") "\n")
+                  "")))
+      (write-region text nil file nil 'silent))
+    file))
+
+(defun harmless-skill--loadout (directory apply)
+  "Return the reconciliation of DIRECTORY.
+APPLY nil writes nothing.  APPLY t writes the present names."
+  (let* ((declared (harmless-skill--loadout-names directory))
+         (found (harmless-skill--loadout-found directory))
+         (present nil)
+         (missing nil)
+         (extra nil))
+    (dolist (name declared)
+      (if (gethash name found)
+          (push name present)
+        (push name missing)))
+    (setq present (nreverse present))
+    (setq missing (nreverse missing))
+    (maphash (lambda (name _value)
+               (unless (member name declared)
+                 (push name extra)))
+             found)
+    (setq extra (sort extra #'string<))
+    (when apply
+      (harmless-skill--loadout-write directory present))
+    (list :directory directory
+          :declared declared
+          :present present
+          :missing missing
+          :extra extra
+          :applied apply)))
+
+;;;###autoload
+(defun harmless-skill-loadout (directory &optional apply)
+  "Reconcile the skill loadout of one working directory.
+DIRECTORY is absolute.  `.harmless/loadout' lists skill ids, one
+per line.  The result says which are present, which are missing,
+and which discovered skills were not declared.  Ancestors are
+not searched.  APPLY nil writes nothing.  APPLY t writes
+`.harmless/loadout.managed' with the present names and does not
+copy a skill or install a plugin."
+  (interactive
+   (list (read-string "Directory: ")
+         (and current-prefix-arg t)))
+  (setq directory (harmless-skill--loadout-directory directory))
+  (setq apply (harmless-skill--loadout-flag apply))
+  (let ((result (harmless-skill--loadout directory apply)))
+    (message "Loadout %s present, %s missing, %s extra"
+             (length (plist-get result :present))
+             (length (plist-get result :missing))
+             (length (plist-get result :extra)))
+    result))
 
 (provide 'harmless-skills)
 

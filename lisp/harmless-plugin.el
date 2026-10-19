@@ -40,7 +40,8 @@
 ;; Installing it copies that directory.  It does not merge the files
 ;; into the project's other skill, agent, or MCP locations.  A
 ;; marketplace is a directory of plugins, or a marketplace.json that
-;; names them.
+;; names them.  Inspecting a plugin lists its skills, hooks, and
+;; MCP servers.  That read does not copy the directory.
 
 ;;; Code:
 
@@ -51,6 +52,9 @@
 (require 'harmless-tools-fs)
 (require 'harmless-hook)
 (require 'harmless-mcp)
+
+(declare-function harmless-skills--find "harmless-skills" (dir seen))
+(declare-function harmless-skill--parse "harmless-skills" (path))
 
 (defun harmless-plugin-name-p (name)
   "Return non-nil if NAME is a plugin id, not a path."
@@ -487,6 +491,44 @@ Project plugins override a user plugin of the same server name."
 User plugins come first.  `harmless-hooks' is not included."
   (append (harmless-plugin--hooks (harmless-plugin-user-root))
           (harmless-plugin--hooks (harmless-plugin-project-root session))))
+
+(defun harmless-plugin--skill-names (dir)
+  "Return skill ids under DIR, sorted.
+A SKILL.md with no usable summary is omitted."
+  (let ((root (expand-file-name "skills" dir))
+        (seen (make-hash-table :test 'equal))
+        (names nil))
+    (when (and (file-directory-p root)
+               (not (harmless-plugin--root-text-p root)))
+      (dolist (file (harmless-skills--find root seen))
+        (let ((skill (harmless-skill--parse file)))
+          (when skill
+            (cl-pushnew (plist-get skill :name) names :test #'equal)))))
+    (sort names #'string<)))
+
+;;;###autoload
+(defun harmless-plugin-inspect (directory)
+  "List skills, hooks, and MCP servers in plugin DIRECTORY.
+DIRECTORY is the plugin itself, not a session and not a
+marketplace.  This writes nothing and does not install it."
+  (interactive (list (read-string "Plugin directory: ")))
+  (setq directory (directory-file-name
+                   (harmless-plugin-directory directory)))
+  (cond
+   ((not (file-exists-p directory))
+    (error "plugin directory is missing"))
+   ((not (file-directory-p directory))
+    (error "plugin directory is not a directory")))
+  (let* ((manifest (harmless-plugin--manifest directory))
+         (hooks (harmless-plugin--hooks-in directory))
+         (servers (mapcar (lambda (item) (plist-get item :name))
+                          (harmless-plugin--servers-in directory)))
+         (name (plist-get manifest :name)))
+    (message "Plugin %s" name)
+    (list :name name
+          :skills (harmless-plugin--skill-names directory)
+          :hooks hooks
+          :servers servers)))
 
 (provide 'harmless-plugin)
 

@@ -1948,17 +1948,68 @@ same name farther away.  @file{/etc/codex/skills} is included when it
 exists, at the lowest priority.  Skills that ship inside the Codex
 application, and are not files on disk, are not read.
 
+@findex harmless-skill-loadout
+A working directory can declare the skills it wants.  The file is
+@file{.harmless/loadout}, one skill id per line.  Blank lines are
+skipped.  A comment, a path, a duplicate, and any other non-name
+are refused: @samp{skill loadout is not valid}.  A missing file is
+refused: @samp{skill loadout is missing}.  A file with no names is
+refused: @samp{skill loadout is empty}.
+
+@kbd{M-x harmless-skill-loadout} reconciles that file against skills
+discovered in that directory only.  The vendor @file{skills}
+folders in that directory are read first.  Installed plugins in
+that directory come after them, so a plugin skill wins on a clash.
+Parent directories, @file{/etc/codex/skills}, and plugins installed
+for the user are not included.  The result lists the declared
+names that are present, the declared names that are missing, and
+the discovered names that were not declared.
+
+A prefix argument writes @file{.harmless/loadout.managed} with the
+present names, one per line.  When none of the declared names were
+found, that file is empty.  Without a prefix argument, nothing is
+written.  The command does not copy a skill and it does not
+install a plugin.
+
+Nil, @code{""}, and whitespace are refused: @samp{skill loadout
+directory is empty}.  A value that is not text is refused:
+@samp{skill loadout directory must be a string}.  A relative path,
+including @code{~}, is refused and is not expanded: @samp{skill
+loadout directory must be absolute}.  @code{/} and a drive root
+are refused: @samp{skill loadout directory is the filesystem
+root}.  A missing directory is refused: @samp{skill loadout
+directory is missing}.  A file is refused: @samp{skill loadout
+directory is not a directory}.  A trailing slash names the same
+directory.  Anything other than nil or t for the apply flag is
+refused: @samp{skill loadout apply is not a flag}.
+
 @node Plugins
 @chapter Plugins
 
 @cindex plugins
 @cindex marketplace
 @findex harmless-plugin-install
+@findex harmless-plugin-inspect
 A plugin is one directory.  It can hold skills, agents, a
 @file{hooks.json} file, and an @file{mcp.json} file.
 @kbd{M-x harmless-plugin-install} copies that directory as one unit.
 It does not merge those files into @file{.harmless/skills},
 @file{.harmless/agents}, or the project's @file{mcp.json}.
+@kbd{M-x harmless-plugin-inspect} reads one plugin directory.  It
+lists the skill ids whose @file{SKILL.md} has a usable summary,
+the hooks, and the MCP server names in file order.  It writes
+nothing and it does not copy the plugin.  Installing stays the
+explicit copy above.
+
+Nil, @code{""}, whitespace, and a value that is not text are
+refused: @samp{plugin directory is empty}.  A relative path,
+including @code{~}, is refused and is not expanded: @samp{plugin
+directory must be absolute}.  @code{/} and a drive root are
+refused: @samp{plugin directory is the filesystem root}.  A
+missing plugin directory is refused: @samp{plugin directory is
+missing}.  A file is refused: @samp{plugin directory is not a
+directory}.  A missing or unreadable @file{plugin.json} is
+refused: @samp{plugin.json is not valid}.
 
 The copy for a project is @file{.harmless/plugins/NAME}.  The copy
 for the user is @file{plugins/NAME} under the Harmless data

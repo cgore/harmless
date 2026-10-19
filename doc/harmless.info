@@ -1724,6 +1724,37 @@ the same name farther away.  ‘/etc/codex/skills’ is included when it
 exists, at the lowest priority.  Skills that ship inside the Codex
 application, and are not files on disk, are not read.
 
+   A working directory can declare the skills it wants.  The file is
+‘.harmless/loadout’, one skill id per line.  Blank lines are skipped.  A
+comment, a path, a duplicate, and any other non-name are refused: ‘skill
+loadout is not valid’.  A missing file is refused: ‘skill loadout is
+missing’.  A file with no names is refused: ‘skill loadout is empty’.
+
+   ‘M-x harmless-skill-loadout’ reconciles that file against skills
+discovered in that directory only.  The vendor ‘skills’ folders in that
+directory are read first.  Installed plugins in that directory come
+after them, so a plugin skill wins on a clash.  Parent directories,
+‘/etc/codex/skills’, and plugins installed for the user are not
+included.  The result lists the declared names that are present, the
+declared names that are missing, and the discovered names that were not
+declared.
+
+   A prefix argument writes ‘.harmless/loadout.managed’ with the present
+names, one per line.  When none of the declared names were found, that
+file is empty.  Without a prefix argument, nothing is written.  The
+command does not copy a skill and it does not install a plugin.
+
+   Nil, ‘""’, and whitespace are refused: ‘skill loadout directory is
+empty’.  A value that is not text is refused: ‘skill loadout directory
+must be a string’.  A relative path, including ‘~’, is refused and is
+not expanded: ‘skill loadout directory must be absolute’.  ‘/’ and a
+drive root are refused: ‘skill loadout directory is the filesystem
+root’.  A missing directory is refused: ‘skill loadout directory is
+missing’.  A file is refused: ‘skill loadout directory is not a
+directory’.  A trailing slash names the same directory.  Anything other
+than nil or t for the apply flag is refused: ‘skill loadout apply is not
+a flag’.
+
 
 File: harmless.info,  Node: Plugins,  Next: Output styles,  Prev: Skills,  Up: Top
 
@@ -1734,6 +1765,18 @@ A plugin is one directory.  It can hold skills, agents, a ‘hooks.json’
 file, and an ‘mcp.json’ file.  ‘M-x harmless-plugin-install’ copies that
 directory as one unit.  It does not merge those files into
 ‘.harmless/skills’, ‘.harmless/agents’, or the project's ‘mcp.json’.
+‘M-x harmless-plugin-inspect’ reads one plugin directory.  It lists the
+skill ids whose ‘SKILL.md’ has a usable summary, the hooks, and the MCP
+server names in file order.  It writes nothing and it does not copy the
+plugin.  Installing stays the explicit copy above.
+
+   Nil, ‘""’, whitespace, and a value that is not text are refused:
+‘plugin directory is empty’.  A relative path, including ‘~’, is refused
+and is not expanded: ‘plugin directory must be absolute’.  ‘/’ and a
+drive root are refused: ‘plugin directory is the filesystem root’.  A
+missing plugin directory is refused: ‘plugin directory is missing’.  A
+file is refused: ‘plugin directory is not a directory’.  A missing or
+unreadable ‘plugin.json’ is refused: ‘plugin.json is not valid’.
 
    The copy for a project is ‘.harmless/plugins/NAME’.  The copy for the
 user is ‘plugins/NAME’ under the Harmless data directory.  A later
@@ -2843,6 +2886,7 @@ Command Index
 * harmless-output-style:                 Output styles.        (line  6)
 * harmless-pick-model:                   Models.               (line  6)
 * harmless-plan:                         Plan mode.            (line  6)
+* harmless-plugin-inspect:               Plugins.              (line  6)
 * harmless-plugin-install:               Plugins.              (line  6)
 * harmless-prompt-mode:                  Prompt.               (line  6)
 * harmless-prompt-send:                  Prompt.               (line  6)
@@ -2864,6 +2908,7 @@ Command Index
 * harmless-set-permission-mode:          Permissions.          (line  6)
 * harmless-set-reasoning-effort:         Models.               (line  6)
 * harmless-setup:                        Installation.         (line  6)
+* harmless-skill-loadout:                Skills.               (line 57)
 * harmless-steer:                        Prompt.               (line  6)
 * harmless-switch:                       Sessions.             (line  6)
 * harmless-task-start:                   Headless.             (line  6)
@@ -2996,23 +3041,23 @@ Node: Review69716
 Node: Language server73299
 Node: Instructions76486
 Node: Skills79594
-Node: Plugins81924
-Node: Output styles83974
-Node: Image generation85985
-Node: Headless87827
-Node: Pages90515
-Node: Team93352
-Node: Scope113247
-Node: Context117254
-Node: Memory120389
-Node: Plan mode122982
-Node: Usage125968
-Node: Files126987
-Node: Keys130383
-Node: Trouble132065
-Node: Manual133319
-Node: Command Index134024
-Node: Key Index142923
+Node: Plugins83754
+Node: Output styles86606
+Node: Image generation88617
+Node: Headless90459
+Node: Pages93147
+Node: Team95984
+Node: Scope115879
+Node: Context119886
+Node: Memory123021
+Node: Plan mode125614
+Node: Usage128600
+Node: Files129619
+Node: Keys133015
+Node: Trouble134697
+Node: Manual135951
+Node: Command Index136656
+Node: Key Index145701
 
 End Tag Table
 
