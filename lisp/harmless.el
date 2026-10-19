@@ -102,6 +102,13 @@
 ;;   M-x harmless-team-compact-plan ; list seats near the context wall
 ;;   M-x harmless-team-compact ; record a deliberate compact and tell
 ;;   M-x harmless-team-compacts ; read those compact notices
+;;   M-x harmless-scope-project ; write the project's intent
+;;   M-x harmless-scope-mission ; add a mission under that project
+;;   M-x harmless-scope-slice ; specify one slice of a mission
+;;   M-x harmless-scope-show ; read intent composed down the tree
+;;   M-x harmless-scope-proof ; store evidence on a slice
+;;   M-x harmless-scope-judge ; record who accepted or rejected
+;;   M-x harmless-scope-progress ; derive proved, rejected, or open
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -159,6 +166,7 @@
 (require 'harmless-headless)
 (require 'harmless-page)
 (require 'harmless-team)
+(require 'harmless-scope)
 
 (defvar harmless--config-loaded nil
   "Non-nil after the Harmless config file has been loaded.")

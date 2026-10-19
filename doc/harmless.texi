@@ -53,6 +53,7 @@ commands, keys, and files a user needs.
 * Headless::            One prompt, and a task that outlives Emacs.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
+* Scope::               Missions, slices, and derived progress.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -2622,6 +2623,96 @@ valid}.  That file is left unchanged.
 
 A team file is refused at the filesystem root: @samp{Refusing to
 store a team at }, followed by that directory.
+
+@node Scope
+@chapter Scope
+
+@cindex scope
+@findex harmless-scope-project
+@findex harmless-scope-mission
+@findex harmless-scope-slice
+@findex harmless-scope-show
+@findex harmless-scope-proof
+@findex harmless-scope-judge
+@findex harmless-scope-progress
+A project directory holds missions, and a mission holds slices.
+@kbd{M-x harmless-scope-project} writes @file{SPEC.md} in the
+project.  @kbd{M-x harmless-scope-mission} writes
+@file{missions/NAME/SPEC.md}.  @kbd{M-x harmless-scope-slice}
+writes @file{missions/NAME/slices/NAME/SPEC.md}.  Each file
+starts with @code{# Intent}.  Only a slice also has
+@code{# Specification}.  @kbd{M-x harmless-scope-show} composes
+the project intent, the mission intent, and the slice intent.
+Show writes nothing.
+
+The specification is one item per non-blank line.
+@kbd{M-x harmless-scope-proof} stores evidence as
+@file{proof/NAME.md} under the slice.
+@kbd{M-x harmless-scope-judge} appends one attributed
+@code{accept}, @code{reject}, or @code{withdraw} to
+@file{judgments.json}.  The judgment names the judge, the
+reason, and the proof name.  @kbd{M-x harmless-scope-progress}
+derives @code{proved}, @code{rejected}, or @code{open} from the
+latest judgment whose proof file is still in the slice.  The
+slice is @code{proved} only when it has an item and each latest
+verdict is @code{accept}.  One latest @code{reject} is
+@code{rejected}.  Anything else, including @code{withdraw}, is
+@code{open}.
+Progress writes nothing.  Nothing is started.
+
+A name is letters and digits.  @code{/} is valid intent,
+specification, proof text, judge, and reason, and it is not
+opened as a path.  A relative project, including @code{~}, is
+refused and is not expanded.
+
+Nil, @code{""}, and whitespace are refused: @samp{scope project
+is empty}.  A project that is not text is refused:
+@samp{scope project must be a string}.  @code{/} and a drive
+root are refused: @samp{scope project is the filesystem root}.
+A relative project is refused: @samp{scope project must be
+absolute}.  A missing project is refused: @samp{scope project
+is missing}.  A file is refused: @samp{scope project is not a
+directory}.  A second project intent is refused: @samp{scope
+project already exists}.  The project directory is not created.
+
+Nil, @code{""}, and whitespace are refused: @samp{scope intent
+is empty}.  Intent that is not text is refused: @samp{scope
+intent must be a string}.  A specification uses the same two
+sentences, with @code{spec} in place of @code{intent}.
+
+Nil, @code{""}, and whitespace are refused: @samp{scope mission
+is empty}.  A mission that is not text is refused:
+@samp{scope mission must be a string}.  Any other mission is
+refused: @samp{scope mission is not a name}.  A missing mission
+is refused: @samp{scope mission is missing}.  A second mission
+is refused: @samp{scope mission already exists}.  A project
+with no intent is refused: @samp{scope project has no intent}.
+A slice, a proof, and an evidence name use the same three
+sentences, with @code{slice}, @code{proof}, or @code{evidence}
+in place of @code{mission}.  A missing slice is refused:
+@samp{scope slice is missing}.  A second slice is refused:
+@samp{scope slice already exists}.  A second proof is refused:
+@samp{scope proof already exists}.  A missing proof is refused:
+@samp{scope evidence is missing}.
+
+Nil, @code{""}, and whitespace are refused: @samp{scope item is
+empty}.  Zero, a past-the-end number, and any other item are
+refused:
+@samp{scope item is not an item}.  Nil, @code{""}, and
+whitespace are refused: @samp{scope verdict is empty}.  A
+verdict that is not text is refused: @samp{scope verdict must
+be a string}.  Any other verdict is refused: @samp{scope
+verdict is not a verdict}.  A judge and a reason use the empty
+and must-be-a-string sentences, with @code{judge} or
+@code{reason} in place of @code{verdict}.
+
+A slice with no specification is refused: @samp{scope slice is
+not specified}.  A file that is not intent is refused:
+@samp{scope file is not valid}.  A judgment file that cannot be
+read is refused: @samp{scope judgments are not valid}.  That
+file is left unchanged.  A scope path at the filesystem root is
+refused: @samp{Refusing to store scope at }, followed by that
+path.
 
 @node Memory
 @chapter Memory

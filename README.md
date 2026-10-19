@@ -197,6 +197,13 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-compact-plan` | List seats near the context wall |
 | `M-x harmless-team-compact` | Record a deliberate compact and tell the room |
 | `M-x harmless-team-compacts` | Read those compact notices, oldest first |
+| `M-x harmless-scope-project` | Write a project's intent on disk |
+| `M-x harmless-scope-mission` | Add a mission under that project |
+| `M-x harmless-scope-slice` | Specify one slice of a mission |
+| `M-x harmless-scope-show` | Read intent composed down the tree |
+| `M-x harmless-scope-proof` | Store evidence on a slice |
+| `M-x harmless-scope-judge` | Record who accepted or rejected an item |
+| `M-x harmless-scope-progress` | Derive proved, rejected, or open |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -499,6 +506,29 @@ and tells the room.  The seat must already be at that wall.
 `M-x harmless-team-compacts` reads those notices, oldest
 first.  The transcript summary is `M-x harmless-compact`.
 Nothing is started.
+
+## Scope
+
+A project directory holds missions, and a mission holds slices.
+`M-x harmless-scope-project` writes `SPEC.md` at the project.
+`M-x harmless-scope-mission` writes `missions/NAME/SPEC.md`.
+`M-x harmless-scope-slice` writes
+`missions/NAME/slices/NAME/SPEC.md`.  Each file starts with
+`# Intent`.  Only a slice also has `# Specification`.  Reading
+a slice composes the project intent, the mission intent, and
+the slice intent.  `M-x harmless-scope-show` reads that and
+writes nothing.
+
+The specification is one item per non-blank line.
+`M-x harmless-scope-proof` stores evidence as
+`proof/NAME.md` under the slice.  `M-x harmless-scope-judge`
+appends one attributed accept, reject, or withdraw to
+`judgments.json`.  The judgment names the judge, the reason,
+and the proof.  `M-x harmless-scope-progress` derives
+`proved`, `rejected`, or `open` from the latest judgment whose
+proof file is still there.  Progress is not stored.  A name is
+letters and digits.  `/` is text, and it is not opened as a
+path.  Nothing is started.
 
 ## Subagents
 

@@ -111,6 +111,13 @@
   (should (fboundp 'harmless-team-compact-plan))
   (should (fboundp 'harmless-team-compact))
   (should (fboundp 'harmless-team-compacts))
+  (should (fboundp 'harmless-scope-project))
+  (should (fboundp 'harmless-scope-mission))
+  (should (fboundp 'harmless-scope-slice))
+  (should (fboundp 'harmless-scope-show))
+  (should (fboundp 'harmless-scope-proof))
+  (should (fboundp 'harmless-scope-judge))
+  (should (fboundp 'harmless-scope-progress))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

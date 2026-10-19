@@ -44,6 +44,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Headless::            One prompt, and a task that outlives Emacs.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
+* Scope::               Missions, slices, and derived progress.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -1945,7 +1946,7 @@ parent is missing is refused: ‘page path is missing’.  The source file
 as the destination is refused: ‘page path is the source’.
 
 
-File: harmless.info,  Node: Team,  Next: Memory,  Prev: Pages,  Up: Top
+File: harmless.info,  Node: Team,  Next: Scope,  Prev: Pages,  Up: Top
 
 18 Team
 *******
@@ -2271,9 +2272,79 @@ seat is refused: ‘team seat is missing’.  A broken rig file is refused:
 team at ’, followed by that directory.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Team,  Up: Top
+File: harmless.info,  Node: Scope,  Next: Memory,  Prev: Team,  Up: Top
 
-19 Memory
+19 Scope
+********
+
+A project directory holds missions, and a mission holds slices.  ‘M-x
+harmless-scope-project’ writes ‘SPEC.md’ in the project.  ‘M-x
+harmless-scope-mission’ writes ‘missions/NAME/SPEC.md’.  ‘M-x
+harmless-scope-slice’ writes ‘missions/NAME/slices/NAME/SPEC.md’.  Each
+file starts with ‘# Intent’.  Only a slice also has ‘# Specification’.
+‘M-x harmless-scope-show’ composes the project intent, the mission
+intent, and the slice intent.  Show writes nothing.
+
+   The specification is one item per non-blank line.  ‘M-x
+harmless-scope-proof’ stores evidence as ‘proof/NAME.md’ under the
+slice.  ‘M-x harmless-scope-judge’ appends one attributed ‘accept’,
+‘reject’, or ‘withdraw’ to ‘judgments.json’.  The judgment names the
+judge, the reason, and the proof name.  ‘M-x harmless-scope-progress’
+derives ‘proved’, ‘rejected’, or ‘open’ from the latest judgment whose
+proof file is still in the slice.  The slice is ‘proved’ only when it
+has an item and each latest verdict is ‘accept’.  One latest ‘reject’ is
+‘rejected’.  Anything else, including ‘withdraw’, is ‘open’.  Progress
+writes nothing.  Nothing is started.
+
+   A name is letters and digits.  ‘/’ is valid intent, specification,
+proof text, judge, and reason, and it is not opened as a path.  A
+relative project, including ‘~’, is refused and is not expanded.
+
+   Nil, ‘""’, and whitespace are refused: ‘scope project is empty’.  A
+project that is not text is refused: ‘scope project must be a string’.
+‘/’ and a drive root are refused: ‘scope project is the filesystem
+root’.  A relative project is refused: ‘scope project must be absolute’.
+A missing project is refused: ‘scope project is missing’.  A file is
+refused: ‘scope project is not a directory’.  A second project intent is
+refused: ‘scope project already exists’.  The project directory is not
+created.
+
+   Nil, ‘""’, and whitespace are refused: ‘scope intent is empty’.
+Intent that is not text is refused: ‘scope intent must be a string’.  A
+specification uses the same two sentences, with ‘spec’ in place of
+‘intent’.
+
+   Nil, ‘""’, and whitespace are refused: ‘scope mission is empty’.  A
+mission that is not text is refused: ‘scope mission must be a string’.
+Any other mission is refused: ‘scope mission is not a name’.  A missing
+mission is refused: ‘scope mission is missing’.  A second mission is
+refused: ‘scope mission already exists’.  A project with no intent is
+refused: ‘scope project has no intent’.  A slice, a proof, and an
+evidence name use the same three sentences, with ‘slice’, ‘proof’, or
+‘evidence’ in place of ‘mission’.  A missing slice is refused: ‘scope
+slice is missing’.  A second slice is refused: ‘scope slice already
+exists’.  A second proof is refused: ‘scope proof already exists’.  A
+missing proof is refused: ‘scope evidence is missing’.
+
+   Nil, ‘""’, and whitespace are refused: ‘scope item is empty’.  Zero,
+a past-the-end number, and any other item are refused: ‘scope item is
+not an item’.  Nil, ‘""’, and whitespace are refused: ‘scope verdict is
+empty’.  A verdict that is not text is refused: ‘scope verdict must be a
+string’.  Any other verdict is refused: ‘scope verdict is not a
+verdict’.  A judge and a reason use the empty and must-be-a-string
+sentences, with ‘judge’ or ‘reason’ in place of ‘verdict’.
+
+   A slice with no specification is refused: ‘scope slice is not
+specified’.  A file that is not intent is refused: ‘scope file is not
+valid’.  A judgment file that cannot be read is refused: ‘scope
+judgments are not valid’.  That file is left unchanged.  A scope path at
+the filesystem root is refused: ‘Refusing to store scope at ’, followed
+by that path.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Scope,  Up: Top
+
+20 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2341,7 +2412,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-20 Plan mode
+21 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2406,7 +2477,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-21 Usage
+22 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2430,7 +2501,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-22 Files
+23 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2516,7 +2587,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-23 Keys
+24 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2628,7 +2699,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-24 Trouble
+25 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2655,7 +2726,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-25 Manual
+26 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2721,6 +2792,13 @@ Command Index
 * harmless-rename:                       Sessions.             (line 31)
 * harmless-review:                       Review.               (line  6)
 * harmless-rewind:                       Transcript.           (line 69)
+* harmless-scope-judge:                  Scope.                (line  6)
+* harmless-scope-mission:                Scope.                (line  6)
+* harmless-scope-progress:               Scope.                (line  6)
+* harmless-scope-project:                Scope.                (line  6)
+* harmless-scope-proof:                  Scope.                (line  6)
+* harmless-scope-show:                   Scope.                (line  6)
+* harmless-scope-slice:                  Scope.                (line  6)
 * harmless-session-mode:                 Transcript.           (line  6)
 * harmless-set-model:                    Models.               (line  6)
 * harmless-set-permission-mode:          Permissions.          (line  6)
@@ -2828,51 +2906,52 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2151
-Node: Installation2882
-Node: Starting4486
-Node: Sessions5025
-Node: Transcript8206
-Node: Prompt11967
-Node: Permissions13208
-Node: Accounts20514
-Node: Models22759
-Node: Tools23855
-Node: File tools28203
-Node: Search32710
-Node: Shell34606
-Node: Questions37391
-Node: Subagents38161
-Node: Workflows42310
-Node: Worktrees47313
-Node: Messages50441
-Node: Web search52262
-Node: Fetch a page53117
-Node: X search54350
-Node: MCP56747
-Node: Computer use59451
-Node: Monitors61467
-Node: Schedules64471
-Node: Todos66937
-Node: Review69592
-Node: Language server73175
-Node: Instructions76362
-Node: Skills79470
-Node: Plugins81800
-Node: Output styles83850
-Node: Image generation85861
-Node: Headless87703
-Node: Pages90391
-Node: Team93228
-Node: Memory113124
-Node: Plan mode115714
-Node: Usage118700
-Node: Files119719
-Node: Keys123115
-Node: Trouble124797
-Node: Manual126051
-Node: Command Index126756
-Node: Key Index134852
+Node: Introduction2215
+Node: Installation2946
+Node: Starting4550
+Node: Sessions5089
+Node: Transcript8270
+Node: Prompt12031
+Node: Permissions13272
+Node: Accounts20578
+Node: Models22823
+Node: Tools23919
+Node: File tools28267
+Node: Search32774
+Node: Shell34670
+Node: Questions37455
+Node: Subagents38225
+Node: Workflows42374
+Node: Worktrees47377
+Node: Messages50505
+Node: Web search52326
+Node: Fetch a page53181
+Node: X search54414
+Node: MCP56811
+Node: Computer use59515
+Node: Monitors61531
+Node: Schedules64535
+Node: Todos67001
+Node: Review69656
+Node: Language server73239
+Node: Instructions76426
+Node: Skills79534
+Node: Plugins81864
+Node: Output styles83914
+Node: Image generation85925
+Node: Headless87767
+Node: Pages90455
+Node: Team93292
+Node: Scope113187
+Node: Memory117193
+Node: Plan mode119784
+Node: Usage122770
+Node: Files123789
+Node: Keys127185
+Node: Trouble128867
+Node: Manual130121
+Node: Command Index130826
+Node: Key Index139433
 
 End Tag Table
 
