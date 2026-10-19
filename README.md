@@ -364,8 +364,9 @@ In plan mode, `write_file`, `replace`, and `apply_patch` fail.  A shell
 command that can write is refused before any permission question.  A
 read-only shell command still runs.  The model writes `plan.md` in the
 session directory with `write_plan`, then calls `exit_plan_mode`.  That
-shows the plan and asks you to approve it, send revision notes, or
-quit.  Approving turns plan mode off so the same turn can start
+shows the plan and asks you to approve it, comment on a line or
+range, send revision notes, or quit.  A comment does not change
+`plan.md`.  Approving turns plan mode off so the same turn can start
 changing project files.
 
 The session header shows `plan` while the mode is on.  The flag is

@@ -61,6 +61,14 @@
   "Function (SESSION PLAN-TEXT) deciding how to leave plan mode.
 Return `approve', `quit', or a string of revision notes.")
 
+(defvar harmless-plan-read-comment-function
+  (lambda () (read-string "Plan comment: "))
+  "Function that returns the text of one plan comment.")
+
+(defvar harmless-plan-read-notes-function
+  (lambda () (read-string "Plan changes: "))
+  "Function that returns freeform revision notes.")
+
 (defun harmless-plan-file (session)
   "Return the absolute path of SESSION's plan file."
   (expand-file-name "plan.md" (harmless-session-dir session)))
@@ -90,6 +98,126 @@ Return `approve', `quit', or a string of revision notes.")
           (buffer-string))
       "")))
 
+(defun harmless-plan-line-count (plan)
+  "Return how many lines PLAN has.
+Nil and \"\" have none.  A trailing newline does not add a line."
+  (cond
+   ((null plan) 0)
+   ((not (stringp plan)) (error "plan must be a string"))
+   ((string-empty-p plan) 0)
+   (t
+    (let ((n (length (split-string plan "\n"))))
+      (if (string-suffix-p "\n" plan)
+          (1- n)
+        n)))))
+
+(defun harmless-plan--line (value count)
+  "Return VALUE when it is a line in a plan of COUNT lines."
+  (if (and (integerp value) (> value 0) (<= value count))
+      value
+    (error "plan comment line is not a line")))
+
+(defun harmless-plan-comment (plan start end text)
+  "Return a comment for lines START through END of PLAN.
+Lines count from 1.  END nil comments only on START.  Nil, \"\",
+and whitespace signal \"plan comment is empty\".  A non-string
+signals \"plan comment must be a string\".  A missing line, a
+line past the end, and a value that is not a positive integer
+signal \"plan comment line is not a line\".  An end before the
+start signals \"plan comment range is backwards\".  \"/\" and
+\"c:/\" are comments.  Nothing is written."
+  (when (and plan (not (stringp plan)))
+    (error "plan must be a string"))
+  (let* ((count (harmless-plan-line-count plan))
+         (start (harmless-plan--line start count))
+         (end (if (null end)
+                  start
+                (harmless-plan--line end count))))
+    (when (< end start)
+      (error "plan comment range is backwards"))
+    (cond
+     ((null text) (error "plan comment is empty"))
+     ((not (stringp text))
+      (error "plan comment must be a string")))
+    (setq text (string-trim text))
+    (when (string-empty-p text)
+      (error "plan comment is empty"))
+    (list :start start :end end :text text)))
+
+(defun harmless-plan-format-comments (comments)
+  "Return revision text for COMMENTS, or nil when there are none.
+One line is \"Line N: TEXT\".  A range is \"Lines N-M: TEXT\"."
+  (when comments
+    (mapconcat
+     (lambda (comment)
+       (let ((start (plist-get comment :start))
+             (end (plist-get comment :end))
+             (text (plist-get comment :text)))
+         (if (equal start end)
+             (format "Line %d: %s" start text)
+           (format "Lines %d-%d: %s" start end text))))
+     comments
+     "\n")))
+
+(defun harmless-plan-review-notes (comments notes)
+  "Return revision notes from COMMENTS and freeform NOTES.
+NOTES nil is no freeform text.  A non-string signals
+\"plan notes must be a string\".  \"/\" and \"c:/\" stay text."
+  (let ((body (harmless-plan-format-comments comments))
+        (extra (cond
+                ((null notes) "")
+                ((not (stringp notes))
+                 (error "plan notes must be a string"))
+                (t (string-trim notes)))))
+    (cond
+     ((and body (not (string-empty-p extra)))
+      (concat body "\n" extra))
+     (body body)
+     (t extra))))
+
+(defun harmless-plan--buffer-lines ()
+  "Return (START . END) for the region, or the line at point."
+  (if (use-region-p)
+      (let* ((beg (region-beginning))
+             (end (region-end))
+             (last (if (> end beg) (1- end) end)))
+        (cons (line-number-at-pos beg)
+              (line-number-at-pos last)))
+    (let ((line (line-number-at-pos (point))))
+      (cons line line))))
+
+(defun harmless-plan-comment-at-point (plan)
+  "Comment on PLAN at point, or on the active region.
+The comment text comes from `harmless-plan-read-comment-function'."
+  (let ((range (harmless-plan--buffer-lines)))
+    (harmless-plan-comment
+     plan (car range) (cdr range)
+     (funcall harmless-plan-read-comment-function))))
+
+(defun harmless-plan-review (plan)
+  "Return a decision for PLAN shown in the current buffer.
+`a' approves.  `q' quits.  `c' comments on the line at point or
+the active region.  `s' returns the comments and any freeform
+notes.  A comment does not change the plan."
+  (let ((comments nil)
+        (done nil)
+        (decision nil))
+    (while (not done)
+      (pcase (read-char-choice
+              "Plan: a approve and build, c comment, s request changes, q quit "
+              '(?a ?c ?s ?q))
+        (?a (setq decision 'approve
+                  done t))
+        (?q (setq decision 'quit
+                  done t))
+        (?c (push (harmless-plan-comment-at-point plan) comments))
+        (?s (setq decision
+                  (harmless-plan-review-notes
+                   (nreverse comments)
+                   (funcall harmless-plan-read-notes-function))
+                  done t))))
+    decision))
+
 (defun harmless-plan-decide-default (session plan)
   "Show PLAN for SESSION and return the user's decision."
   (ignore session)
@@ -101,16 +229,13 @@ Return `approve', `quit', or a string of revision notes.")
           (erase-buffer)
           (special-mode)
           (let ((inhibit-read-only t))
-            (insert (if (string-empty-p (string-trim plan))
+            (insert (if (and (stringp plan)
+                             (string-empty-p (string-trim plan)))
                         "(No plan written yet.)\n"
-                      plan)))))
+                      (or plan ""))))))
       (pop-to-buffer buf)
-      (pcase (read-char-choice
-              "Plan: a approve and build, s request changes, q quit "
-              '(?a ?s ?q))
-        (?a 'approve)
-        (?q 'quit)
-        (?s (read-string "Plan changes: "))))))
+      (with-current-buffer buf
+        (harmless-plan-review plan)))))
 
 (defun harmless-plan--tool-write (session args)
   "write_plan implementation."

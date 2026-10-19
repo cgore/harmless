@@ -1662,15 +1662,28 @@ contents replace the whole file.  An empty plan is refused.
 @code{exit_plan_mode} shows the plan and asks:
 
 @example
-Plan: a approve and build, s request changes, q quit
+Plan: a approve and build, c comment, s request changes, q quit
 @end example
 
 @table @kbd
 @item a
 Turn plan mode off and tell the model to implement the plan.
 
+@item c
+Comment on the line at point.  An active region comments on that
+range of lines.  Nil, @code{""}, and whitespace are refused:
+@samp{plan comment is empty}.  A value that is not text is refused:
+@samp{plan comment must be a string}.  A missing line, a line past
+the end, and a value that is not a positive integer are refused:
+@samp{plan comment line is not a line}.  A range whose end comes
+before its start is refused: @samp{plan comment range is
+backwards}.  @code{/} and @code{c:/} are comments, not paths.  A
+comment does not change @file{plan.md}.
+
 @item s
-Ask for revision notes, leave plan mode on, and send those notes back.
+Ask for revision notes, leave plan mode on, and send those notes
+back.  Comments already entered are included.  One line is sent as
+@samp{Line N: TEXT}.  A range is sent as @samp{Lines N-M: TEXT}.
 
 @item q
 Turn plan mode off and tell the model to stop without changing project
