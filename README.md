@@ -332,6 +332,9 @@ command that can write.  `/` and `c:/` are not edit paths.  A rule
 set only on the session is not saved.  `.harmless/permissions` is
 a per-project allow list that survives the session.  One rule per
 line.  A missing file creates nothing.
+`harmless-dangerous-commands` refuses those programs before the
+question.  An allow rule does not override it.  `rm` of `/`, a
+drive root, `~`, or `/*` is refused too.
 
 ## Plan mode
 

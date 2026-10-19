@@ -391,6 +391,15 @@ written.  Plan mode still refuses a shell command that can write, before
 these rules.  A read-only command that plan mode allows can still be
 denied.
 
+   ‘harmless-dangerous-commands’ names programs that are refused before
+the question, including in ‘always-approve’.  An allow rule does not
+override the list.  The match is the lower-case file name.  ‘sudo’ and
+‘doas’ are unwrapped once.  A name that starts with ‘mkfs.’ is refused.
+‘rm’ of ‘/’, a drive root, ‘~’, or ‘/*’ is refused too.  A longer path
+is not.  The model receives ‘Error: dangerous command refused: ’,
+followed by the program name.  In plan mode a command that can write is
+still refused as a plan-mode write.
+
 
 File: harmless.info,  Node: Accounts,  Next: Models,  Prev: Permissions,  Up: Top
 
@@ -1715,35 +1724,35 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts15697
-Node: Models17942
-Node: Tools19038
-Node: File tools21260
-Node: Search22494
-Node: Shell24135
-Node: Questions26920
-Node: Subagents27690
-Node: Workflows31839
-Node: Worktrees36842
-Node: Messages39970
-Node: Web search41791
-Node: Fetch a page42646
-Node: X search43879
-Node: MCP46276
-Node: Computer use48980
-Node: Monitors50996
-Node: Schedules53929
-Node: Instructions56381
-Node: Skills58127
-Node: Memory59276
-Node: Plan mode60541
-Node: Usage62578
-Node: Files63597
-Node: Keys65142
-Node: Trouble66365
-Node: Manual67619
-Node: Command Index68324
-Node: Key Index71237
+Node: Accounts16267
+Node: Models18512
+Node: Tools19608
+Node: File tools21830
+Node: Search23064
+Node: Shell24705
+Node: Questions27490
+Node: Subagents28260
+Node: Workflows32409
+Node: Worktrees37412
+Node: Messages40540
+Node: Web search42361
+Node: Fetch a page43216
+Node: X search44449
+Node: MCP46846
+Node: Computer use49550
+Node: Monitors51566
+Node: Schedules54499
+Node: Instructions56951
+Node: Skills58697
+Node: Memory59846
+Node: Plan mode61111
+Node: Usage63148
+Node: Files64167
+Node: Keys65712
+Node: Trouble66935
+Node: Manual68189
+Node: Command Index68894
+Node: Key Index71807
 
 End Tag Table
 

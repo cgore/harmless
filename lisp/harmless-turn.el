@@ -552,15 +552,22 @@ from the registry."
                        (and (fboundp 'harmless-monitor-plan-refuses-p)
                             (harmless-monitor-plan-refuses-p
                              session tool args)))))
+             (dangerous-refusal
+              (and (not agent-refusal)
+                   (not plan-refusal)
+                   (harmless-shell-dangerous-refusal tool args)))
              (rule-refusal
               (and (not agent-refusal)
                    (not plan-refusal)
+                   (not dangerous-refusal)
                    (harmless-perm-rule-refusal session tool args))))
-        (if (or agent-refusal plan-refusal rule-refusal)
+        (if (or agent-refusal plan-refusal
+                dangerous-refusal rule-refusal)
             (harmless-turn--finish-call
              batch index
              (harmless-turn--tool-message
-              call (or agent-refusal plan-refusal rule-refusal)))
+              call (or agent-refusal plan-refusal
+                       dangerous-refusal rule-refusal)))
           (setf (harmless-turn-batch-waiting-perm batch) t)
           (let ((harmless-perm-ask-function
                  (if (harmless-perm-rule-allows-p session tool args)

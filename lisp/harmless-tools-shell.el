@@ -132,6 +132,106 @@ The shell prints `harmless-shell-cwd-marker' and its directory last."
   "Error: Plan mode is on. A shell command that can write is refused"
   "Result when plan mode refuses a shell command that can write.")
 
+(defcustom harmless-dangerous-commands
+  '("diskpart" "halt" "mkfs" "poweroff" "reboot" "shutdown")
+  "Program names that are refused before a permission question.
+The match is the lower-case file name, without a directory and
+without a trailing `.exe'.  A name that starts with `mkfs.' is
+refused too.  `sudo' and `doas' are unwrapped once.  `rm' of the
+filesystem root is refused even though `rm' is not on this list."
+  :type '(repeat string)
+  :group 'harmless)
+
+(defconst harmless-shell-root-commands
+  '("del" "erase" "rd" "rm" "rmdir")
+  "Programs refused when an argument is the filesystem root.")
+
+(defun harmless-shell--base (word)
+  "Return the lower-case file name of WORD, without `.exe'."
+  (let ((name (downcase (file-name-nondirectory word))))
+    (if (and (string-suffix-p ".exe" name) (> (length name) 4))
+        (substring name 0 -4)
+      name)))
+
+(defun harmless-shell--command-words (words)
+  "Return WORDS after assignments and one sudo or doas wrapper."
+  (setq words (harmless-shell--drop-assignments words))
+  (when (and words
+             (member (harmless-shell--base (car words))
+                     '("sudo" "doas")))
+    (setq words (cdr words))
+    (while (and words (string-prefix-p "-" (car words)))
+      (setq words (cdr words)))
+    (setq words (harmless-shell--drop-assignments words)))
+  words)
+
+(defun harmless-shell--dangerous-base-p (name)
+  "Return non-nil if NAME is on the dangerous-command denylist."
+  (or (member name harmless-dangerous-commands)
+      (and (string-prefix-p "mkfs." name)
+           (> (length name) (length "mkfs.")))))
+
+(defun harmless-shell--root-target-p (word)
+  "Return non-nil if WORD names the filesystem root or a drive root.
+`~', `~/', and `/*' count.  A longer path does not."
+  (and (stringp word)
+       (not (string-empty-p word))
+       (or (member word '("~" "~/" "~\\" "/*"))
+           (harmless-filesystem-root-p word)
+           (string-match-p "\\`[A-Za-z]:[/\\]?\\'" word))))
+
+(defun harmless-shell--dangerous-in-words (words)
+  "Return the denied program in WORDS, or nil."
+  (let ((words (harmless-shell--command-words words)))
+    (when words
+      (let ((name (harmless-shell--base (car words))))
+        (cond
+         ((harmless-shell--dangerous-base-p name) name)
+         ((and (member name harmless-shell-root-commands)
+               (cl-some #'harmless-shell--root-target-p (cdr words)))
+          name))))))
+
+(defun harmless-shell-dangerous-name (command)
+  "Return the denied program in COMMAND, or nil.
+Nil, \"\", and a blank command are not denied.  A pipeline is
+denied when any simple command is denied."
+  (when (and (stringp command)
+             (string-match-p "[^ \t\n\r]" command))
+    (let ((segments (harmless-shell--segments command))
+          (found nil))
+      (if segments
+          (dolist (words segments)
+            (unless found
+              (setq found
+                    (harmless-shell--dangerous-in-words words))))
+        (setq found
+              (harmless-shell--dangerous-in-words
+               (split-string (string-trim command)
+                             "[ \t\n\r]+" t))))
+      found)))
+
+(defun harmless-shell-subject-command (tool args)
+  "Return the shell command TOOL would run, or nil.
+A file monitor and a shell monitor are not commands."
+  (let ((name (harmless-tool-name tool)))
+    (cond
+     ((string= name "run_shell")
+      (let ((command (harmless-tool-arg args :command)))
+        (and (stringp command) command)))
+     ((string= name "monitor")
+      (when (and (null (harmless-tool-arg args :path))
+                 (null (harmless-tool-arg args :shell))
+                 (stringp (harmless-tool-arg args :command)))
+        (harmless-tool-arg args :command))))))
+
+(defun harmless-shell-dangerous-refusal (tool args)
+  "Return a refusal when TOOL runs a dangerous command.
+The string includes \"Error: \".  Nil means the call may ask."
+  (let ((name (harmless-shell-dangerous-name
+               (harmless-shell-subject-command tool args))))
+    (when name
+      (format "Error: dangerous command refused: %s" name))))
+
 (defconst harmless-shell-read-commands
   '("[" "ag" "basename" "cat" "cd" "chdir" "cmp" "column" "comm" "cut"
     "date" "df" "diff" "dir" "dirname" "du" "echo" "egrep" "env" "false"

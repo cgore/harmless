@@ -455,6 +455,17 @@ patch, and nothing is written.  Plan mode still refuses a shell
 command that can write, before these rules.  A read-only command
 that plan mode allows can still be denied.
 
+@vindex harmless-dangerous-commands
+@code{harmless-dangerous-commands} names programs that are refused
+before the question, including in @code{always-approve}.  An allow
+rule does not override the list.  The match is the lower-case file
+name.  @code{sudo} and @code{doas} are unwrapped once.  A name that
+starts with @code{mkfs.} is refused.  @code{rm} of @code{/}, a drive
+root, @code{~}, or @code{/*} is refused too.  A longer path is not.
+The model receives @samp{Error: dangerous command refused: },
+followed by the program name.  In plan mode a command that can
+write is still refused as a plan-mode write.
+
 @node Accounts
 @chapter Accounts
 
