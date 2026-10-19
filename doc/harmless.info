@@ -462,6 +462,7 @@ Questions::.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
+* Workflows::   One script, many child sessions, one result.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -616,7 +617,7 @@ cancelled the question.’
 it.  Plan mode can use it.
 
 
-File: harmless.info,  Node: Subagents,  Prev: Questions,  Up: Tools
+File: harmless.info,  Node: Subagents,  Next: Workflows,  Prev: Questions,  Up: Tools
 
 10.5 Subagents
 ==============
@@ -695,6 +696,105 @@ an empty reply.’
    The child's sandbox, tool list, and extra prompt are saved with the
 session.  The running callback is not.  A detached chat can start a
 child with no definition.  A named definition needs a project directory.
+
+
+File: harmless.info,  Node: Workflows,  Prev: Subagents,  Up: Tools
+
+10.6 Workflows
+==============
+
+‘run_workflow’ runs one script.  The script starts child sessions.  The
+tool returns one string, the value of ‘complete’.  The parent transcript
+does not gain a message for each child.  Pass ‘name’ or ‘script’, not
+both.  Neither is refused: ‘workflow needs a name or a script’.  Both
+are refused: ‘workflow takes a name or a script’.
+
+   ‘script’ is the text of a script written for this task.  A value that
+is not text is refused: ‘workflow script must be a string’.  ‘""’  and
+whitespace are refused: ‘workflow script is empty’.  The script is not
+Emacs Lisp.  Harmless does not evaluate it.  A form it does not know is
+refused: ‘unknown workflow expression’.  Text the reader cannot read is
+refused: ‘workflow script is invalid’.
+
+   ‘name’ is a fixed script, not a path.  ‘""’  is refused: ‘workflow
+name is empty’.  ‘sub/’, ‘/’, and ‘c:/’ are refused: ‘workflow name is
+not a name’.  A name with no file is refused: ‘no workflow named ’,
+followed by that name.  ‘sub’ is a name.  With no file it is ‘no
+workflow named sub’.  ‘description’ is an optional one-line title.  A
+value such as ‘/’ or ‘sub/’ is a title, not a path.
+
+   Harmless reads ‘NAME.hw’ from these directories, at every level from
+your home directory down to the session, skipping the filesystem root.
+A script closer to the session replaces one of the same name farther
+away.  In one directory, later entries in this list replace earlier
+ones:
+
+  1. ‘.agents/workflows/’
+
+  2. ‘.codex/workflows/’
+
+  3. ‘.claude/workflows/’
+
+  4. ‘.grok/workflows/’
+
+  5. ‘.harmless/workflows/’
+
+   A trailing slash is the same directory.  The file may start with
+frontmatter.  The body is the script:
+
+     ---
+     name: review
+     description: Review the diff
+     ---
+     (let security (agent "Review security" :sandbox read-only))
+     (let tests (agent "Review tests" :sandbox read-only))
+     (complete (join "\n" security tests))
+
+   ‘name’ in the frontmatter is the script name.  When it is empty, the
+file name is the name.  A file that does not parse is left out of the
+list.  Asking for it still reports the error.
+
+   The forms are ‘let’ and ‘complete’.  ‘complete’ is required and must
+be last.  A script with none is refused: ‘workflow has no complete’.  A
+form after it is refused: ‘workflow has forms after complete’.  ‘let’
+binds a name to an expression.  Binding it again is refused.  A name
+such as ‘sub/’ is refused: ‘workflow variable is not a name’.
+
+   An expression is a string, a bound name, ‘agent’, ‘parallel’, or
+‘join’.  ‘(agent PROMPT)’ starts one child.  ‘PROMPT’ may be an
+expression.  Nil, ‘""’, and whitespace are refused: ‘prompt is empty’.
+‘:sandbox’ is ‘read-only’ or ‘workspace’.  The default is ‘workspace’.
+Anything else is refused: ‘sandbox must be workspace or read-only’.
+‘:agent’ is an optional definition name, the same names as
+‘spawn_agent’.  ‘:label’ and ‘:description’ are optional one-line
+titles.  ‘(parallel (agent ...) ...)’ starts those children together and
+keeps their replies in that order.  An empty list is refused.  ‘(join
+SEP EXPR ...)’ joins text with ‘SEP’, which must be a string.  A list of
+replies is joined the same way.  ‘complete’ of a list joins it with
+newlines, so the tool still returns one string.
+
+   ‘harmless-workflow-max-agents’ (8) is how many children one script
+may start.  More than that is refused before the first child: ‘workflow
+agent budget is ’, followed by the limit.  The value must be a positive
+integer.
+
+   A read-only child is one whose ‘:sandbox’ is ‘read-only’, or whose
+definition is read-only.  A workflow whose children are all read-only
+does not ask for permission.  A workflow that can write asks, unless the
+permission mode already allows edits.  In plan mode, a workflow that can
+write is refused before the permission question, including when the mode
+is ‘always-approve’: ‘Error: Plan mode is on. A workflow that can write
+is refused’.  A script that does not parse is not that refusal.  A
+read-only workflow still runs.
+
+   A subagent cannot run a workflow: ‘a subagent cannot start a
+workflow’.  A definition that lists ‘run_workflow’ is refused the same
+way.  The child cannot start a workflow or another subagent.
+
+   Aborting the parent aborts a child that is still running.  The
+workflow's result is not added.  A detached chat can run an inline
+script.  A named script needs a project directory.  Nil, ‘""’, ‘sub’,
+‘sub/’, and ‘/’ are not directories Harmless searches.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1032,8 +1132,10 @@ File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
 prompt, cancels the HTTP request or a foreground shell command.  A
 background shell keeps running.  A subagent that is still running is
-aborted too, and its summary is not added to the transcript.  The
-session returns to idle and the transcript records ‘aborted’.
+aborted too, and its summary is not added to the transcript.  A workflow
+that is still running is aborted the same way, and its one result is not
+added.  The session returns to idle and the transcript records
+‘aborted’.
 
    An empty reply from the model is an error: ‘The model returned an
 empty reply.’
@@ -1154,22 +1256,23 @@ Node: Permissions11011
 Node: Accounts12660
 Node: Models14905
 Node: Tools16001
-Node: File tools17252
-Node: Search18486
-Node: Shell20127
-Node: Questions22912
-Node: Subagents23682
-Node: Instructions27028
-Node: Skills28774
-Node: Memory29923
-Node: Plan mode31188
-Node: Usage32871
-Node: Files33890
-Node: Keys35123
-Node: Trouble36346
-Node: Manual37460
-Node: Command Index38165
-Node: Key Index40932
+Node: File tools17313
+Node: Search18547
+Node: Shell20188
+Node: Questions22973
+Node: Subagents23743
+Node: Workflows27107
+Node: Instructions31940
+Node: Skills33686
+Node: Memory34835
+Node: Plan mode36100
+Node: Usage37783
+Node: Files38802
+Node: Keys40035
+Node: Trouble41258
+Node: Manual42464
+Node: Command Index43169
+Node: Key Index45936
 
 End Tag Table
 

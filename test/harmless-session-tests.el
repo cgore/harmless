@@ -623,6 +623,7 @@
                        "memory_read"
                        "memory_remember"
                        "memory_write_topic"
+                       "run_workflow"
                        "spawn_agent")
                      (sort names #'string<)))
       (should-not (member "read_file" names))

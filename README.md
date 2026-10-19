@@ -210,6 +210,19 @@ The file's frontmatter can set `tools`, `model`, and `sandbox`
 child.  A subagent cannot start another subagent.  Aborting the parent
 aborts a child that is still running.
 
+## Workflows
+
+`run_workflow` runs one script, starts the child sessions that script
+asks for, and returns one string.  Pass `name` to run a fixed
+`NAME.hw` file, or `script` to run text written for this task.  Fixed
+scripts live in `.claude/workflows/`, `.codex/workflows/`,
+`.harmless/workflows/`, `.grok/workflows/`, or `.agents/workflows/`,
+from the session directory up through your home directory.  A closer
+file wins.  The script is a list of `let` and `complete` forms.  It is
+not Emacs Lisp.  A subagent cannot run a workflow.  Aborting the
+parent aborts a child the workflow started, and the result is not
+added.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

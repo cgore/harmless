@@ -94,6 +94,10 @@
 (declare-function harmless-agent-refuse-call "harmless-agent" (session tool args))
 (declare-function harmless-agent-plan-refuses-p "harmless-agent" (session tool args))
 (declare-function harmless-agent-filter-tools "harmless-agent" (session tools))
+(declare-function harmless-workflow-context-suffix "harmless-workflow"
+                  (session messages))
+(declare-function harmless-workflow-plan-refuses-p "harmless-workflow"
+                  (session tool args))
 
 (cl-defstruct (harmless-turn-batch
                (:constructor harmless-turn-batch-create)
@@ -188,9 +192,10 @@ summarized before the provider sees TEXT."
 
 (defun harmless-tools-for-session (session)
   "Return the tools offered to SESSION.
-A detached chat can use global memory, ask the user a question, and
-start a subagent.  It is not offered project files, a shell, or plan
-mode.  A subagent is not offered `spawn_agent'."
+A detached chat can use global memory, ask the user a question,
+start a subagent, or run a workflow.  It is not offered project
+files, a shell, or plan mode.  A subagent is not offered
+`spawn_agent' or `run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
@@ -198,7 +203,8 @@ mode.  A subagent is not offered `spawn_agent'."
                             "memory_read"
                             "memory_remember"
                             "memory_write_topic"
-                            "spawn_agent")))
+                            "spawn_agent"
+                            "run_workflow")))
              (seq-filter (lambda (tool)
                            (member (harmless-tool-name tool) allowed))
                          (harmless-tools-enabled))))))
@@ -207,7 +213,8 @@ mode.  A subagent is not offered `spawn_agent'."
       tools)))
 
 (defun harmless-turn--messages (session)
-  "Return the provider messages for SESSION, including agent context."
+  "Return the provider messages for SESSION, including agent context.
+A workflow catalog is included for a session that is not a subagent."
   (let ((messages
          (harmless-context-append
           (harmless-context-messages
@@ -217,8 +224,12 @@ mode.  A subagent is not offered `spawn_agent'."
            (harmless-session-model session))
           (when (harmless-session-plan-mode session)
             (harmless-plan-instructions)))))
-    (if (fboundp 'harmless-agent-context-suffix)
-        (harmless-agent-context-suffix session messages)
+    (setq messages
+          (if (fboundp 'harmless-agent-context-suffix)
+              (harmless-agent-context-suffix session messages)
+            messages))
+    (if (fboundp 'harmless-workflow-context-suffix)
+        (harmless-workflow-context-suffix session messages)
       messages)))
 
 (defun harmless-turn--call (session)
@@ -460,6 +471,9 @@ inside this loop, so it must not start the loop again."
                             harmless-shell-plan-refusal)
                        (and (fboundp 'harmless-agent-plan-refuses-p)
                             (harmless-agent-plan-refuses-p
+                             session tool args))
+                       (and (fboundp 'harmless-workflow-plan-refuses-p)
+                            (harmless-workflow-plan-refuses-p
                              session tool args))))))
         (if (or agent-refusal plan-refusal)
             (harmless-turn--finish-call

@@ -85,6 +85,7 @@
 (require 'harmless-plan)
 (require 'harmless-ask)
 (require 'harmless-agent)
+(require 'harmless-workflow)
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-compact)

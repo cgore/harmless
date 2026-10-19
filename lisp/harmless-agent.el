@@ -207,7 +207,9 @@ STOP is passed to `harmless-instruction-directories'."
           (unless (harmless-tool-by-name tool)
             (error "unknown tool %s" tool))
           (when (string= tool "spawn_agent")
-            (error "a subagent cannot start another subagent")))))
+            (error "a subagent cannot start another subagent"))
+          (when (string= tool "run_workflow")
+            (error "a subagent cannot start a workflow")))))
     (list :name name
           :description (let ((desc (plist-get keys :description)))
                          (and (stringp desc)
@@ -364,8 +366,11 @@ Nil, \"\", and whitespace signal \"prompt is empty\"."
            (allow (plist-get agent :allow))
            (name (harmless-tool-name tool)))
       (cond
-       ((string= name "spawn_agent")
-        "Error: a subagent cannot start another subagent")
+       ((or (string= name "spawn_agent")
+            (string= name "run_workflow"))
+        (if (string= name "spawn_agent")
+            "Error: a subagent cannot start another subagent"
+          "Error: a subagent cannot start a workflow"))
        ((eq allow 'none)
         (format "Error: this subagent cannot use %s" name))
        ((and (listp allow) (not (member name allow)))
@@ -384,9 +389,11 @@ Nil, \"\", and whitespace signal \"prompt is empty\"."
            (allow (if agent (plist-get agent :allow) 'all))
            (sandbox (if agent (plist-get agent :sandbox) 'workspace)))
       (setq tools
-            (seq-remove (lambda (tool)
-                          (string= (harmless-tool-name tool) "spawn_agent"))
-                        tools))
+            (seq-remove
+             (lambda (tool)
+               (member (harmless-tool-name tool)
+                       '("spawn_agent" "run_workflow")))
+             tools))
       (setq tools
             (cond
              ((eq allow 'none) nil)

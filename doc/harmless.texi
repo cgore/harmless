@@ -521,6 +521,7 @@ A detached chat is offered @code{memory_read},
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
+* Workflows::   One script, many child sessions, one result.
 @end menu
 
 @node File tools
@@ -772,6 +773,123 @@ The child's sandbox, tool list, and extra prompt are saved with the
 session.  The running callback is not.  A detached chat can start a
 child with no definition.  A named definition needs a project
 directory.
+
+@node Workflows
+@section Workflows
+
+@cindex workflow
+@cindex run_workflow
+@vindex harmless-workflow-max-agents
+@code{run_workflow} runs one script.  The script starts child
+sessions.  The tool returns one string, the value of
+@code{complete}.  The parent transcript does not gain a message for
+each child.  Pass @code{name} or @code{script}, not both.  Neither
+is refused: @samp{workflow needs a name or a script}.  Both are
+refused: @samp{workflow takes a name or a script}.
+
+@code{script} is the text of a script written for this task.  A
+value that is not text is refused: @samp{workflow script must be a
+string}.  @code{""} and whitespace are refused: @samp{workflow
+script is empty}.  The script is not Emacs Lisp.
+Harmless does not evaluate it.  A form it does not know is refused:
+@samp{unknown workflow expression}.  Text the reader cannot read is
+refused: @samp{workflow script is invalid}.
+
+@code{name} is a fixed script, not a path.  @code{""} is refused:
+@samp{workflow name is empty}.  @code{sub/}, @code{/}, and
+@code{c:/} are refused: @samp{workflow name is not a name}.  A name
+with no file is refused: @samp{no workflow named }, followed by that
+name.  @code{sub} is a name.  With no file it is @samp{no workflow
+named sub}.  @code{description} is an optional one-line title.  A
+value such as @code{/} or @code{sub/} is a title, not a path.
+
+Harmless reads @file{NAME.hw} from these directories, at every level
+from your home directory down to the session, skipping the filesystem
+root.  A script closer to the session replaces one of the same name
+farther away.  In one directory, later entries in this list replace
+earlier ones:
+
+@enumerate
+@item
+@file{.agents/workflows/}
+
+@item
+@file{.codex/workflows/}
+
+@item
+@file{.claude/workflows/}
+
+@item
+@file{.grok/workflows/}
+
+@item
+@file{.harmless/workflows/}
+@end enumerate
+
+A trailing slash is the same directory.  The file may start with
+frontmatter.  The body is the script:
+
+@example
+---
+name: review
+description: Review the diff
+---
+(let security (agent "Review security" :sandbox read-only))
+(let tests (agent "Review tests" :sandbox read-only))
+(complete (join "\n" security tests))
+@end example
+
+@code{name} in the frontmatter is the script name.  When it is
+empty, the file name is the name.  A file that does not parse is
+left out of the list.  Asking for it still reports the error.
+
+The forms are @code{let} and @code{complete}.  @code{complete} is
+required and must be last.  A script with none is refused:
+@samp{workflow has no complete}.  A form after it is refused:
+@samp{workflow has forms after complete}.  @code{let} binds a name
+to an expression.  Binding it again is refused.  A name such as
+@code{sub/} is refused: @samp{workflow variable is not a name}.
+
+An expression is a string, a bound name, @code{agent},
+@code{parallel}, or @code{join}.  @code{(agent PROMPT)} starts one
+child.  @code{PROMPT} may be an expression.  Nil, @code{""}, and
+whitespace are refused: @samp{prompt is empty}.  @code{:sandbox} is
+@code{read-only} or @code{workspace}.  The default is
+@code{workspace}.  Anything else is refused: @samp{sandbox must be
+workspace or read-only}.  @code{:agent} is an optional definition
+name, the same names as @code{spawn_agent}.  @code{:label} and
+@code{:description} are optional one-line titles.  @code{(parallel
+(agent ...) ...)} starts those children together and keeps their
+replies in that order.  An empty list is refused.  @code{(join SEP
+EXPR ...)} joins text with @code{SEP}, which must be a string.  A
+list of replies is joined the same way.  @code{complete} of a list
+joins it with newlines, so the tool still returns one string.
+
+@code{harmless-workflow-max-agents} (8) is how many children one
+script may start.  More than that is refused before the first
+child: @samp{workflow agent budget is }, followed by the limit.  The
+value must be a positive integer.
+
+A read-only child is one whose @code{:sandbox} is @code{read-only},
+or whose definition is read-only.  A workflow whose children are all
+read-only does not ask for permission.  A workflow that can write
+asks, unless the permission mode already allows edits.  In plan
+mode, a workflow that can write is refused before the permission
+question, including when the mode is @code{always-approve}:
+@samp{Error: Plan mode is on. A workflow that can write is refused}.
+A script that does not parse is not that refusal.  A read-only
+workflow still runs.
+
+A subagent cannot run a workflow: @samp{a subagent cannot start a
+workflow}.  A definition that lists @code{run_workflow} is refused
+the same way.  The child cannot start a workflow or another
+subagent.
+
+Aborting the parent aborts a child that is still running.  The
+workflow's result is not added.  A detached chat can run an inline
+script.  A named script needs a project directory.  Nil, @code{""},
+@code{sub}, @code{sub/}, and @code{/} are not directories Harmless
+searches.
 
 @node Instructions
 @chapter Instructions
@@ -1140,8 +1258,10 @@ This manual.
 @kbd{M-x harmless-abort}, or @kbd{a} in the transcript, or @kbd{C-c C-a}
 in the prompt, cancels the HTTP request or a foreground shell command.
 A background shell keeps running.  A subagent that is still running is
-aborted too, and its summary is not added to the transcript.  The
-session returns to idle and the transcript records @samp{aborted}.
+aborted too, and its summary is not added to the transcript.  A
+workflow that is still running is aborted the same way, and its one
+result is not added.  The session returns to idle and the transcript
+records @samp{aborted}.
 
 An empty reply from the model is an error: @samp{The model returned an
 empty reply.}

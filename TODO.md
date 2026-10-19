@@ -10,7 +10,7 @@ The model cannot start work that runs beside the current turn.
 
 - [x] Run tool calls from one turn in parallel. Permission is still one question at a time. An allowed call starts before the next question. Results are recorded in the order the model requested them.
 - [x] Subagents. `spawn_agent` starts a child session with its own transcript and returns that child's last reply. A definition file (`.claude/agents/`, `.codex/agents/`, `.harmless/agents/`, `.grok/agents/`, `.agents/agents/`) can set the child's prompt, tools, model, and sandbox (`workspace` or `read-only`). A subagent cannot start another subagent. Aborting the parent aborts a child that is still running.
-- [ ] Workflows. One job that runs many child sessions and returns one result: a fixed script (Grok Build), or a script the model writes for this task (Claude Code dynamic workflows, Codex subagent workflows).
+- [x] Workflows. One job that runs many child sessions and returns one result: a fixed script (Grok Build), or a script the model writes for this task (Claude Code dynamic workflows, Codex subagent workflows).
 - [ ] Git worktrees, so parallel sessions edit isolated checkouts of the same repository (Claude Code `EnterWorktree`, Codex, Grok Build subagent worktrees).
 - [ ] Cross-session messaging (Claude Code). One live session can send a finding to another session on this machine. A message that obligates another seat, and survives that seat being replaced, is section 4.
 
