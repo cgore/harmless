@@ -139,6 +139,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-rewind` | Drop turns after the one at point and save the shorter transcript (`w` in the transcript) |
 | `M-x harmless-edit-prompt` | Replace the prompt at point, drop what follows, and send the new text (`E` in the transcript) |
 | `M-x harmless-fork` | Copy the transcript through the turn at point into a new session (`f` in the transcript) |
+| `M-x harmless-rename` | Set the session title. The id stays (`t` in the transcript) |
+| `M-x harmless-export-session` | Write the transcript as Markdown (`x` in the transcript) |
+| `M-x harmless-delete-session` | Delete the session from disk (`X` in the transcript) |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 

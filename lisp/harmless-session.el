@@ -705,6 +705,178 @@ Signal when that path would be /NAME or outside the sessions root."
                when (string= (plist-get summary :id) id)
                return (harmless-session-load dir))))
 
+(defun harmless-session--root-text-p (text)
+  "Return non-nil if TEXT is \"/\" or a drive root."
+  (or (harmless-filesystem-root-p text)
+      (and (stringp text)
+           (string-match-p "\\`[A-Za-z]:[/\\]?\\'" (string-trim text)))))
+
+(defun harmless-session-rename (session title)
+  "Set SESSION's title to TITLE and keep later prompts from replacing it.
+Return the stored title.  The session id and directory stay.  A
+relative project directory is not involved."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (cond
+   ((null title) (error "session title is empty"))
+   ((not (stringp title))
+    (error "session title must be a string")))
+  (setq title (string-trim
+               (replace-regexp-in-string "[\n\r]+" " " title)))
+  (when (string-empty-p title)
+    (error "session title is empty"))
+  (setf (harmless-session-title session) title
+        (harmless-session-title-locked session) t
+        (harmless-session-updated-at session) (harmless-now-iso))
+  (harmless-session-save session)
+  (harmless-emit session (list :title title))
+  title)
+
+(defun harmless-session-delete (session)
+  "Remove SESSION from the registry and delete its directory.
+Return the session id.  A turn that is streaming or waiting on
+permission is refused.  The filesystem root is not deleted."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (when (memq (harmless-session-status session)
+              '(streaming waiting-permission))
+    (error "session is busy"))
+  (let ((dir (harmless-session-directory session))
+        (id (harmless-session-id session)))
+    (when (stringp dir)
+      (unless (harmless-session-dir-acceptable-p dir)
+        (error "Refusing to delete a Harmless session at %s" dir))
+      (when (equal (file-truename dir) (file-truename "/"))
+        (error "Refusing to delete a Harmless session at %s" dir))
+      (when (file-directory-p dir)
+        (delete-directory dir t)))
+    (when (buffer-live-p (harmless-session-buffer session))
+      (kill-buffer (harmless-session-buffer session)))
+    (when (buffer-live-p (harmless-session-prompt-buffer session))
+      (kill-buffer (harmless-session-prompt-buffer session)))
+    (setf (harmless-session-buffer session) nil
+          (harmless-session-prompt-buffer session) nil)
+    (harmless-session-unregister session)
+    (harmless-emit session (list :deleted id))
+    id))
+
+(defun harmless-session--export-project (session)
+  "Return SESSION's project directory, or signal.
+A relative path is not expanded."
+  (when (or (not (harmless-session-p session))
+            (harmless-session-detached-p session))
+    (error "This chat is not attached to a project"))
+  (let ((cwd (harmless-session-cwd session)))
+    (cond
+     ((or (not (stringp cwd))
+          (string-empty-p (string-trim cwd)))
+      (error "This chat is not attached to a project"))
+     ((harmless-session--root-text-p cwd)
+      (error "session directory is the filesystem root"))
+     ((or (string-prefix-p "~" (string-trim cwd))
+          (not (file-name-absolute-p cwd)))
+      (error "session directory must be absolute"))
+     (t (file-name-as-directory (directory-file-name cwd))))))
+
+(defun harmless-session--export-absolute (path)
+  "Return absolute file PATH, or signal.
+The parent must already exist.  It is not created."
+  (when (or (directory-name-p path)
+            (string-suffix-p "/" path)
+            (string-suffix-p "\\" path))
+    (error "session export path is not a file"))
+  (when (and (file-exists-p path)
+             (equal (file-truename path) (file-truename "/")))
+    (error "session export path is the filesystem root"))
+  (let ((parent (file-name-directory path)))
+    (unless (and (stringp parent)
+                 (not (harmless-session--root-text-p parent)))
+      (error "session export path is the filesystem root"))
+    (unless (file-directory-p parent)
+      (error "session export path is missing")))
+  path)
+
+(defun harmless-session--export-relative (session raw)
+  "Return RAW expanded inside SESSION's project, or signal."
+  (let* ((project (harmless-session--export-project session))
+         (full (expand-file-name raw project)))
+    (when (or (directory-name-p full)
+              (string-suffix-p "/" raw)
+              (string-suffix-p "\\" raw))
+      (error "session export path is not a file"))
+    (let ((parent (file-name-directory full)))
+      (unless (and (stringp parent)
+                   (not (harmless-session--root-text-p parent))
+                   (or (harmless-same-directory-p parent project)
+                       (harmless-directory-strictly-under-p
+                        parent project)))
+        (error "session export path escapes the project: %s" raw))
+      (unless (file-directory-p parent)
+        (make-directory parent t)))
+    full))
+
+(defun harmless-session--export-destination (session path)
+  "Return the absolute file for exporting SESSION to PATH."
+  (cond
+   ((null path) (error "session export path is empty"))
+   ((not (stringp path))
+    (error "session export path must be a string"))
+   (t
+    (let ((raw (string-trim path)))
+      (cond
+       ((string-empty-p raw)
+        (error "session export path is empty"))
+       ((harmless-session--root-text-p raw)
+        (error "session export path is the filesystem root"))
+       ((string-prefix-p "~" raw)
+        (error "session export path must be absolute"))
+       ((file-name-absolute-p raw)
+        (harmless-session--export-absolute raw))
+       (t (harmless-session--export-relative session raw)))))))
+
+(defun harmless-session--export-message (msg)
+  "Return MSG as one Markdown section."
+  (let* ((role (plist-get msg :role))
+         (label (cond
+                 ((or (memq role '(:user user)) (equal role "user"))
+                  "User")
+                 ((or (memq role '(:assistant assistant))
+                      (equal role "assistant"))
+                  "Assistant")
+                 ((or (memq role '(:tool tool)) (equal role "tool"))
+                  (format "Tool %s" (or (plist-get msg :name) "tool")))
+                 ((or (memq role '(:summary summary))
+                      (equal role "summary"))
+                  "Summary")
+                 (t (format "%s" (or role "Message")))))
+         (content (or (plist-get msg :content) "")))
+    (format "## %s\n\n%s" label content)))
+
+(defun harmless-session--export-text (session)
+  "Return SESSION's transcript as Markdown."
+  (concat
+   (format "# %s\n\n" (or (harmless-session-title session) "Untitled"))
+   (format "- id: %s\n" (harmless-session-id session))
+   (if (harmless-session-detached-p session)
+       "- project: detached\n\n"
+     (format "- project: %s\n\n" (or (harmless-session-cwd session) "")))
+   (mapconcat #'harmless-session--export-message
+              (harmless-session-messages session)
+              "\n\n")))
+
+(defun harmless-session-export (session path)
+  "Write SESSION's transcript as Markdown at PATH.
+Return the absolute path.  The session is not modified.  A relative
+PATH stays inside the project.  An absolute PATH is written only
+when its parent already exists."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (let ((dest (harmless-session--export-destination session path))
+        (text (harmless-session--export-text session))
+        (coding-system-for-write 'utf-8-unix))
+    (write-region text nil dest nil 'silent)
+    dest))
+
 (provide 'harmless-session)
 
 ;;; harmless-session.el ends here

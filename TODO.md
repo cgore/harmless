@@ -117,7 +117,7 @@ Plan mode already has `enter_plan_mode`, `write_plan`, and `exit_plan_mode`, wit
 - [x] Output styles (Claude Code): a session-wide role, tone, and format that can be switched without editing project instructions.
 - [x] Image generation (Grok Build, Codex).
 - [x] Capture a memory observation after a turn. Today that happens only through `memory_remember` or `M-x harmless-remember`. Codex and Grok Build can generate memories. Claude Code keeps auto memory alongside `CLAUDE.md`.
-- [ ] Rename, delete, and export a session.
+- [x] Rename, delete, and export a session.
 - [ ] A headless mode, and a remote task that keeps running while Emacs is closed (Codex cloud, Claude Code on the web and remote control). A registry of other machines, with the same team verbs on each, is section 4.
 - [ ] Publish a Markdown or HTML artifact as a page (Claude Code).
 

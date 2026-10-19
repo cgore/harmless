@@ -260,6 +260,49 @@ turns.  Project instruction files are not edited."
   (harmless-output-style-set session name))
 
 ;;;###autoload
+(defun harmless-rename (title &optional session)
+  "Set SESSION's title to TITLE.
+The session id stays.  Later prompts do not replace a title set here."
+  (interactive
+   (let ((session (or (harmless--context-session) (harmless-current))))
+     (list (read-string "Session title: "
+                        (or (harmless-session-title session) ""))
+           session)))
+  (unless (harmless-session-p session)
+    (setq session (or (harmless--context-session) (harmless-current))))
+  (harmless-session-rename session title))
+
+;;;###autoload
+(defun harmless-delete-session (&optional session)
+  "Delete SESSION from the registry and from disk.
+An interactive call asks first.  A busy turn is refused."
+  (interactive)
+  (unless (harmless-session-p session)
+    (setq session (or (harmless--context-session) (harmless-current))))
+  (when (and (called-interactively-p 'any)
+             (not (yes-or-no-p
+                   (format "Delete session %s? "
+                           (or (harmless-session-title session)
+                               (harmless-session-id session))))))
+    (user-error "session delete was cancelled"))
+  (harmless-session-delete session))
+
+;;;###autoload
+(defun harmless-export-session (path &optional session)
+  "Write SESSION's transcript as Markdown at PATH.
+A relative path stays inside the project."
+  (interactive
+   (list (read-file-name "Export session to: ")
+         (or (harmless--context-session) (harmless-current))))
+  (unless (harmless-session-p session)
+    (setq session (or (harmless--context-session) (harmless-current))))
+  (harmless-session-export session path))
+
+(define-key harmless-session-mode-map (kbd "t") #'harmless-rename)
+(define-key harmless-session-mode-map (kbd "x") #'harmless-export-session)
+(define-key harmless-session-mode-map (kbd "X") #'harmless-delete-session)
+
+;;;###autoload
 (defun harmless-current ()
   "Open or resume the most recent session for the current project."
   (interactive)

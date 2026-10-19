@@ -189,6 +189,43 @@ dashboard keys.
 The first user message becomes the title, cut at 60 characters, until
 you set a title when you create the session.  A set title stays.
 
+@findex harmless-rename
+@findex harmless-export-session
+@findex harmless-delete-session
+@kindex t @r{(transcript)}
+@kindex x @r{(transcript)}
+@kindex X @r{(transcript)}
+@kbd{t}, or @kbd{M-x harmless-rename}, sets the title.  The session
+id and its directory stay.  Later prompts do not replace that title.
+Nil, @code{""}, and whitespace are refused: @samp{session title is
+empty}.  A value that is not text is refused: @samp{session title
+must be a string}.
+
+@kbd{x}, or @kbd{M-x harmless-export-session}, writes the transcript
+as Markdown.  The session is not modified.  A relative path stays
+inside the project and is not resolved against the buffer's default
+directory.  An absolute path is written only when its parent already
+exists.  @code{~} is not expanded.
+
+Nil, @code{""}, and whitespace are refused: @samp{session export
+path is empty}.  A value that is not text is refused: @samp{session
+export path must be a string}.  A path that names a directory is
+refused: @samp{session export path is not a file}.  @code{~} is
+refused: @samp{session export path must be absolute}.  A relative
+path outside the project is refused: @samp{session export path
+escapes the project: }, followed by the path.  An absolute path
+whose parent is missing is refused: @samp{session export path is
+missing}.  @code{/} and a drive root are refused: @samp{session
+export path is the filesystem root}.  A relative path in a detached
+chat, a blank project, a relative project, or a project that is the
+filesystem root is refused before anything is written.
+
+@kbd{X}, or @kbd{M-x harmless-delete-session}, deletes that session's
+directory and drops it from the live list.  An interactive call asks
+first.  A turn that is streaming or waiting on permission is refused:
+@samp{session is busy}.  The filesystem root is not a session
+directory.  Another session's files stay.
+
 The header line of the transcript shows the title (or the project
 name), the connection, the model, the status, and the word
 @samp{plan} while plan mode is on.  @xref{Plan mode}.
@@ -243,6 +280,15 @@ Edit the prompt at point and rerun from there.
 
 @item f
 Fork through the turn at point.
+
+@item t
+Rename the session.  The id stays.
+
+@item x
+Export the transcript as Markdown.
+
+@item X
+Delete the session.
 @end table
 
 @findex harmless-compact
@@ -2292,6 +2338,15 @@ Edit the prompt at point and rerun from there.
 
 @item f
 Fork through the turn at point.
+
+@item t
+Rename the session.  The id stays.
+
+@item x
+Export the transcript as Markdown.
+
+@item X
+Delete the session.
 
 @item R
 Review the working tree, a base branch, or one commit.

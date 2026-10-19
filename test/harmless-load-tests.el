@@ -51,6 +51,9 @@
   (should (fboundp 'harmless-load-skill))
   (should (fboundp 'harmless-plugin-install))
   (should (fboundp 'harmless-output-style))
+  (should (fboundp 'harmless-rename))
+  (should (fboundp 'harmless-delete-session))
+  (should (fboundp 'harmless-export-session))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

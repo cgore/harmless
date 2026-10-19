@@ -161,6 +161,35 @@ File: harmless.info,  Node: Sessions,  Next: Transcript,  Prev: Starting,  Up: T
    The first user message becomes the title, cut at 60 characters, until
 you set a title when you create the session.  A set title stays.
 
+   ‘t’, or ‘M-x harmless-rename’, sets the title.  The session id and
+its directory stay.  Later prompts do not replace that title.  Nil,
+‘""’, and whitespace are refused: ‘session title is empty’.  A value
+that is not text is refused: ‘session title must be a string’.
+
+   ‘x’, or ‘M-x harmless-export-session’, writes the transcript as
+Markdown.  The session is not modified.  A relative path stays inside
+the project and is not resolved against the buffer's default directory.
+An absolute path is written only when its parent already exists.  ‘~’ is
+not expanded.
+
+   Nil, ‘""’, and whitespace are refused: ‘session export path is
+empty’.  A value that is not text is refused: ‘session export path must
+be a string’.  A path that names a directory is refused: ‘session export
+path is not a file’.  ‘~’ is refused: ‘session export path must be
+absolute’.  A relative path outside the project is refused: ‘session
+export path escapes the project: ’, followed by the path.  An absolute
+path whose parent is missing is refused: ‘session export path is
+missing’.  ‘/’ and a drive root are refused: ‘session export path is the
+filesystem root’.  A relative path in a detached chat, a blank project,
+a relative project, or a project that is the filesystem root is refused
+before anything is written.
+
+   ‘X’, or ‘M-x harmless-delete-session’, deletes that session's
+directory and drops it from the live list.  An interactive call asks
+first.  A turn that is streaming or waiting on permission is refused:
+‘session is busy’.  The filesystem root is not a session directory.
+Another session's files stay.
+
    The header line of the transcript shows the title (or the project
 name), the connection, the model, the status, and the word ‘plan’ while
 plan mode is on.  *Note Plan mode::.
@@ -212,6 +241,15 @@ line.
 
 ‘f’
      Fork through the turn at point.
+
+‘t’
+     Rename the session.  The id stays.
+
+‘x’
+     Export the transcript as Markdown.
+
+‘X’
+     Delete the session.
 
    ‘k’, or ‘M-x harmless-compact’, summarizes the older turns and
 replaces them with one summary.  The recent turns stay in the
@@ -2042,6 +2080,15 @@ also open it with ‘m’ in the transcript or ‘C-c C-k’ in the prompt.
 ‘f’
      Fork through the turn at point.
 
+‘t’
+     Rename the session.  The id stays.
+
+‘x’
+     Export the transcript as Markdown.
+
+‘X’
+     Delete the session.
+
 ‘R’
      Review the working tree, a base branch, or one commit.
 
@@ -2169,12 +2216,14 @@ Command Index
 * harmless-add-directory:                Tools.                (line 30)
 * harmless-attach-image:                 File tools.           (line 51)
 * harmless-chat:                         Sessions.             (line  6)
-* harmless-compact:                      Transcript.           (line 43)
+* harmless-compact:                      Transcript.           (line 52)
 * harmless-current:                      Sessions.             (line  6)
 * harmless-dashboard:                    Sessions.             (line  6)
+* harmless-delete-session:               Sessions.             (line 31)
 * harmless-dream:                        Memory.               (line  6)
-* harmless-edit-prompt:                  Transcript.           (line 70)
-* harmless-fork:                         Transcript.           (line 79)
+* harmless-edit-prompt:                  Transcript.           (line 79)
+* harmless-export-session:               Sessions.             (line 31)
+* harmless-fork:                         Transcript.           (line 88)
 * harmless-info:                         Manual.               (line  6)
 * harmless-load-skill:                   Skills.               (line  6)
 * harmless-login:                        Accounts.             (line  6)
@@ -2194,8 +2243,9 @@ Command Index
 * harmless-prompt-send:                  Prompt.               (line  6)
 * harmless-reload-all-harmless:          Trouble.              (line  6)
 * harmless-remember:                     Memory.               (line  6)
+* harmless-rename:                       Sessions.             (line 31)
 * harmless-review:                       Review.               (line  6)
-* harmless-rewind:                       Transcript.           (line 60)
+* harmless-rewind:                       Transcript.           (line 69)
 * harmless-session-mode:                 Transcript.           (line  6)
 * harmless-set-model:                    Models.               (line  6)
 * harmless-set-permission-mode:          Permissions.          (line  6)
@@ -2224,12 +2274,12 @@ Key Index
 * + (transcript):                        Tools.                (line 30)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
-* E (transcript):                        Transcript.           (line 70)
-* f (transcript):                        Transcript.           (line 79)
+* E (transcript):                        Transcript.           (line 79)
+* f (transcript):                        Transcript.           (line 88)
 * g (usage):                             Usage.                (line  6)
 * h (Harmless buffers):                  Keys.                 (line  6)
 * I (Harmless menu):                     File tools.           (line 51)
-* k (transcript):                        Transcript.           (line 43)
+* k (transcript):                        Transcript.           (line 52)
 * L (Harmless menu):                     Language server.      (line  6)
 * LEFT (transcript):                     Transcript.           (line  6)
 * M-x harmless:                          Starting.             (line  6)
@@ -2239,8 +2289,11 @@ Key Index
 * R (Harmless menu):                     Review.               (line  6)
 * RIGHT (transcript):                    Transcript.           (line  6)
 * S-TAB (transcript):                    Transcript.           (line  6)
+* t (transcript):                        Sessions.             (line 31)
 * TAB (transcript):                      Transcript.           (line  6)
-* w (transcript):                        Transcript.           (line 60)
+* w (transcript):                        Transcript.           (line 69)
+* x (transcript):                        Sessions.             (line 31)
+* X (transcript):                        Sessions.             (line 31)
 * y (permission):                        Permissions.          (line  6)
 
 
@@ -2250,44 +2303,44 @@ Node: Introduction1968
 Node: Installation2699
 Node: Starting4303
 Node: Sessions4842
-Node: Transcript6339
-Node: Prompt9968
-Node: Permissions11209
-Node: Accounts18515
-Node: Models20760
-Node: Tools21856
-Node: File tools26204
-Node: Search30711
-Node: Shell32607
-Node: Questions35392
-Node: Subagents36162
-Node: Workflows40311
-Node: Worktrees45314
-Node: Messages48442
-Node: Web search50263
-Node: Fetch a page51118
-Node: X search52351
-Node: MCP54748
-Node: Computer use57452
-Node: Monitors59468
-Node: Schedules62472
-Node: Todos64938
-Node: Review67593
-Node: Language server71176
-Node: Instructions74363
-Node: Skills77471
-Node: Plugins79801
-Node: Output styles81851
-Node: Image generation83862
-Node: Memory85702
-Node: Plan mode88304
-Node: Usage91290
-Node: Files92309
-Node: Keys93888
-Node: Trouble95438
-Node: Manual96692
-Node: Command Index97397
-Node: Key Index101113
+Node: Transcript8023
+Node: Prompt11784
+Node: Permissions13025
+Node: Accounts20331
+Node: Models22576
+Node: Tools23672
+Node: File tools28020
+Node: Search32527
+Node: Shell34423
+Node: Questions37208
+Node: Subagents37978
+Node: Workflows42127
+Node: Worktrees47130
+Node: Messages50258
+Node: Web search52079
+Node: Fetch a page52934
+Node: X search54167
+Node: MCP56564
+Node: Computer use59268
+Node: Monitors61284
+Node: Schedules64288
+Node: Todos66754
+Node: Review69409
+Node: Language server72992
+Node: Instructions76179
+Node: Skills79287
+Node: Plugins81617
+Node: Output styles83667
+Node: Image generation85678
+Node: Memory87518
+Node: Plan mode90120
+Node: Usage93106
+Node: Files94125
+Node: Keys95704
+Node: Trouble97386
+Node: Manual98640
+Node: Command Index99345
+Node: Key Index103280
 
 End Tag Table
 
