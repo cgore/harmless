@@ -241,11 +241,12 @@ PATH may stay inside the project or an extra directory."
       (ignore-errors (delete-file a))
       (ignore-errors (delete-file b)))))
 
-(defun harmless-tools-fs--read (session args)
-  "read_file implementation."
-  (let* ((path (harmless-tools-fs-resolve session (harmless-tool-arg args :path)))
-         (offset (harmless-tool-arg args :offset))
-         (limit (harmless-tool-arg args :limit)))
+(defun harmless-tools-fs--read-resolved (session path args)
+  "Return the text of PATH for SESSION.
+ARGS supplies the optional line offset and limit."
+  (ignore session)
+  (let ((offset (harmless-tool-arg args :offset))
+        (limit (harmless-tool-arg args :limit)))
     (unless (file-readable-p path)
       (error "Cannot read %s" path))
     (with-temp-buffer
@@ -264,6 +265,18 @@ PATH may stay inside the project or an extra directory."
         (goto-char (point-max))
         (insert "\n[truncated]"))
       (buffer-string))))
+
+(defun harmless-tools-fs--read (session args)
+  "read_file implementation.
+An image, a PDF, or a notebook is read by `harmless-media-read'
+when that feature is loaded.  Other files stay text."
+  (let ((path (harmless-tools-fs-resolve
+               session (harmless-tool-arg args :path))))
+    (if (and (fboundp 'harmless-media-read-p)
+             (fboundp 'harmless-media-read)
+             (harmless-media-read-p path))
+        (harmless-media-read session path args)
+      (harmless-tools-fs--read-resolved session path args))))
 
 (defun harmless-tools-fs--reject-plan-edit (session)
   "Signal when SESSION is in plan mode and this edit is not allowed."
@@ -848,7 +861,7 @@ extra directory are searched."
   (harmless-register-tool
    (harmless-tool-create
     :name "read_file"
-    :description "Read a file in the project or an added directory. Path is relative to the project root, or absolute inside an added directory. Optional 1-based offset and limit select lines."
+    :description "Read a file in the project or an added directory. Path is relative to the project root, or absolute inside an added directory. Optional 1-based offset and limit select lines of a text file. An image returns its media type and bytes. A PDF returns extracted text. A notebook returns its cells."
     :class 'read
     :schema '(:type "object"
               :properties (:path (:type "string" :description "Path relative to the project root, or absolute inside an added directory")

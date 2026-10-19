@@ -340,6 +340,17 @@ Harmless does not start the server.  The class is `read`, so it
 does not ask.  Plan mode does not refuse it.  Nothing is written
 into the project.
 
+## Images, PDFs, and notebooks
+
+`read_file` reads an image by its bytes, a PDF by the literal
+strings in the file, and a notebook by its cells.  `offset` and
+`limit` apply only to text.  `notebook_edit` replaces one cell
+in an existing `.ipynb` file.  The file is not created.  The
+class is `edit`, so it asks in ask mode.  Plan mode refuses it.
+`M-x harmless-attach-image` queues an image on the next prompt.
+The menu key is `I`.  The queue is not saved.  A read does not
+change the file.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

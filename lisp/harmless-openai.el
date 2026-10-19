@@ -55,6 +55,8 @@
 (declare-function harmless-tool-name "harmless-tools")
 (declare-function harmless-tool-description "harmless-tools")
 (declare-function harmless-tool-schema "harmless-tools")
+(declare-function harmless-media-openai-tool "harmless-media" (msg))
+(declare-function harmless-media-openai-user "harmless-media" (msg))
 
 (cl-defstruct (harmless-openai-provider
                (:include harmless-provider)
@@ -326,7 +328,10 @@ This is the unit-tested core of the OpenAI backend."
       ((or :tool 'tool)
        (list :role "tool"
              :tool_call_id (plist-get msg :id)
-             :content (or (plist-get msg :content) "")))
+             :content (or (and (fboundp 'harmless-media-openai-tool)
+                               (harmless-media-openai-tool msg))
+                          (plist-get msg :content)
+                          "")))
       ((or :system 'system "system")
        (list :role "system"
              :content (or (plist-get msg :content) "")))
@@ -342,7 +347,10 @@ This is the unit-tested core of the OpenAI backend."
          out))
       (_
        (list :role "user"
-             :content (or (plist-get msg :content) ""))))))
+             :content (or (and (fboundp 'harmless-media-openai-user)
+                               (harmless-media-openai-user msg))
+                          (plist-get msg :content)
+                          ""))))))
 
 (defun harmless-openai--format-tool-call (tc)
   "Convert canonical tool-call TC to OpenAI shape."

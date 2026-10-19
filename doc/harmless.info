@@ -537,6 +537,9 @@ still running.  A review reads the working tree, a base branch, or one
 commit and records findings.  It does not edit the project.  *Note
 Review::.  ‘lsp’ asks a language server that is already running for a
 definition, references, or diagnostics.  *Note Language server::.
+‘read_file’ also reads an image, a PDF, and a notebook.  ‘notebook_edit’
+replaces one notebook cell.  ‘I’ attaches an image to the next prompt.
+*Note File tools::.
 
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -577,7 +580,7 @@ can keep a todo list.  *Note Todos::.
 
 * Menu:
 
-* File tools::  Read, list, write, replace, and patch.
+* File tools::  Read, list, write, replace, patch, and notebooks.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
@@ -608,9 +611,60 @@ harmless-add-directory’.
 
 ‘read_file’
      Read a project file.  ‘offset’ is the first line, counting from 1.
-     ‘limit’ is how many lines to return.  The result is cut at
-     ‘harmless-read-file-max-bytes’ (100000).  A cut result ends with
-     ‘[truncated]’.
+     ‘limit’ is how many lines to return.  Those arguments apply only to
+     a text file.  The result is cut at ‘harmless-read-file-max-bytes’
+     (100000).  A cut text result ends with ‘[truncated]’.  A read does
+     not change the file.
+
+     An image is recognized by its bytes, not by its name.  The result
+     is the media type, the path, the byte count, and the bytes.  A file
+     larger than the cap is refused: ‘image is too large’.
+
+     A PDF is a file whose name ends in ‘.pdf’.  Harmless reads literal
+     strings from the file.  It does not render the page.  A file that
+     does not begin with the PDF header is refused: ‘pdf is not a pdf’.
+     No literal string is ‘No text’.  A long PDF is cut at the same byte
+     cap and ends with ‘[truncated]’.
+
+     A notebook is a file whose name ends in ‘.ipynb’.  The result lists
+     each cell.  No cells is ‘No cells’.  A file that is not a notebook
+     is refused: ‘notebook is not a notebook’.  A notebook larger than
+     the cap is refused: ‘notebook is too large’.
+
+‘notebook_edit’
+     Replace the source of one cell in an existing ‘.ipynb’ file.
+     ‘path’ is the notebook.  ‘cell’ is a cell id or a 0-based index.
+     ‘source’ is the new source.  An empty source clears the cell.
+     Other cells stay.  The file is not created.  This is an edit.
+
+     Nil, ‘""’, and whitespace for the path are refused: ‘notebook path
+     is empty’.  A value that is not text is refused: ‘notebook path
+     must be a string’.  ‘/’, ‘c:/’, and a drive root are refused and
+     are not expanded: ‘notebook path is the filesystem root’.  A
+     missing notebook is refused: ‘notebook is missing’.  A directory
+     and a trailing slash are refused: ‘notebook is not a notebook’.
+
+     A missing cell is refused: ‘notebook cell is empty’.  A value that
+     is not a cell id or a 0-based index is refused: ‘notebook cell is
+     not a cell’.  No such cell is refused: ‘notebook cell is missing’.
+     A missing source is refused: ‘notebook source is empty’.  A value
+     that is not text is refused: ‘notebook source must be a string’.
+
+     ‘M-x harmless-attach-image’ queues an image on the next prompt.
+     The menu key is ‘I’.  The file must already exist.  Harmless reads
+     it and does not change it.  The queue is not saved.  Sending the
+     prompt stores the image on that user message.  An empty prompt is
+     allowed when an image is queued.  A steer is still text.
+
+     Nil, ‘""’, and whitespace are refused: ‘image path is empty’.  A
+     value that is not text is refused: ‘image path must be a string’.
+     ‘/’, ‘c:/’, and a drive root are refused and are not expanded:
+     ‘image path is the filesystem root’.  A relative path in a detached
+     chat, and a path that starts with ‘~’, are refused and are not
+     expanded: ‘image path must be absolute’.  A missing file is
+     refused: ‘image is missing’.  A directory, a trailing slash, and
+     bytes that are not an image are refused: ‘image is not an image’.
+     A file larger than the cap is refused: ‘image is too large’.
 
 ‘list_dir’
      List the names in a directory.  A directory name ends with a slash.
@@ -631,8 +685,9 @@ harmless-add-directory’.
      replacements.  If any hunk fails, no file is changed.  This is an
      edit.
 
-     In plan mode, ‘write_file’, ‘replace’, and ‘apply_patch’ fail.  The
-     model must write ‘plan.md’ with ‘write_plan’.  *Note Plan mode::.
+     In plan mode, ‘write_file’, ‘replace’, ‘apply_patch’, and
+     ‘notebook_edit’ fail.  The model must write ‘plan.md’ with
+     ‘write_plan’.  *Note Plan mode::.
 
 
 File: harmless.info,  Node: Search,  Next: Shell,  Prev: File tools,  Up: Tools
@@ -1630,14 +1685,14 @@ call ‘enter_plan_mode’, which asks you before it switches.
 
    While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with ‘write_plan’, and to call
-‘exit_plan_mode’ when the plan is ready.  ‘write_file’, ‘replace’, and
-‘apply_patch’ fail.  A shell command that can write is refused before
-any permission question: ‘Error: Plan mode is on. A shell command that
-can write is refused’.  A read-only shell command still runs.
-‘shell_kill’ still asks.  A click, typed text, a key, and a browser are
-refused: ‘Error: Plan mode is on. Computer control is refused’.  A
-screenshot still runs.  *Note Computer use::.  A file watch and a
-read-only command still run.  A command that can write is refused.
+‘exit_plan_mode’ when the plan is ready.  ‘write_file’, ‘replace’,
+‘apply_patch’, and ‘notebook_edit’ fail.  A shell command that can write
+is refused before any permission question: ‘Error: Plan mode is on. A
+shell command that can write is refused’.  A read-only shell command
+still runs.  ‘shell_kill’ still asks.  A click, typed text, a key, and a
+browser are refused: ‘Error: Plan mode is on. Computer control is
+refused’.  A screenshot still runs.  *Note Computer use::.  A file watch
+and a read-only command still run.  A command that can write is refused.
 *Note Monitors::.  Scheduling a prompt still runs.  The later turn obeys
 plan mode.  *Note Schedules::.  A review still runs, and it does not
 edit the project.  *Note Review::.  A language server query still runs,
@@ -1803,6 +1858,9 @@ also open it with ‘m’ in the transcript or ‘C-c C-k’ in the prompt.
 ‘L’
      Ask a language server for a definition, references, or diagnostics.
 
+‘I’
+     Attach an image to the next prompt.
+
 ‘+’
      Add a directory outside the project.  In the transcript buffer, ‘+’
      runs ‘harmless-add-directory’.
@@ -1917,7 +1975,8 @@ Command Index
 * exit_plan_mode:                        Plan mode.            (line  6)
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
-* harmless-add-directory:                Tools.                (line 25)
+* harmless-add-directory:                Tools.                (line 28)
+* harmless-attach-image:                 File tools.           (line 51)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 43)
 * harmless-current:                      Sessions.             (line  6)
@@ -1954,6 +2013,7 @@ Command Index
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
 * lsp:                                   Language server.      (line  6)
+* notebook_edit:                         File tools.           (line 51)
 * review:                                Review.               (line  6)
 * write_plan:                            Plan mode.            (line  6)
 
@@ -1967,13 +2027,14 @@ Key Index
 * Menu:
 
 * ! (permission):                        Permissions.          (line  6)
-* + (transcript):                        Tools.                (line 25)
+* + (transcript):                        Tools.                (line 28)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 70)
 * f (transcript):                        Transcript.           (line 79)
 * g (usage):                             Usage.                (line  6)
 * h (Harmless buffers):                  Keys.                 (line  6)
+* I (Harmless menu):                     File tools.           (line 51)
 * k (transcript):                        Transcript.           (line 43)
 * L (Harmless menu):                     Language server.      (line  6)
 * LEFT (transcript):                     Transcript.           (line  6)
@@ -2001,35 +2062,35 @@ Node: Permissions11011
 Node: Accounts18317
 Node: Models20562
 Node: Tools21658
-Node: File tools25664
-Node: Search27070
-Node: Shell28966
-Node: Questions31751
-Node: Subagents32521
-Node: Workflows36670
-Node: Worktrees41673
-Node: Messages44801
-Node: Web search46622
-Node: Fetch a page47477
-Node: X search48710
-Node: MCP51107
-Node: Computer use53811
-Node: Monitors55827
-Node: Schedules58831
-Node: Todos61297
-Node: Review63952
-Node: Language server67535
-Node: Instructions70722
-Node: Skills72468
-Node: Memory73617
-Node: Plan mode74882
-Node: Usage77824
-Node: Files78843
-Node: Keys80422
-Node: Trouble81922
-Node: Manual83176
-Node: Command Index83881
-Node: Key Index87159
+Node: File tools25851
+Node: Search30358
+Node: Shell32254
+Node: Questions35039
+Node: Subagents35809
+Node: Workflows39958
+Node: Worktrees44961
+Node: Messages48089
+Node: Web search49910
+Node: Fetch a page50765
+Node: X search51998
+Node: MCP54395
+Node: Computer use57099
+Node: Monitors59115
+Node: Schedules62119
+Node: Todos64585
+Node: Review67240
+Node: Language server70823
+Node: Instructions74010
+Node: Skills75756
+Node: Memory76905
+Node: Plan mode78170
+Node: Usage81134
+Node: Files82153
+Node: Keys83732
+Node: Trouble85282
+Node: Manual86536
+Node: Command Index87241
+Node: Key Index90665
 
 End Tag Table
 

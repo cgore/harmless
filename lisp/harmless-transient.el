@@ -66,6 +66,8 @@
 (declare-function harmless-add-directory "harmless-tools-fs" (directory))
 (declare-function harmless-review "harmless-review" (&optional session args))
 (declare-function harmless-lsp "harmless-lsp" (&optional session args))
+(declare-function harmless-attach-image "harmless-media"
+                  (&optional session path))
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -83,6 +85,7 @@
     ("f" "Fork" harmless-fork)
     ("R" "Review" harmless-review)
     ("L" "LSP" harmless-lsp)
+    ("I" "Attach image" harmless-attach-image)
     ("P" "Plan" harmless-plan)
     ("u" "Usage" harmless-usage)
     ("h" "Manual" harmless-info)]

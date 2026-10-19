@@ -110,6 +110,7 @@
 (declare-function harmless-monitor-plan-refuses-p "harmless-monitor"
                   (session tool args))
 (declare-function harmless-message-flush "harmless-message" (session))
+(declare-function harmless-media-consume "harmless-media" (session))
 
 (cl-defstruct (harmless-turn-batch
                (:constructor harmless-turn-batch-create)
@@ -197,6 +198,8 @@ summarized before the provider sees TEXT."
   (when (fboundp 'harmless-compact--validate-threshold)
     (harmless-compact--validate-threshold))
   (harmless-session-append-user session text)
+  (when (fboundp 'harmless-media-consume)
+    (harmless-media-consume session))
   (if (fboundp 'harmless-compact-before-turn)
       (harmless-compact-before-turn session
                                     (lambda () (harmless-turn--call session)))

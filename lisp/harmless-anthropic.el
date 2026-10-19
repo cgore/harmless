@@ -53,6 +53,8 @@
 (declare-function harmless-tool-name "harmless-tools")
 (declare-function harmless-tool-description "harmless-tools")
 (declare-function harmless-tool-schema "harmless-tools")
+(declare-function harmless-media-anthropic-tool "harmless-media" (msg))
+(declare-function harmless-media-anthropic-user "harmless-media" (msg))
 
 (cl-defstruct (harmless-anthropic-provider
                (:include harmless-provider)
@@ -252,7 +254,10 @@ response used to leave in the transcript."
           ((or :tool 'tool)
            (push (list :type "tool_result"
                        :tool_use_id (plist-get msg :id)
-                       :content (or (plist-get msg :content) ""))
+                       :content (or (and (fboundp 'harmless-media-anthropic-tool)
+                                         (harmless-media-anthropic-tool msg))
+                                    (plist-get msg :content)
+                                    ""))
                  pending-tools))
           (_
            (when pending-tools
@@ -292,7 +297,11 @@ response used to leave in the transcript."
          (and content
               (list :role "assistant" :content (nreverse content)))))
       (_
-       (list :role "user" :content (or (plist-get msg :content) ""))))))
+       (list :role "user"
+             :content (or (and (fboundp 'harmless-media-anthropic-user)
+                               (harmless-media-anthropic-user msg))
+                          (plist-get msg :content)
+                          ""))))))
 
 (defun harmless-anthropic--payload (provider model messages tools stream &optional effort)
   "Build a Messages API body."

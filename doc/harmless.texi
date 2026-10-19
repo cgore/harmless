@@ -618,6 +618,9 @@ base branch, or one commit and records findings.  It does not edit
 the project.  @xref{Review}.
 @code{lsp} asks a language server that is already running for a
 definition, references, or diagnostics.  @xref{Language server}.
+@code{read_file} also reads an image, a PDF, and a notebook.
+@code{notebook_edit} replaces one notebook cell.  @kbd{I} attaches
+an image to the next prompt.  @xref{File tools}.
 
 Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -666,7 +669,7 @@ It can schedule a prompt.  @xref{Schedules}.
 It can keep a todo list.  @xref{Todos}.
 
 @menu
-* File tools::  Read, list, write, replace, and patch.
+* File tools::  Read, list, write, replace, patch, and notebooks.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Questions::   Ask one question with choices.
@@ -696,9 +699,66 @@ with @kbd{M-x harmless-add-directory}.
 @table @code
 @item read_file
 Read a project file.  @code{offset} is the first line, counting from
-1.  @code{limit} is how many lines to return.  The result is cut at
-@code{harmless-read-file-max-bytes} (100000).  A cut result ends with
-@samp{[truncated]}.
+1.  @code{limit} is how many lines to return.  Those arguments apply
+only to a text file.  The result is cut at
+@code{harmless-read-file-max-bytes} (100000).  A cut text result ends
+with @samp{[truncated]}.  A read does not change the file.
+
+An image is recognized by its bytes, not by its name.  The result is
+the media type, the path, the byte count, and the bytes.  A file
+larger than the cap is refused: @samp{image is too large}.
+
+A PDF is a file whose name ends in @code{.pdf}.  Harmless reads
+literal strings from the file.  It does not render the page.  A file
+that does not begin with the PDF header is refused: @samp{pdf is not
+a pdf}.  No literal string is @samp{No text}.  A long PDF is cut at
+the same byte cap and ends with @samp{[truncated]}.
+
+A notebook is a file whose name ends in @code{.ipynb}.  The result
+lists each cell.  No cells is @samp{No cells}.  A file that is not a
+notebook is refused: @samp{notebook is not a notebook}.  A notebook
+larger than the cap is refused: @samp{notebook is too large}.
+
+@item notebook_edit
+Replace the source of one cell in an existing @code{.ipynb} file.
+@code{path} is the notebook.  @code{cell} is a cell id or a 0-based
+index.  @code{source} is the new source.  An empty source clears the
+cell.  Other cells stay.  The file is not created.  This is an edit.
+
+Nil, @code{""}, and whitespace for the path are refused:
+@samp{notebook path is empty}.  A value that is not text is refused:
+@samp{notebook path must be a string}.  @code{/}, @code{c:/}, and a
+drive root are refused and are not expanded: @samp{notebook path is
+the filesystem root}.  A missing notebook is refused: @samp{notebook
+is missing}.  A directory and a trailing slash are refused:
+@samp{notebook is not a notebook}.
+
+A missing cell is refused: @samp{notebook cell is empty}.  A value
+that is not a cell id or a 0-based index is refused: @samp{notebook
+cell is not a cell}.  No such cell is refused: @samp{notebook cell is
+missing}.  A missing source is refused: @samp{notebook source is
+empty}.  A value that is not text is refused: @samp{notebook source
+must be a string}.
+
+@findex harmless-attach-image
+@findex notebook_edit
+@kindex I @r{(Harmless menu)}
+@kbd{M-x harmless-attach-image} queues an image on the next prompt.
+The menu key is @kbd{I}.  The file must already exist.  Harmless
+reads it and does not change it.  The queue is not saved.  Sending
+the prompt stores the image on that user message.  An empty prompt
+is allowed when an image is queued.  A steer is still text.
+
+Nil, @code{""}, and whitespace are refused: @samp{image path is
+empty}.  A value that is not text is refused: @samp{image path must
+be a string}.  @code{/}, @code{c:/}, and a drive root are refused
+and are not expanded: @samp{image path is the filesystem root}.  A
+relative path in a detached chat, and a path that starts with
+@code{~}, are refused and are not expanded: @samp{image path must be
+absolute}.  A missing file is refused: @samp{image is missing}.  A
+directory, a trailing slash, and bytes that are not an image are
+refused: @samp{image is not an image}.  A file larger than the cap
+is refused: @samp{image is too large}.
 
 @item list_dir
 List the names in a directory.  A directory name ends with a slash.
@@ -718,8 +778,9 @@ Apply several hunks in one call.  Each hunk names a @code{path}, an
 once in that file.  Later hunks on the same file see earlier
 replacements.  If any hunk fails, no file is changed.  This is an edit.
 
-In plan mode, @code{write_file}, @code{replace}, and @code{apply_patch}
-fail.  The model must write @file{plan.md} with @code{write_plan}.
+In plan mode, @code{write_file}, @code{replace}, @code{apply_patch},
+and @code{notebook_edit} fail.  The model must write @file{plan.md}
+with @code{write_plan}.
 @xref{Plan mode}.
 @end table
 
@@ -1846,8 +1907,9 @@ also call @code{enter_plan_mode}, which asks you before it switches.
 While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with @code{write_plan}, and to call
 @code{exit_plan_mode} when the plan is ready.  @code{write_file},
-@code{replace}, and @code{apply_patch} fail.  A shell command that
-can write is refused before any permission question:
+@code{replace}, @code{apply_patch}, and @code{notebook_edit} fail.  A
+shell command that can write is refused before any permission
+question:
 @samp{Error: Plan mode is on. A shell command that can write is refused}.
 A read-only shell command still runs.  @code{shell_kill} still asks.
 A click, typed text, a key, and a browser are refused:
@@ -2030,6 +2092,9 @@ Review the working tree, a base branch, or one commit.
 
 @item L
 Ask a language server for a definition, references, or diagnostics.
+
+@item I
+Attach an image to the next prompt.
 
 @item +
 Add a directory outside the project.  In the transcript buffer,

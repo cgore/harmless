@@ -64,6 +64,7 @@
 (declare-function harmless-review-header "harmless-review" (session))
 (declare-function harmless-todo-format "harmless-todo" (items))
 (declare-function harmless-todo-header "harmless-todo" (session))
+(declare-function harmless-media-pending-p "harmless-media" (session))
 
 (defface harmless-user-face
   '((t :inherit font-lock-keyword-face :weight bold))
@@ -314,6 +315,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("todo_write" "todo")
     ("review" "review")
     ("lsp" "lsp")
+    ("notebook_edit" "notebook")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -451,6 +453,18 @@ directory, which lives under the Harmless data directory.  Setting
                  (concat op " " path))
                 ((stringp path) path)
                 ((stringp op) op)
+                (t ""))))
+            ("notebook_edit"
+             (let ((cell (harmless-tool-arg args :cell))
+                   (path (harmless-tool-arg args :path)))
+               (cond
+                ((and (integerp cell) (stringp path))
+                 (format "%s %d" path cell))
+                ((and (stringp cell) (stringp path))
+                 (concat path " " cell))
+                ((stringp path) path)
+                ((stringp cell) cell)
+                ((integerp cell) (number-to-string cell))
                 (t ""))))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
@@ -833,7 +847,14 @@ If that fold is already collapsed, collapse its parent group."
 (defun harmless-ui--insert-message (msg)
   "Insert a user MSG at point."
   (harmless-ui--insert-label "You" 'harmless-user-face)
-  (insert (or (plist-get msg :content) "") "\n\n"))
+  (insert (or (plist-get msg :content) ""))
+  (let ((images (plist-get msg :images)))
+    (when (and (listp images) (not (harmless-plist-p images)))
+      (dolist (image images)
+        (when (listp image)
+          (let ((path (plist-get image :path)))
+            (insert "\n[image: " (if (stringp path) path "image") "]"))))))
+  (insert "\n\n"))
 
 (defun harmless-ui--insert-finding (msg)
   "Insert finding MSG at point."
@@ -1157,7 +1178,9 @@ would swallow the following tool block into the streamed prose."
     (user-error "Finish the permission prompt first (y/n/!)"))
   (let* ((session harmless--session)
          (text (string-trim (buffer-substring-no-properties (point-min) (point-max)))))
-    (when (string-empty-p text)
+    (when (and (string-empty-p text)
+               (not (and (fboundp 'harmless-media-pending-p)
+                         (harmless-media-pending-p session))))
       (user-error "Prompt is empty"))
     (erase-buffer)
     (if (eq (harmless-session-status session) 'streaming)

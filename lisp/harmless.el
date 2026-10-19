@@ -79,6 +79,7 @@
 (require 'harmless-skills)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
+(require 'harmless-media)
 (require 'harmless-tools-shell)
 (require 'harmless-perm)
 (require 'harmless-turn)
