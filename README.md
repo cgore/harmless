@@ -204,6 +204,10 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-scope-proof` | Store evidence on a slice |
 | `M-x harmless-scope-judge` | Record who accepted or rejected an item |
 | `M-x harmless-scope-progress` | Derive proved, rejected, or open |
+| `M-x harmless-context-list` | List context packs in a project |
+| `M-x harmless-context-show` | Read one pack's manifest |
+| `M-x harmless-context-get` | Read a pack, a file, or one section |
+| `M-x harmless-context-profile` | Compose a situation and report the token total |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -529,6 +533,21 @@ and the proof.  `M-x harmless-scope-progress` derives
 proof file is still there.  Progress is not stored.  A name is
 letters and digits.  `/` is text, and it is not opened as a
 path.  Nothing is started.
+
+## Context
+
+A project holds context packs under `packs/NAME/PACK.md`.
+`M-x harmless-context-list` reads the pack names.
+`M-x harmless-context-show` reads the manifest.
+`M-x harmless-context-get` reads a ref: a pack, one file in
+that pack, or one heading in that file.  A heading matches
+its text or its slug.
+`M-x harmless-context-profile` composes the pieces the pack
+declares for `fresh`, `handover`, or `post-compaction`.  The
+piece list comes from the manifest.  Four characters are one
+token.  The total is reported, and a budget reports how far
+the text is over.  The text is not cut.  Nothing is written,
+and nothing is started.
 
 ## Subagents
 

@@ -109,6 +109,10 @@
 ;;   M-x harmless-scope-proof ; store evidence on a slice
 ;;   M-x harmless-scope-judge ; record who accepted or rejected
 ;;   M-x harmless-scope-progress ; derive proved, rejected, or open
+;;   M-x harmless-context-list ; list context packs in a project
+;;   M-x harmless-context-show ; read one pack's manifest
+;;   M-x harmless-context-get ; read a pack, a file, or a section
+;;   M-x harmless-context-profile ; compose a situation and count tokens
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -167,6 +171,7 @@
 (require 'harmless-page)
 (require 'harmless-team)
 (require 'harmless-scope)
+(require 'harmless-context)
 
 (defvar harmless--config-loaded nil
   "Non-nil after the Harmless config file has been loaded.")

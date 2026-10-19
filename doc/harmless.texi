@@ -54,6 +54,7 @@ commands, keys, and files a user needs.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
 * Scope::               Missions, slices, and derived progress.
+* Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -2713,6 +2714,73 @@ read is refused: @samp{scope judgments are not valid}.  That
 file is left unchanged.  A scope path at the filesystem root is
 refused: @samp{Refusing to store scope at }, followed by that
 path.
+
+@node Context
+@chapter Context
+
+@cindex context
+@findex harmless-context-list
+@findex harmless-context-show
+@findex harmless-context-get
+@findex harmless-context-profile
+A project holds context packs under @file{packs/NAME/PACK.md}.
+@kbd{M-x harmless-context-list} reads the pack names.  A
+missing @file{packs} directory is an empty list, and it is not
+created.  @kbd{M-x harmless-context-show} reads the manifest.
+@kbd{M-x harmless-context-get} reads a ref.  A ref is a pack,
+one file in that pack, or one heading in that file.  A heading
+matches its text or its slug, and the section includes its
+subsections.  @kbd{M-x harmless-context-profile} composes the
+pieces the manifest declares for @code{fresh}, @code{handover},
+or @code{post-compaction}.  The piece list is not chosen at the
+call.  Four characters are one token.  The total covers the
+whole text.  A positive budget reports how far that total is
+over.  The text is not cut.  Nothing is written, and nothing
+is started.
+
+@file{PACK.md} starts with @code{# Files} and the member files.
+@code{# fresh}, @code{# handover}, and
+@code{# post-compaction} then list pieces.  A piece is a member
+file, or that file and a heading: @code{notes.md#Start}.
+
+Nil, @code{""}, and whitespace are refused: @samp{context
+project is empty}.  A project that is not text is refused:
+@samp{context project must be a string}.  @code{/} and a drive
+root are refused: @samp{context project is the filesystem
+root}.  A relative project, including @code{~}, is refused and
+is not expanded: @samp{context project must be absolute}.  A
+missing project is refused: @samp{context project is missing}.
+A file is refused: @samp{context project is not a directory}.
+
+Nil, @code{""}, and whitespace are refused: @samp{context pack
+is empty}.  A pack that is not text is refused: @samp{context
+pack must be a string}.  Any other pack is refused:
+@samp{context pack is not a name}.  A missing pack is refused:
+@samp{context pack is missing}.  A manifest that cannot be read
+is refused: @samp{context pack is not valid}.  That file is
+left unchanged.  A member that leaves the pack is refused:
+@samp{context file escapes the pack}.  A missing member is
+refused: @samp{context file is missing}.  A directory is
+refused: @samp{context file is not a file}.  A file that the
+manifest does not list is refused: @samp{context file is not
+in the pack}.  A missing heading is refused: @samp{context
+section is missing}.
+
+Nil, @code{""}, and whitespace are refused: @samp{context ref
+is empty}.  A ref that is not text is refused: @samp{context
+ref must be a string}.  Any other ref is refused: @samp{context
+ref is not a ref}.  Nil, @code{""}, and whitespace are refused:
+@samp{context situation is empty}.  A situation that is not
+text is refused: @samp{context situation must be a string}.
+Any other situation is refused: @samp{context situation is not
+a situation}.  A situation the pack does not declare is
+refused: @samp{context situation is missing}.  Zero, a
+negative number, and any other budget are refused:
+@samp{context budget is not a budget}.  Omitting the budget
+reports zero overage.
+
+A context path at the filesystem root is refused:
+@samp{Refusing to read context at }, followed by that path.
 
 @node Memory
 @chapter Memory

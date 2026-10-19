@@ -45,6 +45,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
 * Scope::               Missions, slices, and derived progress.
+* Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -2272,7 +2273,7 @@ seat is refused: ‘team seat is missing’.  A broken rig file is refused:
 team at ’, followed by that directory.
 
 
-File: harmless.info,  Node: Scope,  Next: Memory,  Prev: Team,  Up: Top
+File: harmless.info,  Node: Scope,  Next: Context,  Prev: Team,  Up: Top
 
 19 Scope
 ********
@@ -2342,9 +2343,64 @@ the filesystem root is refused: ‘Refusing to store scope at ’, followed
 by that path.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Scope,  Up: Top
+File: harmless.info,  Node: Context,  Next: Memory,  Prev: Scope,  Up: Top
 
-20 Memory
+20 Context
+**********
+
+A project holds context packs under ‘packs/NAME/PACK.md’.  ‘M-x
+harmless-context-list’ reads the pack names.  A missing ‘packs’
+directory is an empty list, and it is not created.  ‘M-x
+harmless-context-show’ reads the manifest.  ‘M-x harmless-context-get’
+reads a ref.  A ref is a pack, one file in that pack, or one heading in
+that file.  A heading matches its text or its slug, and the section
+includes its subsections.  ‘M-x harmless-context-profile’ composes the
+pieces the manifest declares for ‘fresh’, ‘handover’, or
+‘post-compaction’.  The piece list is not chosen at the call.  Four
+characters are one token.  The total covers the whole text.  A positive
+budget reports how far that total is over.  The text is not cut.
+Nothing is written, and nothing is started.
+
+   ‘PACK.md’ starts with ‘# Files’ and the member files.  ‘# fresh’, ‘#
+handover’, and ‘# post-compaction’ then list pieces.  A piece is a
+member file, or that file and a heading: ‘notes.md#Start’.
+
+   Nil, ‘""’, and whitespace are refused: ‘context project is empty’.  A
+project that is not text is refused: ‘context project must be a string’.
+‘/’ and a drive root are refused: ‘context project is the filesystem
+root’.  A relative project, including ‘~’, is refused and is not
+expanded: ‘context project must be absolute’.  A missing project is
+refused: ‘context project is missing’.  A file is refused: ‘context
+project is not a directory’.
+
+   Nil, ‘""’, and whitespace are refused: ‘context pack is empty’.  A
+pack that is not text is refused: ‘context pack must be a string’.  Any
+other pack is refused: ‘context pack is not a name’.  A missing pack is
+refused: ‘context pack is missing’.  A manifest that cannot be read is
+refused: ‘context pack is not valid’.  That file is left unchanged.  A
+member that leaves the pack is refused: ‘context file escapes the pack’.
+A missing member is refused: ‘context file is missing’.  A directory is
+refused: ‘context file is not a file’.  A file that the manifest does
+not list is refused: ‘context file is not in the pack’.  A missing
+heading is refused: ‘context section is missing’.
+
+   Nil, ‘""’, and whitespace are refused: ‘context ref is empty’.  A ref
+that is not text is refused: ‘context ref must be a string’.  Any other
+ref is refused: ‘context ref is not a ref’.  Nil, ‘""’, and whitespace
+are refused: ‘context situation is empty’.  A situation that is not text
+is refused: ‘context situation must be a string’.  Any other situation
+is refused: ‘context situation is not a situation’.  A situation the
+pack does not declare is refused: ‘context situation is missing’.  Zero,
+a negative number, and any other budget are refused: ‘context budget is
+not a budget’.  Omitting the budget reports zero overage.
+
+   A context path at the filesystem root is refused: ‘Refusing to read
+context at ’, followed by that path.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Context,  Up: Top
+
+21 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2412,7 +2468,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-21 Plan mode
+22 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2477,7 +2533,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-22 Usage
+23 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2501,7 +2557,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-23 Files
+24 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2587,7 +2643,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-24 Keys
+25 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2699,7 +2755,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-25 Trouble
+26 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2726,7 +2782,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-26 Manual
+27 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2760,6 +2816,10 @@ Command Index
 * harmless-attach-image:                 File tools.           (line 51)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
+* harmless-context-get:                  Context.              (line  6)
+* harmless-context-list:                 Context.              (line  6)
+* harmless-context-profile:              Context.              (line  6)
+* harmless-context-show:                 Context.              (line  6)
 * harmless-current:                      Sessions.             (line  6)
 * harmless-dashboard:                    Sessions.             (line  6)
 * harmless-delete-session:               Sessions.             (line 31)
@@ -2906,52 +2966,53 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2215
-Node: Installation2946
-Node: Starting4550
-Node: Sessions5089
-Node: Transcript8270
-Node: Prompt12031
-Node: Permissions13272
-Node: Accounts20578
-Node: Models22823
-Node: Tools23919
-Node: File tools28267
-Node: Search32774
-Node: Shell34670
-Node: Questions37455
-Node: Subagents38225
-Node: Workflows42374
-Node: Worktrees47377
-Node: Messages50505
-Node: Web search52326
-Node: Fetch a page53181
-Node: X search54414
-Node: MCP56811
-Node: Computer use59515
-Node: Monitors61531
-Node: Schedules64535
-Node: Todos67001
-Node: Review69656
-Node: Language server73239
-Node: Instructions76426
-Node: Skills79534
-Node: Plugins81864
-Node: Output styles83914
-Node: Image generation85925
-Node: Headless87767
-Node: Pages90455
-Node: Team93292
-Node: Scope113187
-Node: Memory117193
-Node: Plan mode119784
-Node: Usage122770
-Node: Files123789
-Node: Keys127185
-Node: Trouble128867
-Node: Manual130121
-Node: Command Index130826
-Node: Key Index139433
+Node: Introduction2275
+Node: Installation3006
+Node: Starting4610
+Node: Sessions5149
+Node: Transcript8330
+Node: Prompt12091
+Node: Permissions13332
+Node: Accounts20638
+Node: Models22883
+Node: Tools23979
+Node: File tools28327
+Node: Search32834
+Node: Shell34730
+Node: Questions37515
+Node: Subagents38285
+Node: Workflows42434
+Node: Worktrees47437
+Node: Messages50565
+Node: Web search52386
+Node: Fetch a page53241
+Node: X search54474
+Node: MCP56871
+Node: Computer use59575
+Node: Monitors61591
+Node: Schedules64595
+Node: Todos67061
+Node: Review69716
+Node: Language server73299
+Node: Instructions76486
+Node: Skills79594
+Node: Plugins81924
+Node: Output styles83974
+Node: Image generation85985
+Node: Headless87827
+Node: Pages90515
+Node: Team93352
+Node: Scope113247
+Node: Context117254
+Node: Memory120389
+Node: Plan mode122982
+Node: Usage125968
+Node: Files126987
+Node: Keys130383
+Node: Trouble132065
+Node: Manual133319
+Node: Command Index134024
+Node: Key Index142923
 
 End Tag Table
 

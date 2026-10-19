@@ -118,6 +118,10 @@
   (should (fboundp 'harmless-scope-proof))
   (should (fboundp 'harmless-scope-judge))
   (should (fboundp 'harmless-scope-progress))
+  (should (fboundp 'harmless-context-list))
+  (should (fboundp 'harmless-context-show))
+  (should (fboundp 'harmless-context-get))
+  (should (fboundp 'harmless-context-profile))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
