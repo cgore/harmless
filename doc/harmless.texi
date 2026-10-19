@@ -589,10 +589,38 @@ cap as @code{read_file}.
 shell.  Each command starts there.  A @code{cd} in one command does
 not change the next command.
 
-The command is killed after @code{harmless-shell-timeout-seconds}
-(120).  The text returned to the model, and shown in the transcript,
-is cut at @code{harmless-shell-output-max-bytes} (20000).  A timeout
-is an error, followed by whatever output was captured.
+@code{timeout} is how many seconds to wait.  When it is omitted,
+@code{harmless-shell-timeout-seconds} (120) is used.  A negative
+number, zero, or a value that is not a number is refused:
+@samp{Error: timeout must be a positive number}.  An empty command is
+refused: @samp{Error: command is empty}.  When the command is still
+running at the end of that wait, Harmless leaves the process running
+and returns a background id with the output captured so far.  It does
+not kill the process.  @code{background} true returns that id
+immediately.
+
+@code{shell_output} reads one background shell.  @code{id} is the id
+@code{run_shell} returned.  Without @code{timeout}, the tool returns
+the output already available.  With @code{timeout}, it waits that many
+seconds for the command to exit, then returns whatever it has.  This
+tool does not ask for permission.  An empty id is refused:
+@samp{Error: shell id is empty}.  An unknown id is refused:
+@samp{Error: no background shell }, followed by that id.  A bad
+timeout uses the same refusal as @code{run_shell}.
+
+@code{shell_kill} stops a background shell.  It asks for permission
+like any other shell command.  Killing a shell that is not running is
+refused: @samp{Error: shell }, the id, and @samp{ is not running}.
+
+The text returned to the model is cut at
+@code{harmless-shell-output-max-bytes} (20000).
+
+Abort stops a shell that is still in the foreground.  A shell that has
+moved to the background keeps running.  When it exits, or when it is
+killed, Emacs shows a message and a note in the transcript.  That note
+is not a message the model sees on the next turn.  The jobs are kept
+in memory for this Emacs session.  They are not written to the session
+files.
 
 Plan mode does not inspect the command.  A shell command can still
 write files while a plan is being written.  @xref{Plan mode}.
@@ -976,9 +1004,9 @@ This manual.
 @findex harmless-reload-all-harmless
 @cindex log
 @kbd{M-x harmless-abort}, or @kbd{a} in the transcript, or @kbd{C-c C-a}
-in the prompt, cancels the HTTP request or the shell command that is
-running.  The session returns to idle and the transcript records
-@samp{aborted}.
+in the prompt, cancels the HTTP request or a foreground shell command.
+A background shell keeps running.  The session returns to idle and the
+transcript records @samp{aborted}.
 
 An empty reply from the model is an error: @samp{The model returned an
 empty reply.}

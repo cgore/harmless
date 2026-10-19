@@ -133,7 +133,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | Click `xAI/grok-4.6 (xhigh)` in the session header | Provider, then model, then effort |
 | `M-x harmless-login` | Sign in (xAI, Anthropic, or OpenAI) |
 | `M-x harmless-logout` | Sign out of a provider |
-| `M-x harmless-abort` | Cancel the in-flight turn or shell |
+| `M-x harmless-abort` | Cancel the in-flight turn and any foreground shell. A background shell keeps running |
 | `M-x harmless-compact` | Summarize older turns and keep the recent ones (`k` in the transcript). Also runs before a prompt that would fill the context window. |
 | `M-x harmless-rewind` | Drop turns after the one at point and save the shorter transcript (`w` in the transcript) |
 | `M-x harmless-edit-prompt` | Replace the prompt at point, drop what follows, and send the new text (`E` in the transcript) |

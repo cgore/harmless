@@ -569,4 +569,262 @@
       (should-not (file-directory-p missing)))
     (should (eq root-before (file-exists-p "/a.txt")))))
 
+(defun harmless-shell-test-delay (seconds)
+  "Return a command that waits about SECONDS in the current shell."
+  (let ((name (downcase (file-name-nondirectory (or shell-file-name "")))))
+    (cond
+     ((string-match-p "powershell\\|pwsh" name)
+      (format "Start-Sleep -Seconds %d" seconds))
+     ((string-match-p "cmd" name)
+      (format "ping -n %d 127.0.0.1 > NUL" (1+ seconds)))
+     (t (format "sleep %d" seconds)))))
+
+(defun harmless-shell-test-wait (predicate)
+  "Return non-nil when PREDICATE becomes true within about eight seconds."
+  (let ((n 0))
+    (while (and (not (funcall predicate)) (< n 80))
+      (setq n (1+ n))
+      (accept-process-output nil 0.1))
+    (funcall predicate)))
+
+(defun harmless-shell-test-stop (session)
+  "Kill any shell processes SESSION still has."
+  (dolist (job (copy-sequence (harmless-session-shell-jobs session)))
+    (let ((proc (harmless-shell-job-proc job)))
+      (when (and (processp proc) (process-live-p proc))
+        (ignore-errors (delete-process proc)))))
+  (harmless-shell-test-wait
+   (lambda ()
+     (not (cl-some (lambda (job)
+                     (let ((proc (harmless-shell-job-proc job)))
+                       (and (processp proc) (process-live-p proc))))
+                   (harmless-session-shell-jobs session))))))
+
+(defun harmless-shell-test--call (session args)
+  "Run the shell tool for ARGS and return the callback text."
+  (let (result done)
+    (harmless-tools-shell--run
+     session args
+     (lambda (text)
+       (setq result text done t)))
+    (should (harmless-shell-test-wait (lambda () done)))
+    result))
+
+(ert-deftest harmless-shell-refuses-a-bad-command-or-timeout ()
+  (let* ((dir (make-temp-file "harmless-shell-" t))
+         (session (harmless-test--session dir))
+         (default-directory "/")
+         (detached (harmless-session--create :id "abcdef0123456789" :cwd nil)))
+    (should (equal "Error: command is empty"
+                   (harmless-shell-test--call session '(:command ""))))
+    (should (equal "Error: command is empty"
+                   (harmless-shell-test--call session '(:command nil))))
+    (should (equal "Error: command is empty"
+                   (harmless-shell-test--call session nil)))
+    (dolist (timeout (list 0 -1 0.0 "1" :false nil))
+      (should (equal "Error: timeout must be a positive number"
+                     (harmless-shell-test--call
+                      session (list :command "echo hi" :timeout timeout))))
+      (should (equal "Error: timeout must be a positive number"
+                     (harmless-shell-test--call
+                      session (list "command" "echo hi" "timeout" timeout)))))
+    (should-not (harmless-session-shell-jobs session))
+    (let ((err (should-error
+                (harmless-tools-shell--run
+                 detached '(:command "echo hi" :background t :timeout -1)
+                 #'ignore)
+                :type 'error)))
+      (should (string-match-p "not attached to a project"
+                              (error-message-string err))))
+    (should-not (harmless-session-shell-jobs detached))
+    (should-not (file-exists-p "/echo"))
+    (should (eq 'read (harmless-tool-class (harmless-tool-by-name "shell_output"))))
+    (should (eq 'shell (harmless-tool-class (harmless-tool-by-name "shell_kill"))))
+    (let ((asked nil)
+          (harmless-perm-ask-function (lambda (&rest _) (setq asked t))))
+      (harmless-perm-confirm session 'read "shell_output" #'ignore)
+      (should-not asked))))
+
+(ert-deftest harmless-shell-background-is-remembered-only-in-memory ()
+  (let* ((dir (make-temp-file "harmless-shell-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-make-openai-compat
+                    "local" :host "127.0.0.1:9" :protocol "http"
+                    :key "none" :models '("m")))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m"))
+         one two)
+    (unwind-protect
+        (progn
+          (setq one (harmless-shell-test--call
+                     session '(:command "echo one" :background t)))
+          (setq two (harmless-shell-test--call
+                     session '(:command "echo two" :background :false)))
+          (should (string-match-p "\\`background 1\n" one))
+          (should (harmless-shell-test-wait
+                   (lambda ()
+                     (not (eq (harmless-shell-job-status
+                               (harmless-shell-find session "1"))
+                              'running)))))
+          (should (string-match-p "exit 0" two))
+          (should (string-match-p "two" two))
+          (should-not (string-match-p "background" two))
+          (let (output)
+            (harmless-tools-shell--output
+             session '(:id "1")
+             (lambda (text) (setq output text)))
+            (should (string-match-p "shell 1 exited 0" output))
+            (should (string-match-p "one" output)))
+          (should (equal "Error: shell id is empty"
+                         (harmless-tools-shell--kill session '(:id ""))))
+          (should (equal "Error: shell id is empty"
+                         (harmless-tools-shell--kill session '(:id "  "))))
+          (should (equal "Error: shell id is empty"
+                         (harmless-tools-shell--kill session '(:id nil))))
+          (should (equal "Error: no background shell missing"
+                         (harmless-tools-shell--kill session '(:id "missing"))))
+          (should (equal "Error: shell 1 is not running"
+                         (harmless-tools-shell--kill session '(:id "1"))))
+          (should (equal "Error: shell 1 is not running"
+                         (harmless-tools-shell--kill session '(:id 1))))
+          (let (output)
+            (harmless-tools-shell--output
+             session '(:id "" :timeout -1)
+             (lambda (text) (setq output text)))
+            (should (equal "Error: shell id is empty" output))
+            (harmless-tools-shell--output
+             session '(:id "missing")
+             (lambda (text) (setq output text)))
+            (should (equal "Error: no background shell missing" output))
+            (harmless-tools-shell--output
+             session '(:id "1" :timeout nil)
+             (lambda (text) (setq output text)))
+            (should (equal "Error: timeout must be a positive number" output))
+            (harmless-tools-shell--output
+             session '("id" "1" "timeout" "soon")
+             (lambda (text) (setq output text)))
+            (should (equal "Error: timeout must be a positive number" output)))
+          (harmless-session-save session)
+          (let ((summary (expand-file-name
+                          "summary.json" (harmless-session-directory session)))
+                (messages (expand-file-name
+                           "messages.jsonl" (harmless-session-directory session))))
+            (should (file-name-absolute-p summary))
+            (should-not (harmless-filesystem-root-p
+                         (file-name-directory summary)))
+            (should (string-prefix-p
+                     (file-name-as-directory harmless-directory) summary))
+            (with-temp-buffer
+              (insert-file-contents summary)
+              (insert-file-contents messages)
+              (should-not (string-search "echo one" (buffer-string)))
+              (should-not (string-search "shell-jobs" (buffer-string)))))
+          (remhash (harmless-session-id session) harmless--sessions)
+          (let ((loaded (harmless-session-resume (harmless-session-id session))))
+            (should loaded)
+            (should-not (harmless-session-shell-jobs loaded))
+            (should-not (harmless-session-shell-seq loaded))))
+      (harmless-shell-test-stop session))))
+
+(ert-deftest harmless-shell-timeout-leaves-the-process-running ()
+  (let* ((dir (make-temp-file "harmless-shell-" t))
+         (session (harmless-test--session dir))
+         (events nil)
+         (notes nil)
+         (hook (lambda (_session event) (push event events)))
+         (command (harmless-shell-test-delay 4)))
+    (add-hook 'harmless-event-functions hook)
+    (unwind-protect
+        (cl-letf (((symbol-function 'message)
+                   (lambda (fmt &rest args)
+                     (push (apply #'format fmt args) notes))))
+          (let ((result (harmless-shell-test--call
+                         session (list :command command :timeout 0.3)))
+                (proc nil))
+            (should (string-match-p "\\`background 1\n" result))
+            (should-not (string-match-p "exit " result))
+            (setq proc (harmless-shell-job-proc
+                        (harmless-shell-find session "1")))
+            (should (process-live-p proc))
+            (should-not (memq proc (harmless-session-processes session)))
+            (let (output)
+              (harmless-tools-shell--output
+               session '(:id "1")
+               (lambda (text) (setq output text)))
+              (should (string-match-p "shell 1 running" output)))
+            (let (output done)
+              (harmless-tools-shell--output
+               session '(:id "1" :timeout 8)
+               (lambda (text) (setq output text done t)))
+              (should (harmless-shell-test-wait (lambda () done)))
+              (should (string-match-p "shell 1 exited 0" output)))
+            (should (harmless-shell-test-wait
+                     (lambda ()
+                       (cl-find-if (lambda (event)
+                                     (equal event (list :background "1"
+                                                        "exited 0" command)))
+                                   events))))
+            (should (member "Harmless: background shell 1 exited 0" notes))
+            (should (equal "Error: shell 1 is not running"
+                           (harmless-tools-shell--kill session '(:id "1"))))))
+      (remove-hook 'harmless-event-functions hook)
+      (harmless-shell-test-stop session))))
+
+(ert-deftest harmless-shell-abort-kills-foreground-only ()
+  (let* ((dir (make-temp-file "harmless-shell-" t))
+         (session (harmless-test--session dir))
+         (foreground (harmless-shell-test-delay 15))
+         (background (harmless-shell-test-delay 15)))
+    (unwind-protect
+        (progn
+          (harmless-tools-shell--run
+           session (list :command foreground :timeout 30) #'ignore)
+          (should (harmless-shell-test-wait
+                   (lambda ()
+                     (let ((proc (car (harmless-session-processes session))))
+                       (and proc (process-live-p proc))))))
+          (let ((proc (car (harmless-session-processes session))))
+            (harmless-turn-abort session)
+            (should (harmless-shell-test-wait
+                     (lambda () (not (process-live-p proc)))))
+            (should-not (harmless-session-processes session)))
+          (harmless-tools-shell--run
+           session (list :command background :background t :timeout 30)
+           #'ignore)
+          (should (harmless-shell-test-wait
+                   (lambda ()
+                     (let ((job (harmless-shell-find session "2")))
+                       (and job (process-live-p (harmless-shell-job-proc job)))))))
+          (let ((proc (harmless-shell-job-proc
+                       (harmless-shell-find session "2"))))
+            (should-not (memq proc (harmless-session-processes session)))
+            (harmless-turn-abort session)
+            (should (process-live-p proc))
+            (should (equal "killed shell 2"
+                           (harmless-tools-shell--kill session '(:id "2"))))
+            (should (harmless-shell-test-wait
+                     (lambda () (not (process-live-p proc)))))))
+      (harmless-shell-test-stop session))))
+
+(ert-deftest harmless-shell-output-keeps-the-tail ()
+  (let ((harmless-shell-output-max-bytes 4))
+    (should (equal "" (harmless-shell--for-model nil)))
+    (should (equal "" (harmless-shell--for-model "")))
+    (should (equal "abcd\n[truncated]"
+                   (harmless-shell--for-model "abcdef"))))
+  (let ((harmless-shell-output-max-bytes 48)
+        (buf (generate-new-buffer " *harmless-shell-cap*")))
+    (unwind-protect
+        (progn
+          (harmless-shell--append-output buf (make-string 80 ?a))
+          (harmless-shell--append-output buf "XYZ")
+          (with-current-buffer buf
+            (should (string-prefix-p "[earlier output discarded]\n"
+                                     (buffer-string)))
+            (should (string-suffix-p "XYZ" (buffer-string)))
+            (should (< (buffer-size) 80))))
+      (when (buffer-live-p buf)
+        (kill-buffer buf)))))
+
 (provide 'harmless-tools-tests)

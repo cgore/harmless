@@ -266,6 +266,8 @@ directory, which lives under the Harmless data directory.  Setting
     ("write_file" "edit")
     ("replace" "edit")
     ("run_shell" "shell")
+    ("shell_output" "shell")
+    ("shell_kill" "shell")
     ("memory_read" "memory")
     ("memory_remember" "remember")
     ("memory_write_topic" "memory")
@@ -291,7 +293,10 @@ directory, which lives under the Harmless data directory.  Setting
                    (concat pat "  " glob)
                  pat)))
             ("glob" (or (harmless-tool-arg args :pattern) ""))
-            ("run_shell" (or (harmless-tool-arg args :command) ""))
+            ((or "run_shell" "shell_kill" "shell_output")
+             (or (harmless-tool-arg args :command)
+                 (harmless-tool-arg args :id)
+                 ""))
             ("memory_remember" (or (harmless-tool-arg args :title)
                                    (harmless-tool-arg args :topic)
                                    ""))
@@ -895,6 +900,13 @@ would swallow the following tool block into the streamed prose."
      (harmless-ui--stream-text session (propertize s 'face 'harmless-tool-face)))
     (`(:tool-call ,id ,name ,_delta)
      (harmless-ui--note-streaming-tool session id name))
+    (`(:background ,id ,status ,_command)
+     (harmless-ui--with-session-buffer
+      session
+      (lambda ()
+        (goto-char (point-max))
+        (insert (propertize (format "Background shell %s %s.\n\n" id status)
+                            'face 'harmless-tool-face)))))
     (`(:error ,err)
      (harmless-ui--with-session-buffer
       session

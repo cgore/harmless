@@ -114,7 +114,8 @@
             (erase-buffer)))))))
 
 (defun harmless-turn-abort (session)
-  "Cancel SESSION's in-flight HTTP request, shells, and tool batch."
+  "Cancel SESSION's in-flight HTTP request, foreground shells, and tool batch.
+A background shell keeps running."
   (when (fboundp 'harmless-compact-cancel)
     (harmless-compact-cancel session))
   (let ((batch (harmless-session-tool-batch session)))

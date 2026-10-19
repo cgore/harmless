@@ -103,7 +103,9 @@ location.  A relative path or the filesystem root is refused."
   title-locked
   plan-mode
   processes
-  tool-batch)
+  tool-batch
+  shell-jobs
+  shell-seq)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."

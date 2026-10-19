@@ -162,3 +162,15 @@
       (should (string-match-p "grep  defpackage  \\*\\*/\\*\\.lisp  (1)"
                               (harmless-ui-test-visible)))
       (should-not (string-match-p "source/a.lisp" (harmless-ui-test-visible))))))
+
+(ert-deftest harmless-ui-background-note-is-not-a-message ()
+  (let* ((session (harmless-ui-test-session))
+         (buf (harmless-ui-test-render
+               session '((:role :user :content "hi"))))
+         (before (copy-tree (harmless-session-messages session))))
+    (harmless-ui--on-event session '(:background "4" "exited 0" "echo hi"))
+    (with-current-buffer buf
+      (should (string-match-p "Background shell 4 exited 0\\."
+                              (harmless-ui-test-visible)))
+      (should (string-match-p "hi" (harmless-ui-test-visible))))
+    (should (equal before (harmless-session-messages session)))))

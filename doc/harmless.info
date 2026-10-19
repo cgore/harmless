@@ -529,10 +529,36 @@ File: harmless.info,  Node: Shell,  Next: Questions,  Prev: Search,  Up: Tools
 Each command starts there.  A ‘cd’ in one command does not change the
 next command.
 
-   The command is killed after ‘harmless-shell-timeout-seconds’ (120).
-The text returned to the model, and shown in the transcript, is cut at
-‘harmless-shell-output-max-bytes’ (20000).  A timeout is an error,
-followed by whatever output was captured.
+   ‘timeout’ is how many seconds to wait.  When it is omitted,
+‘harmless-shell-timeout-seconds’ (120) is used.  A negative number,
+zero, or a value that is not a number is refused: ‘Error: timeout must
+be a positive number’.  An empty command is refused: ‘Error: command is
+empty’.  When the command is still running at the end of that wait,
+Harmless leaves the process running and returns a background id with the
+output captured so far.  It does not kill the process.  ‘background’
+true returns that id immediately.
+
+   ‘shell_output’ reads one background shell.  ‘id’ is the id
+‘run_shell’ returned.  Without ‘timeout’, the tool returns the output
+already available.  With ‘timeout’, it waits that many seconds for the
+command to exit, then returns whatever it has.  This tool does not ask
+for permission.  An empty id is refused: ‘Error: shell id is empty’.  An
+unknown id is refused: ‘Error: no background shell ’, followed by that
+id.  A bad timeout uses the same refusal as ‘run_shell’.
+
+   ‘shell_kill’ stops a background shell.  It asks for permission like
+any other shell command.  Killing a shell that is not running is
+refused: ‘Error: shell ’, the id, and ‘ is not running’.
+
+   The text returned to the model is cut at
+‘harmless-shell-output-max-bytes’ (20000).
+
+   Abort stops a shell that is still in the foreground.  A shell that
+has moved to the background keeps running.  When it exits, or when it is
+killed, Emacs shows a message and a note in the transcript.  That note
+is not a message the model sees on the next turn.  The jobs are kept in
+memory for this Emacs session.  They are not written to the session
+files.
 
    Plan mode does not inspect the command.  A shell command can still
 write files while a plan is being written.  *Note Plan mode::.
@@ -887,8 +913,9 @@ File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
-prompt, cancels the HTTP request or the shell command that is running.
-The session returns to idle and the transcript records ‘aborted’.
+prompt, cancels the HTTP request or a foreground shell command.  A
+background shell keeps running.  The session returns to idle and the
+transcript records ‘aborted’.
 
    An empty reply from the model is an error: ‘The model returned an
 empty reply.’
@@ -1011,18 +1038,18 @@ Node: Tools14880
 Node: File tools16075
 Node: Search17309
 Node: Shell18950
-Node: Questions19611
-Node: Instructions20363
-Node: Skills22109
-Node: Memory23258
-Node: Plan mode24523
-Node: Usage25936
-Node: Files26955
-Node: Keys28188
-Node: Trouble29411
-Node: Manual30398
-Node: Command Index31103
-Node: Key Index33797
+Node: Questions21058
+Node: Instructions21810
+Node: Skills23556
+Node: Memory24705
+Node: Plan mode25970
+Node: Usage27383
+Node: Files28402
+Node: Keys29635
+Node: Trouble30858
+Node: Manual31874
+Node: Command Index32579
+Node: Key Index35273
 
 End Tag Table
 
