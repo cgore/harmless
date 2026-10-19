@@ -194,27 +194,36 @@ STOP is passed to `harmless-skills-discover'."
   "This is a detached chat.  It is not attached to a project or a working directory.  Do not assume a repository or files on disk.  Workspace memory is unavailable.  Global memory is available."
   "System text for a chat that has no project.")
 
+(defun harmless-context--with-harness (messages)
+  "Return MESSAGES with the standing harness prompt first, when loaded."
+  (if (fboundp 'harmless-harness-prepend)
+      (harmless-harness-prepend messages)
+    messages))
+
 (defun harmless-context-messages (dir messages &optional stop model)
-  "Return MESSAGES with instructions, rules, skills, and memory for DIR.
+  "Return MESSAGES with the harness prompt, instructions, and context.
 STOP bounds the instruction and skill walks.  MODEL selects whether
 `CLAUDE.md' is included.  Path rules, when loaded, come from
-`.claude/rules/' in DIR.  The session transcript is not modified.  A
+`.claude/rules/' in DIR.  The harness prompt is first.  Later project
+text wins when it disagrees.  The transcript is not modified.  A
 missing or relative DIR is a detached chat: it does not walk
 `default-directory', so a missing directory is not /."
   (if (not (and (stringp dir)
                 (not (string-empty-p dir))
                 (file-name-absolute-p dir)))
-      (harmless-context-append
-       (harmless-context-append messages harmless-detached-chat-instructions)
-       (harmless-memory-catalog nil))
-    (harmless-context-append
+      (harmless-context--with-harness
+       (harmless-context-append
+        (harmless-context-append messages harmless-detached-chat-instructions)
+        (harmless-memory-catalog nil)))
+    (harmless-context--with-harness
      (harmless-context-append
       (harmless-context-append
-       (harmless-instructions-apply dir messages stop model)
-       (and (fboundp 'harmless-path-rules-text)
-            (harmless-path-rules-text dir messages)))
-      (harmless-skills-catalog dir stop))
-     (harmless-memory-catalog dir))))
+       (harmless-context-append
+        (harmless-instructions-apply dir messages stop model)
+        (and (fboundp 'harmless-path-rules-text)
+             (harmless-path-rules-text dir messages)))
+       (harmless-skills-catalog dir stop))
+      (harmless-memory-catalog dir)))))
 
 (provide 'harmless-skills)
 

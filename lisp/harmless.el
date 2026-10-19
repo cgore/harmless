@@ -76,6 +76,7 @@
 (require 'harmless-anthropic-oauth)
 (require 'harmless-session)
 (require 'harmless-instructions)
+(require 'harmless-harness)
 (require 'harmless-rules)
 (require 'harmless-skills)
 (require 'harmless-tools)

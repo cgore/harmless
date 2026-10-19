@@ -192,6 +192,15 @@ not searched.  The text is sent with the turn and is not stored in
 the transcript.  When two rules disagree, the later file in sorted
 path order wins.
 
+## Standing prompt
+
+Every turn starts with a harness prompt: which tool to use, when to
+verify, and when to delegate.  It is sent for a project chat and for
+a detached chat.  Project instructions, path-scoped rules, and, in
+plan mode, the plan rules are sent after it.  When they disagree with
+the harness prompt, they win.  The prompt is not stored in the
+transcript.
+
 ## Skills
 
 A skill is a directory with a `SKILL.md` file.  The file starts with

@@ -1820,6 +1820,17 @@ The rule text is added to the system message for that turn.  It is not
 copied into the transcript.  When two rules disagree, the later file in
 sorted path order wins.
 
+@heading Standing prompt
+@cindex harness prompt
+Every turn starts with a standing harness prompt.  It states which
+tool to use, when to verify, and when to delegate.  A project chat and
+a detached chat both receive it.  Project instructions, path-scoped
+rules, and, in plan mode, the plan rules are sent after it.  When they
+disagree with the harness prompt, they win.  The prompt is not copied
+into the transcript.  Nil, an empty string, and a relative directory
+still receive the prompt, and they still do not walk
+@code{default-directory}.
+
 @node Skills
 @chapter Skills
 

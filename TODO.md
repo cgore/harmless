@@ -108,7 +108,7 @@ Plan mode already has `enter_plan_mode`, `write_plan`, and `exit_plan_mode`, wit
 - [x] Apply a patch: several hunks across files in one call. Each hunk replaces one unique string. Later hunks on the same file see earlier replacements. If any hunk fails, no file is changed. `replace` still changes one unique string.
 - [x] Expand `@path` imports in `AGENTS.md`, `HARMLESS.md`, `.harmless/HARMLESS.md`, and `CLAUDE.md`. The path is relative to the file that contains it and must stay inside the session directory. A cycle, a missing file, a directory, an empty path, and a path that leaves the session are refused.
 - [x] Read path-scoped rules (Claude Code `.claude/rules/`).
-- [ ] A standing harness prompt on every turn: tool policy, when to verify, and when to delegate. Today a turn sends project instructions, the skill catalog, the memory index, and, in plan mode, the plan rules.
+- [x] A standing harness prompt on every turn: tool policy, when to verify, and when to delegate. Today a turn sends project instructions, the skill catalog, the memory index, and, in plan mode, the plan rules.
 
 ## 9. Later
 

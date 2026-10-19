@@ -1608,6 +1608,17 @@ and the filesystem root are not searched.
 not copied into the transcript.  When two rules disagree, the later file
 in sorted path order wins.
 
+Standing prompt
+===============
+
+Every turn starts with a standing harness prompt.  It states which tool
+to use, when to verify, and when to delegate.  A project chat and a
+detached chat both receive it.  Project instructions, path-scoped rules,
+and, in plan mode, the plan rules are sent after it.  When they disagree
+with the harness prompt, they win.  The prompt is not copied into the
+transcript.  Nil, an empty string, and a relative directory still
+receive the prompt, and they still do not walk ‘default-directory’.
+
 
 File: harmless.info,  Node: Skills,  Next: Memory,  Prev: Instructions,  Up: Top
 
@@ -2098,16 +2109,16 @@ Node: Todos64585
 Node: Review67240
 Node: Language server70823
 Node: Instructions74010
-Node: Skills76590
-Node: Memory77739
-Node: Plan mode79004
-Node: Usage81968
-Node: Files82987
-Node: Keys84566
-Node: Trouble86116
-Node: Manual87370
-Node: Command Index88075
-Node: Key Index91499
+Node: Skills77118
+Node: Memory78267
+Node: Plan mode79532
+Node: Usage82496
+Node: Files83515
+Node: Keys85094
+Node: Trouble86644
+Node: Manual87898
+Node: Command Index88603
+Node: Key Index92027
 
 End Tag Table
 
