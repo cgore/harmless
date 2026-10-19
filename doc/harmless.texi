@@ -2239,6 +2239,10 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-snapshot-restore
 @findex harmless-team-successor
 @findex harmless-team-boundaries
+@findex harmless-team-image
+@findex harmless-team-image-start
+@findex harmless-team-packet
+@findex harmless-team-packet-apply
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2515,6 +2519,35 @@ string}.  An empty seat is refused: @samp{team seat is not
 occupied}.  The same session again is refused: @samp{team
 successor is the same session}.  Nothing is written when the
 successor cannot be bound.
+
+@kbd{M-x harmless-team-image} captures an occupied seat into
+its own file.  @kbd{M-x harmless-team-image-start} records
+another seat from that file.  The new seat copies the role and
+the inbound work, and it starts with no session.  The source
+seat stays.  @kbd{M-x harmless-team-packet} captures what that
+seat knows: the recap, or the inbound work when there is no
+recap.  @kbd{M-x harmless-team-packet-apply} puts that work
+back on the same seat and binds a session that is already
+running.  The runtime must change.  The seat keeps its name.
+Nothing is started.  A blank image name is refused:
+@samp{team image is empty}.  A name that is not text is
+refused: @samp{team image must be a string}.  Any other name
+is refused: @samp{team image is not a name}.  An image that
+already exists is refused: @samp{team image already exists}.
+A missing image is refused: @samp{team image is missing}.  An
+image file that cannot be read is refused: @samp{team image
+is not valid}.  An empty seat is refused: @samp{team seat is
+not occupied}.  A seat that is already recorded is refused:
+@samp{team seat already exists}.  A blank packet name is
+refused: @samp{team packet is empty}.  A name that is not text
+is refused: @samp{team packet must be a string}.  Any other
+name is refused: @samp{team packet is not a name}.  A packet
+that already exists is refused: @samp{team packet already
+exists}.  A missing packet is refused: @samp{team packet is
+missing}.  A packet file that cannot be read is refused:
+@samp{team packet is not valid}.  A seat that knows nothing is
+refused: @samp{team packet is empty}.  The same runtime is
+refused: @samp{team packet is the same runtime}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2810,6 +2843,18 @@ whether it resumed, was rebuilt, started fresh, is waiting on
 a decision, or failed.  A fresh start is a choice.  Checking
 the snapshot does not write.  Restoring writes the rig back
 only when no seat failed.
+@xref{Team}.
+
+@item teams/images/@var{rig}/@var{name}.json
+A captured seat.  The live rig is unchanged by the capture.
+Starting a seat from it copies the role and the inbound work
+and leaves the session empty.  Nothing is started.
+@xref{Team}.
+
+@item teams/packets/@var{rig}/@var{name}.json
+What a seat knows.  The live rig is unchanged by the capture.
+Applying it keeps the seat name and binds a session that is
+already running, with a different runtime.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

@@ -104,6 +104,10 @@
   (should (fboundp 'harmless-team-snapshot-restore))
   (should (fboundp 'harmless-team-successor))
   (should (fboundp 'harmless-team-boundaries))
+  (should (fboundp 'harmless-team-image))
+  (should (fboundp 'harmless-team-image-start))
+  (should (fboundp 'harmless-team-packet))
+  (should (fboundp 'harmless-team-packet-apply))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

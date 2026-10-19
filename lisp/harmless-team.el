@@ -67,8 +67,11 @@
 ;; restore that would fail does not write.  Handing a seat to
 ;; a successor keeps the seat's name, its edges, and its
 ;; inbound work.  The recap of decisions is written at that
-;; boundary.  The successor is already running.  This file
-;; does not register another machine.
+;; boundary.  The successor is already running.  An image
+;; captures a productive seat so another seat can start from
+;; it.  A packet carries what that seat knows when its runtime
+;; changes.  Neither one starts a session.  This file does not
+;; register another machine.
 
 ;;; Code:
 
@@ -3696,6 +3699,295 @@ running.  A refusal writes nothing."
         (list :seat (harmless-team--public stored (car found) item)
               :boundary (harmless-team--public-boundary boundary))))))
 
+(defun harmless-team--side-directory (kind rig)
+  "Return KIND's directory for RIG.  It is not created.
+KIND is \"images\" or \"packets\"."
+  (file-name-as-directory
+   (expand-file-name
+    rig
+    (file-name-as-directory
+     (expand-file-name kind (harmless-team--teams-root nil))))))
+
+(defun harmless-team--side-find (kind rig name)
+  "Return KIND's file NAME for RIG, or nil.
+The directory is not created."
+  (let ((dir (harmless-team--side-directory kind rig))
+        (want (concat name ".json"))
+        (found nil))
+    (when (file-directory-p dir)
+      (dolist (file (directory-files dir t "\\.json\\'"))
+        (when (harmless-team--same-p
+               (file-name-nondirectory file) want)
+          (setq found file))))
+    found))
+
+(defun harmless-team--side-new (kind rig name)
+  "Return a new KIND file for NAME in RIG and create its directory."
+  (let* ((dir (harmless-team--side-directory kind rig))
+         (path (expand-file-name (concat name ".json") dir)))
+    (unless (and (file-name-absolute-p path)
+                 (harmless-directory-strictly-under-p
+                  path (harmless-team--data-directory))
+                 (not (harmless-team--root-text-p path))
+                 (not (equal (file-truename path)
+                             (file-truename "/"))))
+      (error "Refusing to store a team at %s" path))
+    (harmless-ensure-directory dir)
+    path))
+
+(defun harmless-team--side-write (path obj)
+  "Write OBJ as JSON at PATH.  PATH is not the live rig."
+  (unless (and (stringp path)
+               (file-name-absolute-p path)
+               (not (harmless-team--root-text-p path))
+               (not (equal (file-truename path)
+                           (file-truename "/"))))
+    (error "Refusing to store a team at %s" path))
+  (let ((coding-system-for-write 'utf-8-unix))
+    (write-region (harmless-json-text obj) nil path nil 'silent))
+  path)
+
+(defun harmless-team--seat-recap (stored address)
+  "Return ADDRESS's boundary texts in STORED, oldest first.
+Nil means that seat has no recap."
+  (let ((parts nil))
+    (dolist (item (plist-get stored :boundaries))
+      (when (harmless-team--same-p (plist-get item :seat) address)
+        (setq parts (append parts (list (plist-get item :text))))))
+    (when parts
+      (mapconcat #'identity parts "\n"))))
+
+(defun harmless-team--image-read (path rig name)
+  "Return the image plist at PATH, or signal.
+A broken file signals \"team image is not valid\"."
+  (unless (and (stringp path)
+               (file-name-absolute-p path)
+               (file-regular-p path)
+               (not (harmless-team--root-text-p path))
+               (not (equal (file-truename path)
+                           (file-truename "/"))))
+    (error "team image is not valid"))
+  (let* ((obj (harmless-json-decode-safe
+               (harmless-team--read-text path)))
+         (base (file-name-sans-extension
+                (file-name-nondirectory path)))
+         (text (and (harmless-plist-p obj) (plist-get obj :text))))
+    (unless (and (harmless-plist-p obj)
+                 (harmless-team--member-name-p (plist-get obj :name))
+                 (harmless-team--same-p (plist-get obj :name) name)
+                 (harmless-team--same-p (plist-get obj :name) base)
+                 (stringp (plist-get obj :rig))
+                 (harmless-team--same-p (plist-get obj :rig) rig)
+                 (harmless-team--watchdog-due-p (plist-get obj :at))
+                 (stringp (plist-get obj :role))
+                 (not (string-empty-p (plist-get obj :role)))
+                 (harmless-team--string-list-p (plist-get obj :work))
+                 (or (null text)
+                     (and (stringp text) (not (string-empty-p text)))))
+      (error "team image is not valid"))
+    obj))
+
+(defun harmless-team--image-name (name)
+  "Return NAME trimmed, or signal."
+  (harmless-team--token
+   name "team image is empty" "team image must be a string"
+   #'harmless-team--member-name-p "team image is not a name"))
+
+(defun harmless-team--packet-name (name)
+  "Return NAME trimmed, or signal."
+  (harmless-team--token
+   name "team packet is empty" "team packet must be a string"
+   #'harmless-team--member-name-p "team packet is not a name"))
+
+(defun harmless-team--image-take (rig pod seat name)
+  "Capture SEAT into a named image and return NAME.
+SEAT must already be occupied.  The live rig is not changed."
+  (setq name (harmless-team--image-name name))
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let* ((item (cdr found))
+           (session (plist-get item :session)))
+      (unless (and (stringp session) (not (string-empty-p session)))
+        (error "team seat is not occupied"))
+      (when (harmless-team--side-find "images" rig name)
+        (error "team image already exists"))
+      (harmless-team--side-write
+       (harmless-team--side-new "images" rig name)
+       (list :name name
+             :rig (plist-get stored :name)
+             :at (harmless-now-iso)
+             :role (plist-get item :role)
+             :work (plist-get item :work)
+             :text (harmless-team--seat-recap
+                    stored (plist-get item :address))))
+      name)))
+
+(defun harmless-team--image-start (rig name pod seat)
+  "Add SEAT in POD of RIG from image NAME and return it.
+The new seat copies the role and the inbound work.  It starts
+with no session.  Nothing is started."
+  (setq name (harmless-team--image-name name))
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let ((path (harmless-team--side-find "images" rig name)))
+    (unless path
+      (error "team image is missing"))
+    (let* ((image (harmless-team--image-read path rig name))
+           (loaded (harmless-team--load rig))
+           (stored (cdr loaded))
+           (pod-item (harmless-team--find-named
+                      (plist-get stored :pods) pod))
+           (pod-name (if pod-item (plist-get pod-item :name) pod)))
+      (when (and pod-item
+                 (harmless-team--find-named
+                  (plist-get pod-item :seats) seat))
+        (error "team seat already exists"))
+      (let ((new (list :name seat
+                       :role (plist-get image :role)
+                       :session ""
+                       :work (copy-tree (plist-get image :work))
+                       :address
+                       (format "%s-%s@%s"
+                               pod-name seat
+                               (plist-get stored :name)))))
+        (if pod-item
+            (plist-put pod-item :seats
+                       (append (plist-get pod-item :seats) (list new)))
+          (setq stored
+                (plist-put stored :pods
+                           (append (plist-get stored :pods)
+                                   (list (list :name pod-name
+                                               :seats (list new)))))))
+        (harmless-team--write (car loaded) stored)
+        (harmless-team--public
+         stored
+         (if pod-item
+             pod-item
+           (harmless-team--find-named (plist-get stored :pods) pod))
+         new)))))
+
+(defun harmless-team--packet-read (path rig name)
+  "Return the packet plist at PATH, or signal.
+A broken file signals \"team packet is not valid\"."
+  (unless (and (stringp path)
+               (file-name-absolute-p path)
+               (file-regular-p path)
+               (not (harmless-team--root-text-p path))
+               (not (equal (file-truename path)
+                           (file-truename "/"))))
+    (error "team packet is not valid"))
+  (let* ((obj (harmless-json-decode-safe
+               (harmless-team--read-text path)))
+         (base (file-name-sans-extension
+                (file-name-nondirectory path)))
+         (runtime (and (harmless-plist-p obj)
+                       (plist-get obj :from-runtime))))
+    (unless (and (harmless-plist-p obj)
+                 (harmless-team--member-name-p (plist-get obj :name))
+                 (harmless-team--same-p (plist-get obj :name) name)
+                 (harmless-team--same-p (plist-get obj :name) base)
+                 (stringp (plist-get obj :rig))
+                 (harmless-team--same-p (plist-get obj :rig) rig)
+                 (harmless-team--watchdog-due-p (plist-get obj :at))
+                 (or (null runtime)
+                     (member runtime harmless-team--runtimes))
+                 (stringp (plist-get obj :role))
+                 (not (string-empty-p (plist-get obj :role)))
+                 (harmless-team--string-list-p (plist-get obj :work))
+                 (stringp (plist-get obj :text))
+                 (not (string-empty-p (plist-get obj :text))))
+      (error "team packet is not valid"))
+    obj))
+
+(defun harmless-team--packet-text (stored item)
+  "Return the text ITEM knows, or signal when it knows nothing."
+  (or (harmless-team--seat-recap stored (plist-get item :address))
+      (let ((work (plist-get item :work)))
+        (when work
+          (mapconcat #'identity work "\n")))
+      (error "team packet is empty")))
+
+(defun harmless-team--packet-take (rig pod seat name)
+  "Capture what SEAT knows and return NAME.
+SEAT must already be occupied.  The live rig is not changed."
+  (setq name (harmless-team--packet-name name))
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let* ((item (cdr found))
+           (session (plist-get item :session)))
+      (unless (and (stringp session) (not (string-empty-p session)))
+        (error "team seat is not occupied"))
+      (let ((text (harmless-team--packet-text stored item)))
+        (when (harmless-team--side-find "packets" rig name)
+          (error "team packet already exists"))
+        (harmless-team--side-write
+         (harmless-team--side-new "packets" rig name)
+         (list :name name
+               :rig (plist-get stored :name)
+               :at (harmless-now-iso)
+               :from-runtime (plist-get item :runtime)
+               :role (plist-get item :role)
+               :work (plist-get item :work)
+               :text text))
+        name))))
+
+(defun harmless-team--packet-apply (rig pod seat name runtime ref)
+  "Carry packet NAME onto SEAT and bind the running session REF.
+RUNTIME must differ from the packet.  The seat keeps its name.
+REF is not started.  A refusal writes nothing."
+  (setq name (harmless-team--packet-name name))
+  (setq runtime (harmless-team--runtime runtime))
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let ((path (harmless-team--side-find "packets" rig name)))
+    (unless path
+      (error "team packet is missing"))
+    (let* ((packet (harmless-team--packet-read path rig name))
+           (loaded (harmless-team--load rig))
+           (stored (cdr loaded))
+           (found (harmless-team--find stored pod seat)))
+      (unless found
+        (error "team seat is missing"))
+      (when (and (plist-get packet :from-runtime)
+                 (equal (plist-get packet :from-runtime) runtime))
+        (error "team packet is the same runtime"))
+      (let* ((item (cdr found))
+             (from (plist-get item :session)))
+        (unless (and (stringp from) (not (string-empty-p from)))
+          (error "team seat is not occupied"))
+        (setq ref (harmless-team--occupant-ref runtime ref))
+        (let ((boundary
+               (list :id (harmless-team--next-row-id
+                          (plist-get stored :boundaries))
+                     :seat (plist-get item :address)
+                     :text (plist-get packet :text)
+                     :at (harmless-now-iso)
+                     :from from
+                     :from-runtime (plist-get item :runtime)
+                     :runtime runtime
+                     :session ref)))
+          (plist-put item :work (copy-tree (plist-get packet :work)))
+          (plist-put item :session ref)
+          (plist-put item :runtime runtime)
+          (plist-put stored :boundaries
+                     (append (plist-get stored :boundaries)
+                             (list boundary)))
+          (harmless-team--write (car loaded) stored)
+          (list :seat (harmless-team--public stored (car found) item)
+                :boundary (harmless-team--public-boundary boundary)))))))
+
 (defun harmless-team--boundaries (rig)
   "Return RIG's handover boundaries, oldest first."
   (setq rig (harmless-team--rig-name rig))
@@ -3727,6 +4019,63 @@ work.  REF is not started.  Return the seat and the boundary."
   (let ((items (harmless-team--boundaries rig)))
     (message "%d boundaries" (length items))
     items))
+
+;;;###autoload
+(defun harmless-team-image (rig pod seat name)
+  "Capture the occupied seat SEAT in POD of RIG as NAME.
+The copy is a separate file.  The live rig is not changed."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-string "Name: ")))
+  (let ((saved (harmless-team--image-take rig pod seat name)))
+    (message "Image %s" saved)
+    saved))
+
+;;;###autoload
+(defun harmless-team-image-start (rig name pod seat)
+  "Start SEAT in POD of RIG from the image NAME.
+The new seat copies the role and the inbound work.  It has no
+session.  Nothing is started.  Return the seat."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Image: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")))
+  (let ((saved (harmless-team--image-start rig name pod seat)))
+    (message "Started %s" (plist-get saved :address))
+    saved))
+
+;;;###autoload
+(defun harmless-team-packet (rig pod seat name)
+  "Capture what SEAT in POD of RIG knows and name it NAME.
+The copy is a separate file.  The live rig is not changed."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-string "Name: ")))
+  (let ((saved (harmless-team--packet-take rig pod seat name)))
+    (message "Packet %s" saved)
+    saved))
+
+;;;###autoload
+(defun harmless-team-packet-apply (rig pod seat name runtime ref)
+  "Carry packet NAME onto SEAT and bind the running session REF.
+RUNTIME must differ from the packet.  The seat keeps its name.
+REF is not started."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-string "Packet: ")
+         (read-string "Runtime: ")
+         (read-string "Session: ")))
+  (let ((saved (harmless-team--packet-apply
+                rig pod seat name runtime ref)))
+    (message "Carried %s" (plist-get (plist-get saved :seat) :address))
+    saved))
 
 (provide 'harmless-team)
 

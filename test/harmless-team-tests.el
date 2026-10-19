@@ -4203,3 +4203,416 @@
     (should (equal roots (harmless-team-test-roots)))
     (should (equal session-roots
                    (harmless-team-test-session-roots)))))
+
+(ert-deftest harmless-team-image-starts-another-seat ()
+  "An image starts another seat.  A packet changes runtime."
+  (let* ((base (make-temp-file "harmless-team-image-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (images (expand-file-name "teams/images" base))
+         (packets (expand-file-name "teams/packets" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (image (expand-file-name
+                 "teams/images/workshop/good.json" base))
+         (packet (expand-file-name
+                  "teams/packets/workshop/carry.json" base))
+         (noted (expand-file-name
+                 "teams/packets/workshop/note.json" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (side-roots (list (file-exists-p "/teams/images")
+                           (file-exists-p "c:/teams/images")
+                           (file-exists-p "d:/teams/images")
+                           (file-exists-p "/teams/packets")
+                           (file-exists-p "c:/teams/packets")
+                           (file-exists-p "d:/teams/packets")))
+         (timers (copy-sequence timer-list))
+         (procs (process-list))
+         (pid (number-to-string (emacs-pid)))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (summary-a (expand-file-name
+                     (concat "sessions/proj/"
+                             harmless-team-test-session-a
+                             "/summary.json")
+                     base))
+         (summary-b (expand-file-name
+                     (concat "sessions/proj/"
+                             harmless-team-test-session-b
+                             "/summary.json")
+                     base)))
+    (make-directory elsewhere t)
+    (let ((harmless-directory "/"))
+      (dolist (bad (list nil "" "   " "\n"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-image
+                           "workshop" "dev" "build" bad)))
+                       "team image is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-packet
+                           "workshop" "dev" "build" bad)))
+                       "team packet is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image
+                         "workshop" "dev" "build" 42)))
+                     "team image must be a string"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "dev" "build" 42)))
+                     "team packet must be a string"))
+      (dolist (bad (list "a-b" "/"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-image
+                           "workshop" "dev" "build" bad)))
+                       "team image is not a name"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-packet
+                           "workshop" "dev" "build" bad)))
+                       "team packet is not a name")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image
+                         "workshop" "dev" "build" "good")))
+                     "Refusing to store a team at /"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "dev" "build" "carry")))
+                     "Refusing to store a team at /")))
+    (let ((harmless-directory "c:"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image
+                         "workshop" "dev" "build" "good")))
+                     "Refusing to store a team at c:")))
+    (let ((harmless-directory "c:/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "dev" "build" "carry")))
+                     "Refusing to store a team at c:/")))
+    (let ((harmless-directory "notes"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image
+                         "workshop" "dev" "build" "good")))
+                     (concat "Harmless data directory must be "
+                             "absolute, not \"notes\""))))
+    (let ((harmless-directory "notes/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "dev" "build" "carry")))
+                     (concat "Harmless data directory must be "
+                             "absolute, not \"notes/\""))))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-image
+                       "workshop" "dev" "build" "good")))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (should-not (file-directory-p images))
+    (should-not (file-directory-p packets))
+    (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (harmless-team-add-work
+     "workshop" "dev" "build" "  keep the tests  ")
+    (harmless-team-edge
+     "workshop" "delegates_to" "dev.build" "qa.note")
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image
+                         "workshop" "dev" "build" "good")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "dev" "build" "carry")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image-start
+                         "workshop" "nope" "qa" "ghost")))
+                     "team image is missing"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (should-not (file-directory-p images))
+    (should-not (file-directory-p packets))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-seat "workshop" "qa" "ghost")))
+                   "team seat is missing"))
+    (make-directory (file-name-directory summary-a) t)
+    (harmless-team-test-write
+     summary-a
+     (harmless-json-text (list :model "grok-4.7")))
+    (make-directory (file-name-directory summary-b) t)
+    (harmless-team-test-write
+     summary-b
+     (harmless-json-text (list :model "grok-4.7")))
+    (harmless-team-adopt
+     "workshop" "dev" "build" "harmless"
+     harmless-team-test-session-a)
+    (let* ((bytes (harmless-team-test-bytes file))
+           (saved (harmless-team-image
+                   "workshop" "dev" "build" "  good  ")))
+      (should (equal saved "good"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (file-regular-p image))
+      (should (file-name-absolute-p image))
+      (should (harmless-directory-strictly-under-p image base))
+      (should-not (equal (file-truename image) (file-truename "/")))
+      (let ((obj (harmless-json-decode
+                  (harmless-team-test-read image)))
+            (image-bytes (harmless-team-test-bytes image)))
+        (should (equal (plist-get obj :name) "good"))
+        (should (equal (plist-get obj :rig) "workshop"))
+        (should (equal (plist-get obj :role) "implementer"))
+        (should (equal (plist-get obj :work) work))
+        (should-not (plist-get obj :text))
+        (should (string-match-p
+                 "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T"
+                 (plist-get obj :at)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-image
+                           "workshop" "dev" "build" "good")))
+                       "team image already exists"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (harmless-team-test-bytes image)
+                       image-bytes))))
+    (when (eq system-type 'windows-nt)
+      (let ((bytes (harmless-team-test-bytes file))
+            (image-bytes (harmless-team-test-bytes image)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-image
+                           "workshop" "dev" "build" "GOOD")))
+                       "team image already exists"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (harmless-team-test-bytes image)
+                       image-bytes))))
+    (let ((started (harmless-team-image-start
+                    "workshop" "good" "qa" "copy")))
+      (should (equal started
+                     (list :rig "workshop" :pod "qa" :name "copy"
+                           :role "implementer"
+                           :address "qa-copy@workshop"
+                           :session ""
+                           :work work)))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "dev" "build")
+                                :session)
+                     harmless-team-test-session-a))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "dev" "build")
+                                :work)
+                     work))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "dev" "build")
+                                :runtime)
+                     "harmless"))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (should-not (harmless-team-boundaries "workshop"))
+      (should (file-regular-p summary-a)))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image-start
+                         "workshop" "good" "qa" "copy")))
+                     "team seat already exists"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image-start
+                         "workshop" "nope" "qa" "ghost")))
+                     "team image is missing"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should-not (file-exists-p
+                   (expand-file-name
+                    "teams/images/workshop/nope.json" base))))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-seat "workshop" "qa" "ghost")))
+                   "team seat is missing"))
+    (harmless-team-successor
+     "workshop" "dev" "build" "harmless"
+     harmless-team-test-session-b "decided the door")
+    (let* ((bytes (harmless-team-test-bytes file))
+           (saved (harmless-team-packet
+                   "workshop" "dev" "build" "  carry  "))
+           (packet-bytes (harmless-team-test-bytes packet)))
+      (should (equal saved "carry"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (file-regular-p packet))
+      (should (file-name-absolute-p packet))
+      (should (harmless-directory-strictly-under-p packet base))
+      (should-not (equal (file-truename packet)
+                         (file-truename "/")))
+      (let ((obj (harmless-json-decode
+                  (harmless-team-test-read packet))))
+        (should (equal (plist-get obj :name) "carry"))
+        (should (equal (plist-get obj :rig) "workshop"))
+        (should (equal (plist-get obj :from-runtime) "harmless"))
+        (should (equal (plist-get obj :role) "implementer"))
+        (should (equal (plist-get obj :work) work))
+        (should (equal (plist-get obj :text) "decided the door")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "dev" "build" "carry")))
+                     "team packet already exists"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (equal (harmless-team-test-bytes packet)
+                     packet-bytes)))
+    (harmless-team-add-work
+     "workshop" "dev" "build" "later change")
+    (should (equal (plist-get (harmless-team-seat
+                               "workshop" "dev" "build")
+                              :work)
+                   '("keep the tests" "later change")))
+    (let* ((packet-bytes (harmless-team-test-bytes packet))
+           (saved (harmless-team-packet-apply
+                   "workshop" "dev" "build" "carry"
+                   "terminal" (concat "  " pid "  "))))
+      (should (equal (harmless-team-test-bytes packet) packet-bytes))
+      (should (equal (plist-get (plist-get saved :seat) :name)
+                     "build"))
+      (should (equal (plist-get (plist-get saved :seat) :address)
+                     "dev-build@workshop"))
+      (should (equal (plist-get (plist-get saved :seat) :role)
+                     "implementer"))
+      (should (equal (plist-get (plist-get saved :seat) :work) work))
+      (should (equal (plist-get (plist-get saved :seat) :session)
+                     pid))
+      (should (equal (plist-get (plist-get saved :seat) :runtime)
+                     "terminal"))
+      (let ((boundary (plist-get saved :boundary)))
+        (should (equal (plist-get boundary :id) "2"))
+        (should (equal (plist-get boundary :text)
+                       "decided the door"))
+        (should (equal (plist-get boundary :from)
+                       harmless-team-test-session-b))
+        (should (equal (plist-get boundary :from-runtime)
+                       "harmless"))
+        (should (equal (plist-get boundary :runtime) "terminal"))
+        (should (equal (plist-get boundary :session) pid)))
+      (should (equal (mapcar (lambda (item) (plist-get item :text))
+                             (harmless-team-boundaries "workshop"))
+                     '("decided the door" "decided the door")))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "qa" "copy")
+                                :session)
+                     ""))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "qa" "copy")
+                                :work)
+                     work))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (should (file-regular-p summary-a))
+      (should (file-regular-p summary-b)))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet-apply
+                         "workshop" "dev" "build" "carry"
+                         "harmless" nil)))
+                     "team packet is the same runtime"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "dev" "build")
+                                :session)
+                     pid)))
+    (harmless-team-add-seat "workshop" "lab" "spare" "notes")
+    (harmless-team-occupy
+     "workshop" "lab" "spare" harmless-team-test-session-a)
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet
+                         "workshop" "lab" "spare" "blank")))
+                     "team packet is empty"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should-not (file-exists-p
+                   (expand-file-name
+                    "teams/packets/workshop/blank.json" base))))
+    (harmless-team-add-work "workshop" "lab" "spare" "alpha")
+    (harmless-team-add-work "workshop" "lab" "spare" "beta")
+    (should (equal (harmless-team-packet
+                    "workshop" "lab" "spare" "note")
+                   "note"))
+    (let ((obj (harmless-json-decode
+                (harmless-team-test-read noted))))
+      (should (equal (plist-get obj :text) "alpha\nbeta"))
+      (should (equal (plist-get obj :work) '("alpha" "beta")))
+      (should-not (plist-get obj :from-runtime))
+      (should (file-name-absolute-p noted))
+      (should (harmless-directory-strictly-under-p noted base))
+      (should-not (equal (file-truename noted)
+                         (file-truename "/"))))
+    (should (equal (plist-get (harmless-team-seat
+                               "workshop" "lab" "spare")
+                              :work)
+                   '("alpha" "beta")))
+    (let ((bytes (harmless-team-test-bytes file))
+          (obj (harmless-json-decode
+                (harmless-team-test-read image))))
+      (plist-put obj :role "")
+      (harmless-team-test-write image (harmless-json-text obj))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-image-start
+                         "workshop" "good" "lab" "fresh")))
+                     "team image is not valid"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-seat
+                         "workshop" "lab" "fresh")))
+                     "team seat is missing")))
+    (let ((bytes (harmless-team-test-bytes file))
+          (obj (harmless-json-decode
+                (harmless-team-test-read packet))))
+      (plist-put obj :text "")
+      (harmless-team-test-write packet (harmless-json-text obj))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-packet-apply
+                         "workshop" "dev" "build" "carry"
+                         "terminal" pid)))
+                     "team packet is not valid"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (should (equal timer-list timers))
+    (should (equal (process-list) procs))
+    (should (file-name-absolute-p file))
+    (should (file-name-absolute-p summary-a))
+    (should (file-name-absolute-p summary-b))
+    (should (harmless-directory-strictly-under-p file base))
+    (should (harmless-directory-strictly-under-p summary-a base))
+    (should (harmless-directory-strictly-under-p summary-b base))
+    (should-not (equal (file-truename file) (file-truename "/")))
+    (should-not (equal (file-truename summary-a)
+                       (file-truename "/")))
+    (should-not (equal (file-truename summary-b)
+                       (file-truename "/")))
+    (should-not (file-exists-p
+                 (expand-file-name "teams" elsewhere)))
+    (should (equal roots (harmless-team-test-roots)))
+    (should (equal session-roots
+                   (harmless-team-test-session-roots)))
+    (should (equal side-roots
+                   (list (file-exists-p "/teams/images")
+                         (file-exists-p "c:/teams/images")
+                         (file-exists-p "d:/teams/images")
+                         (file-exists-p "/teams/packets")
+                         (file-exists-p "c:/teams/packets")
+                         (file-exists-p "d:/teams/packets"))))))

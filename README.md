@@ -190,6 +190,10 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-snapshot-restore` | Write that copy back when no seat failed |
 | `M-x harmless-team-successor` | Hand a seat to a session that is already running |
 | `M-x harmless-team-boundaries` | Read each handover recap, oldest first |
+| `M-x harmless-team-image` | Capture an occupied seat into its own file |
+| `M-x harmless-team-image-start` | Record a new seat from that image |
+| `M-x harmless-team-packet` | Capture what an occupied seat knows |
+| `M-x harmless-team-packet-apply` | Carry that onto a session that is already running |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -475,6 +479,15 @@ is already running.  The seat keeps its name, its edges, and
 its inbound work.  The recap of decisions is written on the
 rig at that boundary.  `M-x harmless-team-boundaries` reads
 those recaps, oldest first.  The earlier session keeps running.
+
+`M-x harmless-team-image` captures an occupied seat into its
+own file.  `M-x harmless-team-image-start` records another
+seat from that file.  The new seat copies the role and the
+inbound work, and it starts with no session.
+`M-x harmless-team-packet` captures what that seat knows.
+`M-x harmless-team-packet-apply` puts that work back and binds
+a session that is already running.  The runtime must change.
+The seat keeps its name.  Neither command starts a process.
 
 ## Subagents
 

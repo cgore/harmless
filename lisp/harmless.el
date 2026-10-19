@@ -95,6 +95,10 @@
 ;;   M-x harmless-team-snapshot-check ; report each seat, and do not write
 ;;   M-x harmless-team-snapshot-restore ; write the copy back when it can
 ;;   M-x harmless-team-successor ; hand a seat to a running successor
+;;   M-x harmless-team-image ; capture an occupied seat
+;;   M-x harmless-team-image-start ; record a new seat from that image
+;;   M-x harmless-team-packet ; capture what an occupied seat knows
+;;   M-x harmless-team-packet-apply ; carry that onto a running session
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

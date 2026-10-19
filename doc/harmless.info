@@ -2186,6 +2186,30 @@ empty seat is refused: ‘team seat is not occupied’.  The same session
 again is refused: ‘team successor is the same session’.  Nothing is
 written when the successor cannot be bound.
 
+   ‘M-x harmless-team-image’ captures an occupied seat into its own
+file.  ‘M-x harmless-team-image-start’ records another seat from that
+file.  The new seat copies the role and the inbound work, and it starts
+with no session.  The source seat stays.  ‘M-x harmless-team-packet’
+captures what that seat knows: the recap, or the inbound work when there
+is no recap.  ‘M-x harmless-team-packet-apply’ puts that work back on
+the same seat and binds a session that is already running.  The runtime
+must change.  The seat keeps its name.  Nothing is started.  A blank
+image name is refused: ‘team image is empty’.  A name that is not text
+is refused: ‘team image must be a string’.  Any other name is refused:
+‘team image is not a name’.  An image that already exists is refused:
+‘team image already exists’.  A missing image is refused: ‘team image is
+missing’.  An image file that cannot be read is refused: ‘team image is
+not valid’.  An empty seat is refused: ‘team seat is not occupied’.  A
+seat that is already recorded is refused: ‘team seat already exists’.  A
+blank packet name is refused: ‘team packet is empty’.  A name that is
+not text is refused: ‘team packet must be a string’.  Any other name is
+refused: ‘team packet is not a name’.  A packet that already exists is
+refused: ‘team packet already exists’.  A missing packet is refused:
+‘team packet is missing’.  A packet file that cannot be read is refused:
+‘team packet is not valid’.  A seat that knows nothing is refused: ‘team
+packet is empty’.  The same runtime is refused: ‘team packet is the same
+runtime’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2447,6 +2471,16 @@ replaced with ‘/’.
      not write.  Restoring writes the rig back only when no seat failed.
      *Note Team::.
 
+‘teams/images/RIG/NAME.json’
+     A captured seat.  The live rig is unchanged by the capture.
+     Starting a seat from it copies the role and the inbound work and
+     leaves the session empty.  Nothing is started.  *Note Team::.
+
+‘teams/packets/RIG/NAME.json’
+     What a seat knows.  The live rig is unchanged by the capture.
+     Applying it keeps the seat name and binds a session that is already
+     running, with a different runtime.  *Note Team::.
+
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
 
@@ -2690,6 +2724,8 @@ Command Index
 * harmless-team-edge:                    Team.                 (line  6)
 * harmless-team-edges:                   Team.                 (line  6)
 * harmless-team-grow:                    Team.                 (line  6)
+* harmless-team-image:                   Team.                 (line  6)
+* harmless-team-image-start:             Team.                 (line  6)
 * harmless-team-intake:                  Team.                 (line  6)
 * harmless-team-intakes:                 Team.                 (line  6)
 * harmless-team-launch-order:            Team.                 (line  6)
@@ -2698,6 +2734,8 @@ Command Index
 * harmless-team-pace-add:                Team.                 (line  6)
 * harmless-team-pace-show:               Team.                 (line  6)
 * harmless-team-pace-step:               Team.                 (line  6)
+* harmless-team-packet:                  Team.                 (line  6)
+* harmless-team-packet-apply:            Team.                 (line  6)
 * harmless-team-preview:                 Team.                 (line  6)
 * harmless-team-release:                 Team.                 (line  6)
 * harmless-team-remove:                  Team.                 (line  6)
@@ -2807,15 +2845,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory110601
-Node: Plan mode113191
-Node: Usage116177
-Node: Files117196
-Node: Keys119901
-Node: Trouble121583
-Node: Manual122837
-Node: Command Index123542
-Node: Key Index131127
+Node: Memory112257
+Node: Plan mode114847
+Node: Usage117833
+Node: Files118852
+Node: Keys122023
+Node: Trouble123705
+Node: Manual124959
+Node: Command Index125664
+Node: Key Index133541
 
 End Tag Table
 
