@@ -330,6 +330,16 @@ A subagent starts without one.  The class is `read`, so it does
 not ask.  Plan mode does not refuse it.  A finding is not
 applied as an edit.  Nothing is written into the project.
 
+## Language server
+
+`lsp` asks a language server that is already running in Emacs.
+The operation is `definition`, `references`, or `diagnostics`.
+`M-x harmless-lsp` does the same.  The menu key is `L`.
+Line and column start at 1.  Diagnostics read the whole file.
+Harmless does not start the server.  The class is `read`, so it
+does not ask.  Plan mode does not refuse it.  Nothing is written
+into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

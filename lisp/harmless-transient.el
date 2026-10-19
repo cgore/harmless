@@ -65,6 +65,7 @@
 (declare-function harmless-fork "harmless-fork" (&optional turn))
 (declare-function harmless-add-directory "harmless-tools-fs" (directory))
 (declare-function harmless-review "harmless-review" (&optional session args))
+(declare-function harmless-lsp "harmless-lsp" (&optional session args))
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -81,6 +82,7 @@
     ("E" "Edit prompt" harmless-edit-prompt)
     ("f" "Fork" harmless-fork)
     ("R" "Review" harmless-review)
+    ("L" "LSP" harmless-lsp)
     ("P" "Plan" harmless-plan)
     ("u" "Usage" harmless-usage)
     ("h" "Manual" harmless-info)]

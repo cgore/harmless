@@ -40,7 +40,9 @@
   (should (harmless-tool-by-name "schedule"))
   (should (harmless-tool-by-name "schedule_cancel"))
   (should (harmless-tool-by-name "todo_write"))
-  (should (harmless-tool-by-name "review")))
+  (should (harmless-tool-by-name "review"))
+  (should (harmless-tool-by-name "lsp"))
+  (should (fboundp 'harmless-lsp)))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

@@ -313,6 +313,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("schedule_cancel" "cancel")
     ("todo_write" "todo")
     ("review" "review")
+    ("lsp" "lsp")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -438,6 +439,19 @@ directory, which lives under the Harmless data directory.  Setting
                   ((stringp base) base)
                   ((stringp commit) commit)
                   (t "working tree")))))
+            ("lsp"
+             (let ((op (harmless-tool-arg args :operation))
+                   (path (harmless-tool-arg args :path)))
+               (when (and op (symbolp op))
+                 (setq op (symbol-name op))
+                 (when (string-prefix-p ":" op)
+                   (setq op (substring op 1))))
+               (cond
+                ((and (stringp op) (stringp path))
+                 (concat op " " path))
+                ((stringp path) path)
+                ((stringp op) op)
+                (t ""))))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)
