@@ -353,6 +353,34 @@ you can type them in an ordinary prompt.
    A denied call does not change the project.  An allowed edit or shell
 command runs at once.
 
+   ‘harmless-permission-rules’ and ‘harmless-permission-denies’ are
+lists of rules copied onto a session when it is created and when it is
+loaded.  A rule set only on that session is not saved, and loading the
+session replaces it with these lists.  This is not a per-project list
+that survives the session.
+
+   A rule is ‘Bash(PATTERN)’, ‘Edit(PATTERN)’, or
+‘WebFetch(domain:HOST)’.  ‘Bash(npm run *)’ matches a shell command, and
+the same form matches a command monitor.  ‘*’ matches any characters,
+including spaces and slashes.  A file watch is not a command.  ‘/’ and
+‘c:/’ are command patterns, not paths.
+
+   ‘Edit(/src/**)’ matches a path inside the project.  ‘*’ matches one
+path segment.  ‘**’ matches across segments.  A leading slash is the
+project, not the filesystem root.  ‘/’, ‘c:/’, a drive prefix, ‘..’, and
+‘~’ are refused when the rule is read.  ‘WebFetch(domain:example.com)’
+matches that host and a subdomain.  It does not match a search.
+
+   A deny is checked before the question.  It wins over an allow, and it
+still refuses in ‘accept-edits’ and ‘always-approve’, including a read
+that would not have asked.  The model receives ‘Error: Permission rule
+denied ’, followed by the rule.  An allow skips the question when every
+command, path, or host matches.  A patch is allowed only when every hunk
+path matches.  One denied hunk refuses the whole patch, and nothing is
+written.  Plan mode still refuses a shell command that can write, before
+these rules.  A read-only command that plan mode allows can still be
+denied.
+
 
 File: harmless.info,  Node: Accounts,  Next: Models,  Prev: Permissions,  Up: Top
 
@@ -1677,35 +1705,35 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts13455
-Node: Models15700
-Node: Tools16796
-Node: File tools19018
-Node: Search20252
-Node: Shell21893
-Node: Questions24678
-Node: Subagents25448
-Node: Workflows29597
-Node: Worktrees34600
-Node: Messages37728
-Node: Web search39549
-Node: Fetch a page40404
-Node: X search41637
-Node: MCP44034
-Node: Computer use46738
-Node: Monitors48754
-Node: Schedules51687
-Node: Instructions54139
-Node: Skills55885
-Node: Memory57034
-Node: Plan mode58299
-Node: Usage60336
-Node: Files61355
-Node: Keys62900
-Node: Trouble64123
-Node: Manual65377
-Node: Command Index66082
-Node: Key Index68995
+Node: Accounts15078
+Node: Models17323
+Node: Tools18419
+Node: File tools20641
+Node: Search21875
+Node: Shell23516
+Node: Questions26301
+Node: Subagents27071
+Node: Workflows31220
+Node: Worktrees36223
+Node: Messages39351
+Node: Web search41172
+Node: Fetch a page42027
+Node: X search43260
+Node: MCP45657
+Node: Computer use48361
+Node: Monitors50377
+Node: Schedules53310
+Node: Instructions55762
+Node: Skills57508
+Node: Memory58657
+Node: Plan mode59922
+Node: Usage61959
+Node: Files62978
+Node: Keys64523
+Node: Trouble65746
+Node: Manual67000
+Node: Command Index67705
+Node: Key Index70618
 
 End Tag Table
 

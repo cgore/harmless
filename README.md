@@ -320,6 +320,17 @@ Each turn sends the index, not the notes.  The model reads a note with
 topic with `memory_write_topic`.  `M-x harmless-remember` saves a note
 directly.  A prefix argument stores it in global memory.
 
+## Permissions
+
+`harmless-permission-rules` and `harmless-permission-denies` are
+copied onto a session when it is created and when it is loaded.
+A rule is `Bash(PATTERN)`, `Edit(PATTERN)`, or
+`WebFetch(domain:HOST)`.  An allow skips the question.  A deny
+refuses before the question, including in accept-edits and
+always-approve, and a deny wins.  Plan mode still refuses a shell
+command that can write.  `/` and `c:/` are not edit paths.  A rule
+set only on the session is not saved.
+
 ## Plan mode
 
 `M-x harmless-plan` turns on plan mode for the current session.  A

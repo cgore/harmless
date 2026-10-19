@@ -84,7 +84,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 
 The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `accept-edits`, `always-approve`). "Always" lasts for the session. File tools stay inside the project. The shell does not.
 
-- [ ] Allow and deny rules for commands, paths, and fetch domains. Claude Code writes these as `Bash(npm run *)` and `Edit(/src/**)`.
+- [x] Allow and deny rules for commands, paths, and fetch domains. Claude Code writes these as `Bash(npm run *)` and `Edit(/src/**)`.
 - [ ] A per-project allow list that survives the session.
 - [ ] A denylist for dangerous commands.
 - [x] Classify read-only shell commands so they can skip a prompt. A command Harmless does not recognize still asks. A redirect, a command substitution, and a subshell still ask.

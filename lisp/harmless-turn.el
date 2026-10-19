@@ -551,18 +551,27 @@ from the registry."
                              session tool args))
                        (and (fboundp 'harmless-monitor-plan-refuses-p)
                             (harmless-monitor-plan-refuses-p
-                             session tool args))))))
-        (if (or agent-refusal plan-refusal)
+                             session tool args)))))
+             (rule-refusal
+              (and (not agent-refusal)
+                   (not plan-refusal)
+                   (harmless-perm-rule-refusal session tool args))))
+        (if (or agent-refusal plan-refusal rule-refusal)
             (harmless-turn--finish-call
              batch index
              (harmless-turn--tool-message
-              call (or agent-refusal plan-refusal)))
+              call (or agent-refusal plan-refusal rule-refusal)))
           (setf (harmless-turn-batch-waiting-perm batch) t)
-          (harmless-perm-confirm
-           session
-           class
-           (harmless-turn--item-for tool args)
-           (lambda (decision)
+          (let ((harmless-perm-ask-function
+                 (if (harmless-perm-rule-allows-p session tool args)
+                     (lambda (_session _class _item callback)
+                       (funcall callback 'allow))
+                   harmless-perm-ask-function)))
+            (harmless-perm-confirm
+             session
+             class
+             (harmless-turn--item-for tool args)
+             (lambda (decision)
              (setf (harmless-turn-batch-waiting-perm batch) nil)
              (cond
               ((harmless-turn-batch-aborted batch) nil)
@@ -581,7 +590,7 @@ from the registry."
                    (harmless-turn--tool-message call result))))))
              (unless (or (harmless-turn-batch-launching batch)
                          (harmless-turn-batch-aborted batch))
-               (harmless-turn--launch batch))))))))))
+               (harmless-turn--launch batch)))))))))))
 
 (provide 'harmless-turn)
 

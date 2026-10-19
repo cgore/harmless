@@ -43,7 +43,10 @@
 ;; `findings' is a queue of findings from other live sessions.  It is not
 ;; saved.  A flushed finding is an ordinary transcript line.  `schedules'
 ;; is a list of one-shot prompts still waiting.  Each item is :id,
-;; :prompt, and :at.  A timer is not stored on the item.
+;; :prompt, and :at.  A timer is not stored on the item.  `rules' is
+;; the allow and deny list for this session.  It is not saved.
+;; Configured rules are copied when the session is created and when
+;; it is loaded.
 
 ;;; Code:
 
@@ -60,6 +63,8 @@
 (declare-function harmless-message-flush "harmless-message" (session))
 (declare-function harmless-schedule-restore "harmless-schedule"
                   (session summary))
+(declare-function harmless-perm-install-configured-rules "harmless-perm"
+                  (session))
 
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
@@ -120,7 +125,8 @@ location.  A relative path or the filesystem root is refused."
   agent
   worktree
   findings
-  schedules)
+  schedules
+  rules)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -342,6 +348,8 @@ combined with :cwd."
                    :title-locked (and (plist-get args :title) t))))
     (unless provider
       (error "No Harmless provider configured"))
+    (when (fboundp 'harmless-perm-install-configured-rules)
+      (harmless-perm-install-configured-rules session))
     (harmless-session-register session)
     (harmless-session-save session)
     session))
@@ -613,6 +621,8 @@ Signal when that path would be /NAME or outside the sessions root."
       (if (fboundp 'harmless-schedule-restore)
           (harmless-schedule-restore session summary)
         (harmless-session--schedules-from-summary session summary))
+      (when (fboundp 'harmless-perm-install-configured-rules)
+        (harmless-perm-install-configured-rules session))
       session)))
 
 (defun harmless-session-list-on-disk ()
