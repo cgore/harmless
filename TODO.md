@@ -52,7 +52,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] Claim a row, append notes, and close it only with a reason: `handed_off_to`, `blocked_on`, `denied`, `canceled`, `no-follow-on`, or `escalation`. Closing records delivery. Acceptance is the next seat's own verdict.
 - [x] Hand work to another seat in one transaction: the source row closes and the destination row opens together.
 - [x] Park a row on a real blocker, with one wake. Resolving it records the decision and wakes the owner. A park that asks a person includes a plain-language summary and a pointer to the evidence.
-- [ ] An intake stream for observations nobody owns yet, and views over the board: what is held, what is stalled after a claim, and what is waiting on a person.
+- [x] An intake stream for observations nobody owns yet, and views over the board: what is held, what is stalled after a claim, and what is waiting on a person.
 - [ ] A declared workflow. When the seat that owns a step closes it, the next step's row is created in the same transaction. The owner decides that the step is done.
 - [ ] Watchdog jobs that survive a restart: a reminder, a pool of artifacts, a nudge to a workflow, an idle queue, or a seat approaching its context wall.
 - [ ] Snapshot a rig and restore it by name. The report says, per seat, whether it resumed, was rebuilt, started fresh, is waiting on a decision, or failed. A fresh start is a choice, and it is labeled as one. Check whether a restore can succeed before running it.

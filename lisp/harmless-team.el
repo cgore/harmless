@@ -53,7 +53,10 @@
 ;; next seat's verdict.  A hand closes the source row and opens
 ;; the destination row in one write.  A park has one wake.
 ;; Resolving it records the decision and returns the row to
-;; held.  This file does not register another machine.
+;; held.  Intake holds observations nobody owns.  The board
+;; shows held rows, rows stalled after a claim, and rows
+;; waiting on a person.  This file does not register another
+;; machine.
 
 ;;; Code:
 
@@ -454,6 +457,28 @@ Nil is an empty history."
             (setq ok nil))))
       (and ok (null items)))))
 
+(defun harmless-team--intake-ok-p (rig)
+  "Return non-nil if RIG's intake is readable.
+Nil means the rig has no intake yet."
+  (let ((items (plist-get rig :intake)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (seen nil))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-plist-p item)
+                     (harmless-team--row-id-p (plist-get item :id))
+                     (not (member (plist-get item :id) seen))
+                     (stringp (plist-get item :body))
+                     (not (string-empty-p (plist-get item :body)))
+                     (stringp (plist-get item :at))
+                     (not (string-empty-p (plist-get item :at))))
+                (setq seen (cons (plist-get item :id) seen)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -471,7 +496,8 @@ Nil is an empty history."
        (harmless-team--transcript-ok-p rig)
        (harmless-team--room-ok-p rig)
        (harmless-team--paces-ok-p rig)
-       (harmless-team--rows-ok-p rig)))
+       (harmless-team--rows-ok-p rig)
+       (harmless-team--intake-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -2523,6 +2549,123 @@ The row returns to held.  Return the row."
   (let ((row (harmless-team--row-resolve rig id decision)))
     (message "Resolved %s" (plist-get row :id))
     row))
+
+(defun harmless-team--intake-body (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team intake is empty"))
+   ((not (stringp text))
+    (error "team intake must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team intake is empty")
+    text))
+
+(defun harmless-team--public-intake (item)
+  "Return one intake item with keys in a fixed order."
+  (list :id (plist-get item :id)
+        :body (plist-get item :body)
+        :at (plist-get item :at)))
+
+(defun harmless-team--intake-add (rig body)
+  "Append BODY to RIG's intake and return it.
+The observation has no seat."
+  (setq rig (harmless-team--rig-name rig))
+  (setq body (harmless-team--intake-body body))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (item (list :id (harmless-team--next-row-id
+                          (plist-get stored :intake))
+                     :body body
+                     :at (harmless-now-iso))))
+    (plist-put stored :intake
+               (append (plist-get stored :intake) (list item)))
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-intake item)))
+
+(defun harmless-team--intakes (rig)
+  "Return RIG's intake, oldest first."
+  (setq rig (harmless-team--rig-name rig))
+  (mapcar #'harmless-team--public-intake
+          (plist-get (cdr (harmless-team--load rig)) :intake)))
+
+(defun harmless-team--board-view (view)
+  "Return VIEW trimmed, or signal."
+  (cond
+   ((null view) (error "team board is empty"))
+   ((not (stringp view))
+    (error "team board must be a string")))
+  (setq view (string-trim view))
+  (cond
+   ((string-empty-p view) (error "team board is empty"))
+   ((not (member view '("held" "stalled" "waiting")))
+    (error "team board is not a view"))
+   (t view)))
+
+(defun harmless-team--row-stalled-p (row)
+  "Return non-nil if ROW is held and nothing follows its claim."
+  (and (equal (plist-get row :state) "held")
+       (let ((claimed nil)
+             (after nil))
+         (dolist (item (plist-get row :history))
+           (if claimed
+               (setq after t)
+             (when (equal (plist-get item :text) "claimed")
+               (setq claimed t))))
+         (not after))))
+
+(defun harmless-team--row-waiting-p (row)
+  "Return non-nil if ROW is parked and asks a person."
+  (and (equal (plist-get row :state) "parked")
+       (harmless-team--row-plain-p (plist-get row :summary))
+       (harmless-team--row-plain-p (plist-get row :evidence))))
+
+(defun harmless-team--board (rig view)
+  "Return RIG's rows for VIEW, oldest first.
+VIEW is `held', `stalled', or `waiting'."
+  (setq view (harmless-team--board-view view))
+  (setq rig (harmless-team--rig-name rig))
+  (let ((out nil))
+    (dolist (row (plist-get (cdr (harmless-team--load rig)) :rows))
+      (when (cond
+             ((equal view "held")
+              (member (plist-get row :state) '("held" "parked")))
+             ((equal view "stalled")
+              (harmless-team--row-stalled-p row))
+             (t (harmless-team--row-waiting-p row)))
+        (setq out (append out (list (harmless-team--public-row row))))))
+    out))
+
+;;;###autoload
+(defun harmless-team-intake (rig body)
+  "Record BODY on RIG's intake and return it.
+The observation has no owner and no seat."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Observation: ")))
+  (let ((item (harmless-team--intake-add rig body)))
+    (message "Intake %s" (plist-get item :id))
+    item))
+
+;;;###autoload
+(defun harmless-team-intakes (rig)
+  "Return RIG's intake, oldest first."
+  (interactive (list (read-string "Rig: ")))
+  (let ((items (harmless-team--intakes rig)))
+    (message "%d intakes" (length items))
+    items))
+
+;;;###autoload
+(defun harmless-team-board (rig view)
+  "Return RIG's rows for VIEW.
+VIEW is `held', `stalled', or `waiting'."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "View: ")))
+  (let ((rows (harmless-team--board rig view)))
+    (message "%d rows" (length rows))
+    rows))
 
 (provide 'harmless-team)
 

@@ -2226,6 +2226,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-row-hand
 @findex harmless-team-row-park
 @findex harmless-team-row-resolve
+@findex harmless-team-intake
+@findex harmless-team-intakes
+@findex harmless-team-board
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2418,6 +2421,21 @@ It does not start a turn.  A row that is not parked is refused:
 @samp{team row is not parked}.  A blank decision is refused:
 @samp{team row decision is empty}.  A decision that is not text
 is refused: @samp{team row decision must be a string}.
+
+@kbd{M-x harmless-team-intake} records an observation on the
+rig.  It has no seat and no owner.  @kbd{M-x harmless-team-intakes}
+reads them, oldest first.  A blank observation is refused:
+@samp{team intake is empty}.  An observation that is not text
+is refused: @samp{team intake must be a string}.
+
+@kbd{M-x harmless-team-board} reads one view of the rows.
+@code{held} is a row in @code{held} or @code{parked}.
+@code{stalled} is a held row with nothing after its claim.
+@code{waiting} is a parked row that asks a person.  The view
+does not write.  A blank view is refused: @samp{team board is
+empty}.  A view that is not text is refused: @samp{team board
+must be a string}.  Any other view is refused: @samp{team board
+is not a view}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2699,6 +2717,7 @@ each seat, the work each seat still holds, the text sent to
 each seat, the rig's chatroom, a pace that walks context into
 a seat, and a queue row of owned work that can be claimed,
 noted, closed, handed to another seat, or parked on one wake.
+The same file holds intake that nobody owns yet.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

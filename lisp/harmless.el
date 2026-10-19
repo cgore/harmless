@@ -85,6 +85,8 @@
 ;;   M-x harmless-team-row-hand ; hand a held row to another seat
 ;;   M-x harmless-team-row-park ; park a held row on one wake
 ;;   M-x harmless-team-row-resolve ; record the decision and wake it
+;;   M-x harmless-team-intake  ; record an observation nobody owns
+;;   M-x harmless-team-board   ; held, stalled, or waiting rows
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

@@ -2116,6 +2116,18 @@ parked’.  A blank decision is refused: ‘team row decision is empty’.  A
 decision that is not text is refused: ‘team row decision must be a
 string’.
 
+   ‘M-x harmless-team-intake’ records an observation on the rig.  It has
+no seat and no owner.  ‘M-x harmless-team-intakes’ reads them, oldest
+first.  A blank observation is refused: ‘team intake is empty’.  An
+observation that is not text is refused: ‘team intake must be a string’.
+
+   ‘M-x harmless-team-board’ reads one view of the rows.  ‘held’ is a
+row in ‘held’ or ‘parked’.  ‘stalled’ is a held row with nothing after
+its claim.  ‘waiting’ is a parked row that asks a person.  The view does
+not write.  A blank view is refused: ‘team board is empty’.  A view that
+is not text is refused: ‘team board must be a string’.  Any other view
+is refused: ‘team board is not a view’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2363,7 +2375,8 @@ replaced with ‘/’.
      seat, the work each seat still holds, the text sent to each seat,
      the rig's chatroom, a pace that walks context into a seat, and a
      queue row of owned work that can be claimed, noted, closed, handed
-     to another seat, or parked on one wake.  *Note Team::.
+     to another seat, or parked on one wake.  The same file holds intake
+     that nobody owns yet.  *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2601,11 +2614,14 @@ Command Index
 * harmless-team-add-seat:                Team.                 (line  6)
 * harmless-team-add-work:                Team.                 (line  6)
 * harmless-team-adopt:                   Team.                 (line  6)
+* harmless-team-board:                   Team.                 (line  6)
 * harmless-team-boot:                    Team.                 (line  6)
 * harmless-team-capture:                 Team.                 (line  6)
 * harmless-team-edge:                    Team.                 (line  6)
 * harmless-team-edges:                   Team.                 (line  6)
 * harmless-team-grow:                    Team.                 (line  6)
+* harmless-team-intake:                  Team.                 (line  6)
+* harmless-team-intakes:                 Team.                 (line  6)
 * harmless-team-launch-order:            Team.                 (line  6)
 * harmless-team-occupy:                  Team.                 (line  6)
 * harmless-team-pace:                    Team.                 (line  6)
@@ -2712,15 +2728,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory106074
-Node: Plan mode108664
-Node: Usage111650
-Node: Files112669
-Node: Keys114680
-Node: Trouble116362
-Node: Manual117616
-Node: Command Index118321
-Node: Key Index124957
+Node: Memory106810
+Node: Plan mode109400
+Node: Usage112386
+Node: Files113405
+Node: Keys115471
+Node: Trouble117153
+Node: Manual118407
+Node: Command Index119112
+Node: Key Index125967
 
 End Tag Table
 

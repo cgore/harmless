@@ -91,6 +91,9 @@
   (should (fboundp 'harmless-team-row-hand))
   (should (fboundp 'harmless-team-row-park))
   (should (fboundp 'harmless-team-row-resolve))
+  (should (fboundp 'harmless-team-intake))
+  (should (fboundp 'harmless-team-intakes))
+  (should (fboundp 'harmless-team-board))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
