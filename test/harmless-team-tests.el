@@ -60,6 +60,12 @@
     (write-region text nil path nil 'silent))
   path)
 
+(defun harmless-team-test-session-roots ()
+  "Return existence of session directories at filesystem roots."
+  (list (file-exists-p "/sessions")
+        (file-exists-p "c:/sessions")
+        (file-exists-p "d:/sessions")))
+
 (ert-deftest harmless-team-seat-keeps-its-work ()
   (let* ((base (make-temp-file "harmless-team-" t))
          (elsewhere (expand-file-name "elsewhere" base))
@@ -800,3 +806,269 @@
                                        :from "dev.build"
                                        :to "dev.review")))))
     (should (equal roots (harmless-team-test-roots)))))
+
+(ert-deftest harmless-team-adopts-and-releases-without-killing ()
+  (let* ((base (make-temp-file "harmless-team-adopt-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (claude (expand-file-name "claude-session" base))
+         (codex (expand-file-name "codex-session.json" base))
+         (pi (expand-file-name "pi-session" base))
+         (logf (expand-file-name "server.log" base))
+         (id harmless-team-test-session-b)
+         (hand (expand-file-name (concat "sessions/hand/" id) base))
+         (summary (expand-file-name "summary.json" hand))
+         (dup (expand-file-name
+               (concat "sessions/other/" harmless-team-test-session-a)
+               base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (pid (number-to-string (emacs-pid))))
+    (make-directory elsewhere t)
+    (make-directory claude t)
+    (make-directory pi t)
+    (harmless-team-test-write
+     (expand-file-name "session.txt" claude) "claude")
+    (harmless-team-test-write
+     (expand-file-name "session.txt" pi) "pi")
+    (harmless-team-test-write codex "codex")
+    (harmless-team-test-write logf "log line\n")
+    (let ((log-bytes (harmless-team-test-bytes logf))
+          (codex-bytes (harmless-team-test-bytes codex)))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" bad logf)))
+                       "team runtime is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" 42 logf)))
+                     "team runtime must be a string"))
+      (dolist (bad (list "shell" "Harmless" "notes"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" bad logf)))
+                       "team runtime is not a runtime")))
+      (let ((harmless-directory "/"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "nope" logf)))
+                       "team runtime is not a runtime")))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "claude" bad)))
+                       "team session is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" "claude" 42)))
+                     "team session must be a string"))
+      (dolist (bad (list "~" "notes" "sub/" "  notes  " "rig.json"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "claude" bad)))
+                       "team session must be absolute")))
+      (dolist (bad (list "/" "c:/" " / " " c:/ " "c:" "\\"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "claude" bad)))
+                       "team session is the filesystem root")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" "claude"
+                         (expand-file-name "missing-log" base))))
+                     "team session is missing"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" "harmless" "not-an-id")))
+                     "team session is not an id"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" "terminal" "0")))
+                     "team session is not running"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" "terminal"
+                         "2147483647")))
+                     "team session is not running"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "absent" "dev" "build" "terminal" logf)))
+                     "team rig is missing"))
+      (let ((harmless-directory "/"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "terminal" logf)))
+                       "Refusing to store a team at /")))
+      (let ((harmless-directory "c:"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "terminal" logf)))
+                       "Refusing to store a team at c:")))
+      (should-not (file-directory-p teams))
+      (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+      (should-not (file-exists-p (expand-file-name "sub" elsewhere)))
+      (should-not (file-directory-p (expand-file-name "sessions" base)))
+      (should (equal (harmless-team-test-bytes logf) log-bytes))
+      (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+      (harmless-team-add-seat "workshop" "qa" "note" "notes")
+      (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+      (harmless-team-edge
+       "workshop" "delegates_to" "dev.build" "qa.note")
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-release "workshop" "dev" "build")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "gone" "terminal" logf)))
+                     "team seat is missing"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-adopt
+                         "workshop" "dev" "build" " harmless " id)))
+                     "team session is missing"))
+      (should-not (file-directory-p (expand-file-name "sessions" base)))
+      (make-directory hand t)
+      (make-directory dup t)
+      (harmless-team-test-write summary (concat "{\"id\":\"" id "\"}"))
+      (harmless-team-test-write
+       (expand-file-name "summary.json" dup) "{\"id\":\"dup\"}")
+      (make-directory
+       (expand-file-name
+        (concat "sessions/third/" harmless-team-test-session-a) base)
+       t)
+      (harmless-team-test-write
+       (expand-file-name
+        "summary.json"
+        (expand-file-name
+         (concat "sessions/third/" harmless-team-test-session-a) base))
+       "{\"id\":\"dup2\"}")
+      (let ((bytes (harmless-team-test-bytes file))
+            (hand-bytes (harmless-team-test-bytes summary)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-adopt
+                           "workshop" "dev" "build" "harmless"
+                           harmless-team-test-session-a)))
+                       "team session is not one session"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should (equal (harmless-team-test-bytes summary) hand-bytes))
+        (should (file-directory-p dup))
+        (should (equal (harmless-team-adopt
+                        "workshop" "dev" "build" " harmless "
+                        (concat "  " id "  "))
+                       (append (harmless-team-test-seat id work)
+                               (list :runtime "harmless"))))
+        (should (equal (harmless-team-edges "workshop") edge))
+        (should (equal (harmless-team-adopt
+                        "workshop" "dev" "build" "claude"
+                        (file-name-as-directory claude))
+                       (append (harmless-team-test-seat claude work)
+                               (list :runtime "claude"))))
+        (should (file-regular-p summary))
+        (should (equal (harmless-team-test-bytes summary) hand-bytes))
+        (should (equal (harmless-team-adopt
+                        "workshop" "dev" "build" "codex" codex)
+                       (append (harmless-team-test-seat codex work)
+                               (list :runtime "codex"))))
+        (should (file-directory-p claude))
+        (should (file-regular-p
+                 (expand-file-name "session.txt" claude)))
+        (should (equal (harmless-team-adopt
+                        "workshop" "dev" "build" "pi" pi)
+                       (append (harmless-team-test-seat pi work)
+                               (list :runtime "pi"))))
+        (should (equal (harmless-team-test-bytes codex) codex-bytes))
+        (should (equal (harmless-team-adopt
+                        "workshop" "dev" "build" "terminal" logf)
+                       (append (harmless-team-test-seat logf work)
+                               (list :runtime "terminal"))))
+        (should (file-directory-p pi))
+        (should (equal (harmless-team-release
+                        "workshop" "dev" "build")
+                       (list :released "dev-build@workshop"
+                             :runtime "terminal"
+                             :session logf)))
+        (should (equal (harmless-team-seat "workshop" "dev" "build")
+                       (harmless-team-test-seat "" work)))
+        (should (equal (harmless-team-edges "workshop") edge))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes summary) hand-bytes))
+        (should-not (string-search "claude-session"
+                                   (harmless-team-test-read file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-release
+                           "workshop" "dev" "build")))
+                       "team seat is not occupied")))
+      (should (equal (harmless-team-adopt
+                      "workshop" "qa" "note" "terminal"
+                      (concat "  " pid "  "))
+                     (list :rig "workshop" :pod "qa" :name "note"
+                           :role "notes"
+                           :address "qa-note@workshop"
+                           :session pid
+                           :work nil
+                           :runtime "terminal")))
+      (should (process-attributes (emacs-pid)))
+      (should (equal (harmless-team-remove "workshop" "qa" "note")
+                     (list :removed "qa-note@workshop"
+                           :fallback nil :work nil)))
+      (should (process-attributes (emacs-pid)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-seat "workshop" "qa" "note")))
+                     "team seat is missing"))
+      (should (equal (harmless-team-edges "workshop") nil))
+      (should (equal (harmless-team-adopt
+                      "workshop" "dev" "build" "claude" claude)
+                     (append (harmless-team-test-seat claude work)
+                             (list :runtime "claude"))))
+      (should (equal (harmless-team-occupy
+                      "workshop" "dev" "build" id)
+                     (harmless-team-test-seat id work)))
+      (should (file-directory-p claude))
+      (should (equal (harmless-team-release "workshop" "dev" "build")
+                     (list :released "dev-build@workshop"
+                           :runtime nil
+                           :session id)))
+      (should (equal (harmless-team-seat "workshop" "dev" "build")
+                     (harmless-team-test-seat "" work)))
+      (should (file-regular-p summary))
+      (should (file-regular-p logf))
+      (should (equal (harmless-team-test-bytes logf) log-bytes))
+      (should (equal (harmless-team-test-bytes codex) codex-bytes))
+      (should (file-name-absolute-p file))
+      (should (harmless-directory-strictly-under-p file base))
+      (should-not (equal (file-truename file) (file-truename "/")))
+      (should (file-name-absolute-p summary))
+      (should (harmless-directory-strictly-under-p summary base))
+      (should-not (equal (file-truename summary) (file-truename "/")))
+      (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+      (should (equal roots (harmless-team-test-roots)))
+      (should (equal session-roots
+                     (harmless-team-test-session-roots))))))

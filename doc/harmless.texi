@@ -2205,6 +2205,8 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-boot
 @findex harmless-team-grow
 @findex harmless-team-remove
+@findex harmless-team-adopt
+@findex harmless-team-release
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2246,6 +2248,36 @@ holds work needs another seat to take that work.  Without one
 the removal is refused: @samp{team seat holds work}.  Naming the
 same seat is refused: @samp{team fallback is the same seat}.
 The rig file stays when its last seat is removed.
+
+@kbd{M-x harmless-team-adopt} binds a session that is already
+running to a seat.  It does not start that session.  The runtime
+is @code{harmless}, @code{claude}, @code{codex}, @code{pi}, or
+@code{terminal}.  A Harmless session is the id of a session
+directory that already exists, including one started by hand.
+Claude Code, Codex, and Pi each take an absolute path to a file
+or directory that already exists.  A terminal takes that path,
+or the id of a live process such as a dev server or a log.
+Replacing the binding does not stop the session that was there.
+@kbd{M-x harmless-team-release} clears the binding.  It does not
+delete the session, the file, or the process.  The name, the
+role, and the inbound work stay.
+
+A blank runtime is refused: @samp{team runtime is empty}.  A
+runtime that is not text is refused: @samp{team runtime must be
+a string}.  Any other runtime is refused: @samp{team runtime is
+not a runtime}.  A blank session is refused: @samp{team session
+is empty}.  A session that is not text is refused: @samp{team
+session must be a string}.  A Harmless id that is not a session
+id is refused: @samp{team session is not an id}.  A missing
+session is refused: @samp{team session is missing}.  Two
+Harmless directories with the same id are refused: @samp{team
+session is not one session}.  @code{/} and a drive root are
+refused: @samp{team session is the filesystem root}.  @code{~}
+and a relative path are refused and are not expanded:
+@samp{team session must be absolute}.  A terminal process that
+is not running is refused: @samp{team session is not running}.
+Releasing an empty seat is refused: @samp{team seat is not
+occupied}.
 
 Nil, @code{""}, and whitespace are refused: @samp{team edge is
 empty}.  An edge that is not text is refused: @samp{team edge
@@ -2505,8 +2537,8 @@ A chat with no project.
 One headless task.  @xref{Headless}.
 
 @item teams/@var{rig}.json
-One rig: its pods, its seats, its edges, and the work each seat
-still holds.
+One rig: its pods, its seats, its edges, the session occupying
+each seat, and the work each seat still holds.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

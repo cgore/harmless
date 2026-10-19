@@ -65,6 +65,8 @@
 ;;   M-x harmless-team-boot    ; record a rig from a spec
 ;;   M-x harmless-team-grow    ; add a seat to a running rig
 ;;   M-x harmless-team-remove  ; drop a seat, moving work first
+;;   M-x harmless-team-adopt   ; bind a session that is already running
+;;   M-x harmless-team-release ; clear that binding without stopping it
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

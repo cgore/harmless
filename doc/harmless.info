@@ -1986,6 +1986,31 @@ the removal is refused: ‘team seat holds work’.  Naming the same seat is
 refused: ‘team fallback is the same seat’.  The rig file stays when its
 last seat is removed.
 
+   ‘M-x harmless-team-adopt’ binds a session that is already running to
+a seat.  It does not start that session.  The runtime is ‘harmless’,
+‘claude’, ‘codex’, ‘pi’, or ‘terminal’.  A Harmless session is the id of
+a session directory that already exists, including one started by hand.
+Claude Code, Codex, and Pi each take an absolute path to a file or
+directory that already exists.  A terminal takes that path, or the id of
+a live process such as a dev server or a log.  Replacing the binding
+does not stop the session that was there.  ‘M-x harmless-team-release’
+clears the binding.  It does not delete the session, the file, or the
+process.  The name, the role, and the inbound work stay.
+
+   A blank runtime is refused: ‘team runtime is empty’.  A runtime that
+is not text is refused: ‘team runtime must be a string’.  Any other
+runtime is refused: ‘team runtime is not a runtime’.  A blank session is
+refused: ‘team session is empty’.  A session that is not text is
+refused: ‘team session must be a string’.  A Harmless id that is not a
+session id is refused: ‘team session is not an id’.  A missing session
+is refused: ‘team session is missing’.  Two Harmless directories with
+the same id are refused: ‘team session is not one session’.  ‘/’ and a
+drive root are refused: ‘team session is the filesystem root’.  ‘~’ and
+a relative path are refused and are not expanded: ‘team session must be
+absolute’.  A terminal process that is not running is refused: ‘team
+session is not running’.  Releasing an empty seat is refused: ‘team seat
+is not occupied’.
+
    Nil, ‘""’, and whitespace are refused: ‘team edge is empty’.  An edge
 that is not text is refused: ‘team edge must be a string’.  Any other
 kind is refused: ‘team edge is not a kind’.  An end that is not a seat
@@ -2215,8 +2240,8 @@ replaced with ‘/’.
      One headless task.  *Note Headless::.
 
 ‘teams/RIG.json’
-     One rig: its pods, its seats, its edges, and the work each seat
-     still holds.  *Note Team::.
+     One rig: its pods, its seats, its edges, the session occupying each
+     seat, and the work each seat still holds.  *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2453,6 +2478,7 @@ Command Index
 * harmless-task-status:                  Headless.             (line  6)
 * harmless-team-add-seat:                Team.                 (line  6)
 * harmless-team-add-work:                Team.                 (line  6)
+* harmless-team-adopt:                   Team.                 (line  6)
 * harmless-team-boot:                    Team.                 (line  6)
 * harmless-team-edge:                    Team.                 (line  6)
 * harmless-team-edges:                   Team.                 (line  6)
@@ -2460,6 +2486,7 @@ Command Index
 * harmless-team-launch-order:            Team.                 (line  6)
 * harmless-team-occupy:                  Team.                 (line  6)
 * harmless-team-preview:                 Team.                 (line  6)
+* harmless-team-release:                 Team.                 (line  6)
 * harmless-team-remove:                  Team.                 (line  6)
 * harmless-team-seat:                    Team.                 (line  6)
 * harmless-usage:                        Usage.                (line  6)
@@ -2544,15 +2571,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory97380
-Node: Plan mode99970
-Node: Usage102956
-Node: Files103975
-Node: Keys105742
-Node: Trouble107424
-Node: Manual108678
-Node: Command Index109383
-Node: Key Index114486
+Node: Memory99024
+Node: Plan mode101614
+Node: Usage104600
+Node: Files105619
+Node: Keys107419
+Node: Trouble109101
+Node: Manual110355
+Node: Command Index111060
+Node: Key Index116309
 
 End Tag Table
 

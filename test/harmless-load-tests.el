@@ -70,6 +70,8 @@
   (should (fboundp 'harmless-team-boot))
   (should (fboundp 'harmless-team-grow))
   (should (fboundp 'harmless-team-remove))
+  (should (fboundp 'harmless-team-adopt))
+  (should (fboundp 'harmless-team-release))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

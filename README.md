@@ -156,6 +156,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-boot` | Record a rig from `starter`, a JSON spec, or a bundle |
 | `M-x harmless-team-grow` | Add a seat to a rig that is already recorded |
 | `M-x harmless-team-remove` | Remove a seat. Work needs a fallback seat |
+| `M-x harmless-team-adopt` | Bind a Harmless, Claude Code, Codex, Pi, or terminal session that is already running |
+| `M-x harmless-team-release` | Clear that binding. The session keeps running |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -337,6 +339,16 @@ boot of the same rig is refused.  `M-x harmless-team-grow` adds a
 seat.  `M-x harmless-team-remove` shrinks the rig: it drops a
 seat and the edges that touch it.  A seat that still holds work
 needs a fallback seat.
+
+`M-x harmless-team-adopt` binds a session that is already
+running.  It does not start that session.  The runtime is
+`harmless`, `claude`, `codex`, `pi`, or `terminal`.  A Harmless
+session is an id that already has a session directory, including
+one started by hand.  Claude Code, Codex, and Pi take an
+absolute path that already exists.  A terminal takes that path
+or the id of a live process.  `M-x harmless-team-release` clears
+the binding and leaves the session, the file, and the process
+running.
 
 ## Subagents
 

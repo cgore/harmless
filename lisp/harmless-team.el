@@ -41,8 +41,10 @@
 ;; The name, the role, and the inbound work stay.  Edges are
 ;; recorded on the rig.  `delegates_to` and `spawned_by` decide
 ;; the launch order.  A spec, the built-in starter, or a bundle
-;; can boot a rig.  Preview does not write.  This file does not
-;; send to a seat or register another machine.
+;; can boot a rig.  Preview does not write.  A seat can adopt a
+;; session that is already running.  Release clears that binding
+;; and does not stop the session.  This file does not send to a
+;; seat or register another machine.
 
 ;;; Code:
 
@@ -235,6 +237,28 @@ Nil is an empty list."
         (setq found t)))
     found))
 
+(defconst harmless-team--runtimes
+  '("harmless" "claude" "codex" "pi" "terminal")
+  "Runtimes a seat can adopt.  Release does not stop one.")
+
+(defun harmless-team--stored-session-p (seat)
+  "Return non-nil if SEAT's session and runtime agree.
+A missing runtime is an empty seat or an occupied session id.
+`harmless' keeps a session id.  The other runtimes keep a
+non-empty reference."
+  (let ((session (plist-get seat :session))
+        (runtime (plist-get seat :runtime)))
+    (and (stringp session)
+         (cond
+          ((null runtime)
+           (or (string-empty-p session)
+               (string-match-p harmless-team--session-re session)))
+          ((equal runtime "harmless")
+           (string-match-p harmless-team--session-re session))
+          ((and (stringp runtime)
+                (member runtime harmless-team--runtimes))
+           (not (string-empty-p session)))))))
+
 (defun harmless-team--seat-ok-p (seat pod rig seen)
   "Return non-nil if SEAT belongs to POD in RIG.
 SEEN holds seat names already accepted in POD."
@@ -243,10 +267,7 @@ SEEN holds seat names already accepted in POD."
        (not (harmless-team--seen-p (plist-get seat :name) seen))
        (stringp (plist-get seat :role))
        (not (string-empty-p (plist-get seat :role)))
-       (stringp (plist-get seat :session))
-       (or (string-empty-p (plist-get seat :session))
-           (string-match-p harmless-team--session-re
-                           (plist-get seat :session)))
+       (harmless-team--stored-session-p seat)
        (harmless-team--string-list-p (plist-get seat :work))
        (equal (plist-get seat :address)
               (format "%s-%s@%s"
@@ -467,13 +488,17 @@ not valid\" and is not rewritten."
 
 (defun harmless-team--public (rig pod seat)
   "Return the seat plist a caller sees."
-  (list :rig (plist-get rig :name)
-        :pod (plist-get pod :name)
-        :name (plist-get seat :name)
-        :role (plist-get seat :role)
-        :address (plist-get seat :address)
-        :session (plist-get seat :session)
-        :work (plist-get seat :work)))
+  (let ((public (list :rig (plist-get rig :name)
+                      :pod (plist-get pod :name)
+                      :name (plist-get seat :name)
+                      :role (plist-get seat :role)
+                      :address (plist-get seat :address)
+                      :session (plist-get seat :session)
+                      :work (plist-get seat :work)))
+        (runtime (plist-get seat :runtime)))
+    (if (and (stringp runtime) (not (string-empty-p runtime)))
+        (append public (list :runtime runtime))
+      public)))
 
 (defun harmless-team--load (rig)
   "Return (PATH . RIG) for RIG, or signal.
@@ -552,6 +577,7 @@ A missing file signals \"team rig is missing\"."
     (unless found
       (error "team seat is missing"))
     (plist-put (cdr found) :session session)
+    (plist-put (cdr found) :runtime nil)
     (harmless-team--write (car loaded) stored)
     (harmless-team--public stored (car found) (cdr found))))
 
@@ -1108,6 +1134,172 @@ are dropped.  Return a plist of what was removed."
   (let ((removed (harmless-team--drop rig pod seat fallback)))
     (message "Removed %s" (plist-get removed :removed))
     removed))
+
+(defun harmless-team--runtime (runtime)
+  "Return RUNTIME trimmed, or signal."
+  (cond
+   ((null runtime) (error "team runtime is empty"))
+   ((not (stringp runtime))
+    (error "team runtime must be a string")))
+  (setq runtime (string-trim runtime))
+  (cond
+   ((string-empty-p runtime) (error "team runtime is empty"))
+   ((not (member runtime harmless-team--runtimes))
+    (error "team runtime is not a runtime"))
+   (t runtime)))
+
+(defun harmless-team--existing-path (text)
+  "Return TEXT as an absolute file or directory that exists.
+\"~\" is not expanded.  TEXT is not created."
+  (cond
+   ((null text) (error "team session is empty"))
+   ((not (stringp text))
+    (error "team session must be a string")))
+  (setq text (string-trim text))
+  (cond
+   ((string-empty-p text) (error "team session is empty"))
+   ((or (harmless-team--root-text-p text)
+        (and (file-name-absolute-p text)
+             (not (string-prefix-p "~" text))
+             (let ((expanded (directory-file-name
+                              (expand-file-name text))))
+               (or (harmless-team--root-text-p expanded)
+                   (equal (file-truename expanded)
+                          (file-truename "/"))))))
+    (error "team session is the filesystem root"))
+   ((or (string-prefix-p "~" text)
+        (not (file-name-absolute-p text)))
+    (error "team session must be absolute")))
+  (setq text (directory-file-name (expand-file-name text)))
+  (unless (or (file-regular-p text) (file-directory-p text))
+    (error "team session is missing"))
+  text)
+
+(defun harmless-team--harmless-session (id)
+  "Return the session directory for ID, or signal.
+ID is a session id.  The directory must already exist.  This
+does not create it."
+  (setq id (harmless-team--session id))
+  (let* ((root (file-name-as-directory
+                (expand-file-name
+                 "sessions" (harmless-team--data-directory))))
+         (found nil))
+    (when (and (file-directory-p root)
+               (not (equal (file-truename root) (file-truename "/"))))
+      (dolist (dir (directory-files-recursively
+                    root (concat "\\`" (regexp-quote id) "\\'") t))
+        (when (and (file-directory-p dir)
+                   (file-regular-p
+                    (expand-file-name "summary.json" dir))
+                   (harmless-directory-strictly-under-p dir root)
+                   (not (equal (file-truename dir)
+                               (file-truename "/"))))
+          (setq found (append found (list dir))))))
+    (cond
+     ((null found) (error "team session is missing"))
+     ((cdr found) (error "team session is not one session"))
+     (t (car found)))))
+
+(defun harmless-team--terminal-ref (text)
+  "Return a live process id or an existing path for TEXT.
+A process id is a decimal string.  This does not start it."
+  (cond
+   ((null text) (error "team session is empty"))
+   ((not (stringp text))
+    (error "team session must be a string")))
+  (setq text (string-trim text))
+  (cond
+   ((string-empty-p text) (error "team session is empty"))
+   ((string-match-p "\\`[0-9]+\\'" text)
+    (let ((pid (string-to-number text)))
+      (unless (and (> pid 0) (process-attributes pid))
+        (error "team session is not running"))
+      (number-to-string pid)))
+   (t (harmless-team--existing-path text))))
+
+(defun harmless-team--occupant-ref (runtime ref)
+  "Return the stored reference for RUNTIME and REF.
+The session must already exist.  Nothing here is started."
+  (cond
+   ((equal runtime "harmless")
+    (harmless-team--session ref)
+    (harmless-team--harmless-session ref)
+    (harmless-team--session ref))
+   ((equal runtime "terminal")
+    (harmless-team--terminal-ref ref))
+   (t (harmless-team--existing-path ref))))
+
+(defun harmless-team--adopt (rig pod seat runtime ref)
+  "Bind REF to SEAT and return the public plist.
+RUNTIME names the kind of session.  An earlier binding is
+replaced.  The earlier session is not stopped."
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (setq runtime (harmless-team--runtime runtime))
+  (setq ref (harmless-team--occupant-ref runtime ref))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (plist-put (cdr found) :session ref)
+    (plist-put (cdr found) :runtime runtime)
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public stored (car found) (cdr found))))
+
+(defun harmless-team--release (rig pod seat)
+  "Clear SEAT's binding and return what was released.
+The session, file, and process are left running."
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let* ((item (cdr found))
+           (ref (plist-get item :session))
+           (runtime (plist-get item :runtime)))
+      (when (and (or (null ref) (string-empty-p ref))
+                 (or (null runtime) (string-empty-p runtime)))
+        (error "team seat is not occupied"))
+      (plist-put item :session "")
+      (plist-put item :runtime nil)
+      (harmless-team--write (car loaded) stored)
+      (list :released (plist-get item :address)
+            :runtime runtime
+            :session ref))))
+
+;;;###autoload
+(defun harmless-team-adopt (rig pod seat runtime ref)
+  "Bind an already running session to SEAT in POD of RIG.
+RUNTIME is `harmless', `claude', `codex', `pi', or `terminal'.
+REF is that session.  This does not start it.  Return the seat
+plist."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-string "Runtime: ")
+         (read-string "Session: ")))
+  (let ((saved (harmless-team--adopt rig pod seat runtime ref)))
+    (message "Adopted %s" (plist-get saved :address))
+    saved))
+
+;;;###autoload
+(defun harmless-team-release (rig pod seat)
+  "Clear the session bound to SEAT in POD of RIG.
+The session keeps running.  The name, the role, and the inbound
+work stay.  Return the binding that was cleared."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")))
+  (let ((released (harmless-team--release rig pod seat)))
+    (message "Released %s" (plist-get released :released))
+    released))
 
 (provide 'harmless-team)
 
