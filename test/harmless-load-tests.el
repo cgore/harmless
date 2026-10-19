@@ -108,6 +108,9 @@
   (should (fboundp 'harmless-team-image-start))
   (should (fboundp 'harmless-team-packet))
   (should (fboundp 'harmless-team-packet-apply))
+  (should (fboundp 'harmless-team-compact-plan))
+  (should (fboundp 'harmless-team-compact))
+  (should (fboundp 'harmless-team-compacts))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

@@ -194,6 +194,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-image-start` | Record a new seat from that image |
 | `M-x harmless-team-packet` | Capture what an occupied seat knows |
 | `M-x harmless-team-packet-apply` | Carry that onto a session that is already running |
+| `M-x harmless-team-compact-plan` | List seats near the context wall |
+| `M-x harmless-team-compact` | Record a deliberate compact and tell the room |
+| `M-x harmless-team-compacts` | Read those compact notices, oldest first |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -488,6 +491,14 @@ inbound work, and it starts with no session.
 `M-x harmless-team-packet-apply` puts that work back and binds
 a session that is already running.  The runtime must change.
 The seat keeps its name.  Neither command starts a process.
+
+`M-x harmless-team-compact-plan` lists Harmless seats at or
+above a percent of the context window.  It does not write.
+`M-x harmless-team-compact` records why that seat is compacted
+and tells the room.  The seat must already be at that wall.
+`M-x harmless-team-compacts` reads those notices, oldest
+first.  The transcript summary is `M-x harmless-compact`.
+Nothing is started.
 
 ## Subagents
 

@@ -2243,6 +2243,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-image-start
 @findex harmless-team-packet
 @findex harmless-team-packet-apply
+@findex harmless-team-compact-plan
+@findex harmless-team-compact
+@findex harmless-team-compacts
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2549,6 +2552,22 @@ missing}.  A packet file that cannot be read is refused:
 refused: @samp{team packet is empty}.  The same runtime is
 refused: @samp{team packet is the same runtime}.
 
+@kbd{M-x harmless-team-compact-plan} lists Harmless seats at or
+above a percent of the context window.  It does not write, and
+it does not compact.  @kbd{M-x harmless-team-compact} records
+why that seat is compacted and tells the room, on the topic
+@code{compact}.  The seat must already be at that wall.
+@kbd{M-x harmless-team-compacts} reads those notices, oldest
+first.  The transcript summary is @kbd{M-x harmless-compact}.
+Nothing is started.  A blank percent is refused: @samp{team
+compact percent is empty}.  Any other percent is refused:
+@samp{team compact percent is not a percent}.  A blank reason
+is refused: @samp{team compact why is empty}.  A reason that is
+not text is refused: @samp{team compact why must be a string}.
+An empty seat is refused: @samp{team seat is not occupied}.  A
+seat below the wall is refused: @samp{team seat is not near
+the wall}.
+
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
 a string}.  Any other runtime is refused: @samp{team runtime is
@@ -2834,7 +2853,10 @@ holds a declared workflow.  Closing its current step opens
 the next step.  It also holds watchdog jobs that remain after
 Emacs restarts.  It also holds the recap written when a seat
 is handed to a successor.  The seat keeps its name, its
-edges, and its inbound work.
+edges, and its inbound work.  The same file also holds the
+notice written when a seat near its context wall is compacted
+on purpose, and the room line that tells the rest of the team.
+The transcript summary is @kbd{M-x harmless-compact}.
 @xref{Team}.
 
 @item teams/snapshots/@var{rig}/@var{name}.json

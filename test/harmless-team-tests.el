@@ -4616,3 +4616,241 @@
                          (file-exists-p "/teams/packets")
                          (file-exists-p "c:/teams/packets")
                          (file-exists-p "d:/teams/packets"))))))
+
+(ert-deftest harmless-team-compact-plans-the-wall ()
+  "A compact plan writes nothing.  The notice tells the room."
+  (let* ((base (make-temp-file "harmless-team-compact-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (timers (copy-sequence timer-list))
+         (procs (process-list))
+         (runs (hash-table-count harmless-compact--runs))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (summary-a (expand-file-name
+                     (concat "sessions/proj/"
+                             harmless-team-test-session-a
+                             "/summary.json")
+                     base))
+         (summary-b (expand-file-name
+                     (concat "sessions/proj/"
+                             harmless-team-test-session-b
+                             "/summary.json")
+                     base)))
+    (make-directory elsewhere t)
+    (let ((harmless-directory "/"))
+      (dolist (bad (list nil "" "   " "\n"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-compact-plan "workshop" bad)))
+                       "team compact percent is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-compact
+                           "workshop" "dev" "build" 80 bad)))
+                       "team compact why is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "build" 80 42)))
+                     "team compact why must be a string"))
+      (dolist (bad (list "80" 0 101 1.5))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-compact-plan "workshop" bad)))
+                       "team compact percent is not a percent")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact-plan "workshop" 80)))
+                     "Refusing to store a team at /"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "build" 80 "because")))
+                     "Refusing to store a team at /")))
+    (let ((harmless-directory "c:"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact-plan "workshop" 80)))
+                     "Refusing to store a team at c:")))
+    (let ((harmless-directory "notes"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "build" 80 "because")))
+                     (concat "Harmless data directory must be "
+                             "absolute, not \"notes\""))))
+    (let ((harmless-directory "notes/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact-plan "workshop" 80)))
+                     (concat "Harmless data directory must be "
+                             "absolute, not \"notes/\""))))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-compact-plan "workshop" 80)))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (harmless-team-add-work
+     "workshop" "dev" "build" "keep the tests")
+    (harmless-team-edge
+     "workshop" "delegates_to" "dev.build" "qa.note")
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should-not (harmless-team-compact-plan "workshop" 80))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "build" 80 "because")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "gone" 80 "because")))
+                     "team seat is missing"))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should-not (harmless-team-room-history "workshop")))
+    (make-directory (file-name-directory summary-a) t)
+    (harmless-team-test-write
+     summary-a
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 1000)))
+    (make-directory (file-name-directory summary-b) t)
+    (harmless-team-test-write
+     summary-b
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 1000)))
+    (harmless-team-adopt
+     "workshop" "dev" "build" "harmless"
+     harmless-team-test-session-a)
+    (harmless-team-adopt
+     "workshop" "qa" "note" "harmless"
+     harmless-team-test-session-b)
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should-not (harmless-team-compact-plan "workshop" 80))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "build" 80
+                         "  context wall  ")))
+                     "team seat is not near the wall"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (harmless-team-test-write
+     summary-a
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 400000)))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-compact-plan "workshop" 80)
+                     (list (list :seat "dev-build@workshop"
+                                 :session
+                                 harmless-team-test-session-a
+                                 :used 400000
+                                 :window 500000
+                                 :percent 80))))
+      (should-not (harmless-team-compact-plan "workshop" 100))
+      (should (equal (harmless-team-test-bytes file) bytes))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "qa" "note" 80 "because")))
+                     "team seat is not near the wall"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-compact
+                         "workshop" "dev" "build" 100 "because")))
+                     "team seat is not near the wall"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (let ((saved (harmless-team-compact
+                  "workshop" "dev" "build" 80
+                  "  context\nwall  ")))
+      (let ((notice (plist-get saved :compact))
+            (line (plist-get saved :room)))
+        (should (equal (plist-get notice :id) "1"))
+        (should (equal (plist-get notice :seat)
+                       "dev-build@workshop"))
+        (should (equal (plist-get notice :session)
+                       harmless-team-test-session-a))
+        (should (equal (plist-get notice :why) "context\nwall"))
+        (should (equal (plist-get notice :used) 400000))
+        (should (equal (plist-get notice :window) 500000))
+        (should (equal (plist-get notice :percent) 80))
+        (should (equal (plist-get line :topic) "compact"))
+        (should (equal (plist-get line :speaker)
+                       "dev-build@workshop"))
+        (should (equal (plist-get line :text) "context\nwall"))
+        (should (equal (plist-get line :at)
+                       (plist-get notice :at)))
+        (should (equal (harmless-team-compacts "workshop")
+                       (list notice)))
+        (should (equal (harmless-team-room-history
+                        "workshop" "compact")
+                       (list line)))))
+    (harmless-team-test-write
+     summary-b
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 400000)))
+    (let ((again (harmless-team-compact
+                  "workshop" "qa" "note" 80 "/")))
+      (should (equal (plist-get (plist-get again :compact) :id)
+                     "2"))
+      (should (equal (plist-get (plist-get again :compact) :why)
+                     "/"))
+      (should (equal (plist-get (plist-get again :compact) :seat)
+                     "qa-note@workshop"))
+      (should (equal (mapcar (lambda (item) (plist-get item :why))
+                             (harmless-team-compacts "workshop"))
+                     '("context\nwall" "/")))
+      (should (equal (mapcar (lambda (line) (plist-get line :text))
+                             (harmless-team-room-history
+                              "workshop" "compact"))
+                     '("context\nwall" "/"))))
+    (should (equal (plist-get (harmless-team-seat
+                               "workshop" "dev" "build")
+                              :work)
+                   work))
+    (should (equal (harmless-team-edges "workshop") edge))
+    (should (file-regular-p summary-a))
+    (should (file-regular-p summary-b))
+    (let ((saved (harmless-team-compacts "workshop")))
+      (harmless-team-remove "workshop" "qa" "note")
+      (should (equal (harmless-team-compacts "workshop") saved))
+      (should (equal (mapcar (lambda (line) (plist-get line :text))
+                             (harmless-team-room-history
+                              "workshop" "compact"))
+                     '("context\nwall" "/"))))
+    (let ((obj (harmless-json-decode (harmless-team-test-read file))))
+      (plist-put (car (plist-get obj :compacts)) :why "")
+      (harmless-team-test-write file (harmless-json-text obj))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-compacts "workshop")))
+                       "team rig is not valid"))
+        (should (equal (harmless-team-test-bytes file) bytes))))
+    (should (equal timer-list timers))
+    (should (equal (process-list) procs))
+    (should (equal (hash-table-count harmless-compact--runs) runs))
+    (should (file-name-absolute-p file))
+    (should (file-name-absolute-p summary-a))
+    (should (file-name-absolute-p summary-b))
+    (should (harmless-directory-strictly-under-p file base))
+    (should (harmless-directory-strictly-under-p summary-a base))
+    (should (harmless-directory-strictly-under-p summary-b base))
+    (should-not (equal (file-truename file) (file-truename "/")))
+    (should-not (equal (file-truename summary-a)
+                       (file-truename "/")))
+    (should-not (equal (file-truename summary-b)
+                       (file-truename "/")))
+    (should-not (file-exists-p
+                 (expand-file-name "teams" elsewhere)))
+    (should (equal roots (harmless-team-test-roots)))
+    (should (equal session-roots
+                   (harmless-team-test-session-roots)))))

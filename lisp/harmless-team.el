@@ -70,8 +70,11 @@
 ;; boundary.  The successor is already running.  An image
 ;; captures a productive seat so another seat can start from
 ;; it.  A packet carries what that seat knows when its runtime
-;; changes.  Neither one starts a session.  This file does not
-;; register another machine.
+;; changes.  Neither one starts a session.  A compact plan
+;; lists seats near the context wall and writes nothing.
+;; Compacting deliberately records why and tells the room.
+;; The transcript summary is M-x harmless-compact.  This file
+;; does not register another machine.
 
 ;;; Code:
 
@@ -663,6 +666,42 @@ Nil means the rig has no boundary yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--compact-p (item)
+  "Return non-nil if ITEM is one stored compact notice."
+  (and (harmless-plist-p item)
+       (harmless-team--row-id-p (plist-get item :id))
+       (stringp (plist-get item :seat))
+       (not (string-empty-p (plist-get item :seat)))
+       (stringp (plist-get item :session))
+       (not (string-empty-p (plist-get item :session)))
+       (stringp (plist-get item :why))
+       (not (string-empty-p (plist-get item :why)))
+       (harmless-team--watchdog-due-p (plist-get item :at))
+       (numberp (plist-get item :used))
+       (>= (plist-get item :used) 0)
+       (numberp (plist-get item :window))
+       (> (plist-get item :window) 0)
+       (integerp (plist-get item :percent))
+       (>= (plist-get item :percent) 1)
+       (<= (plist-get item :percent) 100)))
+
+(defun harmless-team--compacts-ok-p (rig)
+  "Return non-nil if RIG's compact notices are readable.
+Nil means the rig has no compact notice yet."
+  (let ((items (plist-get rig :compacts)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (ids nil))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-team--compact-p item)
+                     (not (member (plist-get item :id) ids)))
+                (setq ids (cons (plist-get item :id) ids)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -684,7 +723,8 @@ Nil means the rig has no boundary yet."
        (harmless-team--intake-ok-p rig)
        (harmless-team--workflows-ok-p rig)
        (harmless-team--watchdogs-ok-p rig)
-       (harmless-team--boundaries-ok-p rig)))
+       (harmless-team--boundaries-ok-p rig)
+       (harmless-team--compacts-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -3220,32 +3260,41 @@ SPEC is a plist.  The job is the rig file.  Nothing is armed."
   (mapcar #'harmless-team--public-watchdog
           (plist-get (cdr (harmless-team--load rig)) :watchdogs)))
 
+(defun harmless-team--context-used (seat)
+  "Return (USED . WINDOW) for SEAT, or nil.
+This reads a summary already on disk.  It does not start a turn.
+Only a Harmless session has a measurement."
+  (let ((session (plist-get seat :session))
+        (runtime (plist-get seat :runtime)))
+    (when (and (equal runtime "harmless")
+               (stringp session)
+               (string-match-p harmless-team--session-re session))
+      (condition-case nil
+          (let* ((dir (harmless-team--harmless-session session))
+                 (path (expand-file-name "summary.json" dir))
+                 (obj (harmless-json-decode-safe
+                       (harmless-team--read-text path)))
+                 (used (and (harmless-plist-p obj)
+                            (plist-get obj :last-prompt-tokens)))
+                 (window
+                  (and (fboundp 'harmless-usage-context-window)
+                       (harmless-usage-context-window
+                        (plist-get obj :model)))))
+            (when (and (numberp used)
+                       (numberp window)
+                       (> window 0))
+              (cons used window)))
+        (error nil)))))
+
 (defun harmless-team--watchdog-wall-due-p (stored job)
   "Return non-nil if JOB's seat has reached its context wall.
 This reads a summary already on disk.  It does not start a turn."
   (let* ((seat (harmless-team--seat-named stored (plist-get job :seat)))
-         (session (and seat (plist-get seat :session)))
-         (runtime (and seat (plist-get seat :runtime))))
-    (and (equal runtime "harmless")
-         (stringp session)
-         (string-match-p harmless-team--session-re session)
-         (condition-case nil
-             (let* ((dir (harmless-team--harmless-session session))
-                    (path (expand-file-name "summary.json" dir))
-                    (obj (harmless-json-decode-safe
-                          (harmless-team--read-text path)))
-                    (used (and (harmless-plist-p obj)
-                               (plist-get obj :last-prompt-tokens)))
-                    (window
-                     (and (fboundp 'harmless-usage-context-window)
-                          (harmless-usage-context-window
-                           (plist-get obj :model)))))
-               (and (numberp used)
-                    (numberp window)
-                    (> window 0)
-                    (>= (* used 100)
-                        (* window (plist-get job :percent)))))
-           (error nil)))))
+         (used (and seat (harmless-team--context-used seat)))
+         (percent (plist-get job :percent)))
+    (and used
+         (numberp percent)
+         (>= (* (car used) 100) (* (cdr used) percent)))))
 
 (defun harmless-team--watchdog-due-now-p (stored job)
   "Return non-nil if JOB needs attention now.
@@ -4076,6 +4125,158 @@ REF is not started."
                 rig pod seat name runtime ref)))
     (message "Carried %s" (plist-get (plist-get saved :seat) :address))
     saved))
+
+(defun harmless-team--percent (percent)
+  "Return PERCENT, an integer from 1 through 100, or signal."
+  (cond
+   ((null percent) (error "team compact percent is empty"))
+   ((stringp percent)
+    (setq percent (string-trim percent))
+    (if (string-empty-p percent)
+        (error "team compact percent is empty")
+      (error "team compact percent is not a percent")))
+   ((not (integerp percent))
+    (error "team compact percent is not a percent"))
+   ((or (< percent 1) (> percent 100))
+    (error "team compact percent is not a percent"))
+   (t percent)))
+
+(defun harmless-team--compact-why (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay.  This text is why the seat is compacted."
+  (cond
+   ((null text) (error "team compact why is empty"))
+   ((not (stringp text))
+    (error "team compact why must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team compact why is empty")
+    text))
+
+(defun harmless-team--public-compact (item)
+  "Return ITEM with keys in a fixed order."
+  (list :id (plist-get item :id)
+        :seat (plist-get item :seat)
+        :session (plist-get item :session)
+        :why (plist-get item :why)
+        :at (plist-get item :at)
+        :used (plist-get item :used)
+        :window (plist-get item :window)
+        :percent (plist-get item :percent)))
+
+(defun harmless-team--near-p (used percent)
+  "Return non-nil if USED is at or above PERCENT of its window."
+  (and used
+       (>= (* (car used) 100) (* (cdr used) percent))))
+
+(defun harmless-team--compact-plan (rig percent)
+  "Return seats in RIG at or above PERCENT.  Write nothing.
+Each item names the seat, the session, and the measurement.
+A seat that is not a Harmless session is left off the list."
+  (setq percent (harmless-team--percent percent))
+  (setq rig (harmless-team--rig-name rig))
+  (let ((stored (cdr (harmless-team--load rig)))
+        (out nil))
+    (dolist (pod (plist-get stored :pods))
+      (dolist (seat (plist-get pod :seats))
+        (let ((used (harmless-team--context-used seat)))
+          (when (harmless-team--near-p used percent)
+            (setq out
+                  (append
+                   out
+                   (list (list :seat (plist-get seat :address)
+                               :session (plist-get seat :session)
+                               :used (car used)
+                               :window (cdr used)
+                               :percent percent))))))))
+    out))
+
+(defun harmless-team--compact (rig pod seat percent why)
+  "Record a deliberate compact of SEAT and tell the room.
+WHY is the reason.  PERCENT is the wall.  SEAT must already
+be there.  The transcript is not summarized.  One write."
+  (setq why (harmless-team--compact-why why))
+  (setq percent (harmless-team--percent percent))
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let* ((item (cdr found))
+           (session (plist-get item :session))
+           (used (harmless-team--context-used item)))
+      (unless (and (stringp session) (not (string-empty-p session)))
+        (error "team seat is not occupied"))
+      (unless (harmless-team--near-p used percent)
+        (error "team seat is not near the wall"))
+      (let* ((at (harmless-now-iso))
+             (address (plist-get item :address))
+             (record (list :id (harmless-team--next-row-id
+                                (plist-get stored :compacts))
+                           :seat address
+                           :session session
+                           :why why
+                           :at at
+                           :used (car used)
+                           :window (cdr used)
+                           :percent percent))
+             (line (list :topic "compact"
+                         :speaker address
+                         :text why
+                         :at at)))
+        (plist-put stored :compacts
+                   (append (plist-get stored :compacts)
+                           (list record)))
+        (plist-put stored :room
+                   (append (plist-get stored :room) (list line)))
+        (harmless-team--write (car loaded) stored)
+        (list :compact (harmless-team--public-compact record)
+              :room (harmless-team--public-room line))))))
+
+(defun harmless-team--compacts (rig)
+  "Return RIG's compact notices, oldest first."
+  (setq rig (harmless-team--rig-name rig))
+  (mapcar #'harmless-team--public-compact
+          (plist-get (cdr (harmless-team--load rig)) :compacts)))
+
+;;;###autoload
+(defun harmless-team-compact-plan (rig percent)
+  "List seats in RIG at or above PERCENT of the context window.
+This does not compact and does not write.  The transcript
+summary is M-x harmless-compact."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-number "Percent: ")))
+  (let ((items (harmless-team--compact-plan rig percent)))
+    (message "%d seats" (length items))
+    items))
+
+;;;###autoload
+(defun harmless-team-compact (rig pod seat percent why)
+  "Record a deliberate compact of SEAT and tell the room.
+PERCENT is the wall.  WHY is the reason.  SEAT must already
+be at that wall.  This does not summarize the transcript."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-number "Percent: ")
+         (read-string "Why: ")))
+  (let ((saved (harmless-team--compact rig pod seat percent why)))
+    (message "Compacted %s"
+             (plist-get (plist-get saved :compact) :seat))
+    saved))
+
+;;;###autoload
+(defun harmless-team-compacts (rig)
+  "Return RIG's compact notices, oldest first."
+  (interactive (list (read-string "Rig: ")))
+  (let ((items (harmless-team--compacts rig)))
+    (message "%d compacts" (length items))
+    items))
 
 (provide 'harmless-team)
 

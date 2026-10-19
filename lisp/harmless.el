@@ -99,6 +99,9 @@
 ;;   M-x harmless-team-image-start ; record a new seat from that image
 ;;   M-x harmless-team-packet ; capture what an occupied seat knows
 ;;   M-x harmless-team-packet-apply ; carry that onto a running session
+;;   M-x harmless-team-compact-plan ; list seats near the context wall
+;;   M-x harmless-team-compact ; record a deliberate compact and tell
+;;   M-x harmless-team-compacts ; read those compact notices
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
