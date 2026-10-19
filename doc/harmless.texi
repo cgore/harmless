@@ -49,6 +49,7 @@ commands, keys, and files a user needs.
 * Skills::              Task instructions the model can open.
 * Plugins::             One copy of skills, agents, hooks, and MCP.
 * Output styles::       Role, tone, and format for one session.
+* Image generation::    Write a generated image into the project.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -624,6 +625,8 @@ definition, references, or diagnostics.  @xref{Language server}.
 @code{notebook_edit} replaces one notebook cell.  @kbd{I} attaches
 an image to the next prompt.  @xref{File tools}.
 @code{skill} loads one skill into later turns.  @xref{Skills}.
+@code{generate_image} writes a generated image into the project.
+@xref{Image generation}.
 
 Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -1979,6 +1982,44 @@ harness prompt stays first.  The style comes next.  Project
 instructions, path-scoped rules, and plan mode win when they
 disagree.
 
+@node Image generation
+@chapter Image generation
+
+@cindex image generation
+@findex generate_image
+@code{generate_image} writes an image into the project.  The model
+passes @code{prompt} and @code{path}.  A relative path is resolved
+against the session directory.  It is not resolved against the
+buffer's default directory.  @code{~} is not expanded.
+
+The bytes come from @code{harmless-image-generate-function}.  When
+that variable is nil, the tool is refused: @samp{image generation
+is not configured}.  The function is not called until the prompt
+and the path are accepted.  Plan mode does not call it:
+@samp{Plan mode is on. Only plan.md may be edited, with write_plan}.
+
+Nil, @code{""}, and whitespace are refused: @samp{image prompt is
+empty}.  A value that is not text is refused: @samp{image prompt
+must be a string}.  A missing or blank path is refused:
+@samp{image path is empty}.  A path that is not text is refused:
+@samp{image path must be a string}.  A path that names a directory
+is refused: @samp{image path is not a file}.  @code{~} is refused:
+@samp{image path must be absolute}.  A path outside the project is
+refused: @samp{image path escapes the project: }, followed by the
+path.  Bytes that are not an image are refused: @samp{image is not
+an image}.  Nothing is written in that case.
+
+A detached chat and a blank project directory are refused:
+@samp{This chat is not attached to a project}.  A relative project
+directory is refused and is not expanded: @samp{image directory
+must be absolute}.  @code{/} and a drive root are refused:
+@samp{image directory is the filesystem root}.  @code{/} as a path
+is refused: @samp{image path is the filesystem root}.
+
+The tool is an edit.  A detached chat is not offered it.  A
+successful call reports the absolute path and the number of bytes
+written.
+
 @node Memory
 @chapter Memory
 
@@ -2046,7 +2087,8 @@ also call @code{enter_plan_mode}, which asks you before it switches.
 While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with @code{write_plan}, and to call
 @code{exit_plan_mode} when the plan is ready.  @code{write_file},
-@code{replace}, @code{apply_patch}, and @code{notebook_edit} fail.  A
+@code{replace}, @code{apply_patch}, @code{notebook_edit}, and
+@code{generate_image} fail.  A
 shell command that can write is refused before any permission
 question:
 @samp{Error: Plan mode is on. A shell command that can write is refused}.

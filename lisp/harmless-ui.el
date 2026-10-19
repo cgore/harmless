@@ -317,6 +317,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("lsp" "lsp")
     ("notebook_edit" "notebook")
     ("skill" "skill")
+    ("generate_image" "image")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -470,6 +471,9 @@ directory, which lives under the Harmless data directory.  Setting
             ("skill"
              (let ((name (harmless-tool-arg args :name)))
                (if (stringp name) name "")))
+            ("generate_image"
+             (let ((path (harmless-tool-arg args :path)))
+               (if (stringp path) path "")))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

@@ -83,6 +83,7 @@
 (require 'harmless-tools-fs)
 (require 'harmless-output-style)
 (require 'harmless-media)
+(require 'harmless-image)
 (require 'harmless-tools-shell)
 (require 'harmless-perm)
 (require 'harmless-turn)

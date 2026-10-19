@@ -50,7 +50,8 @@
   (should (harmless-tool-by-name "skill"))
   (should (fboundp 'harmless-load-skill))
   (should (fboundp 'harmless-plugin-install))
-  (should (fboundp 'harmless-output-style)))
+  (should (fboundp 'harmless-output-style))
+  (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

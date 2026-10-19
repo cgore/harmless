@@ -265,6 +265,15 @@ session directory only.  A project style wins over a user style.
 In the project, `.harmless` wins over `.claude`.  The chosen text
 is saved with the session.  A fork keeps it.
 
+## Image generation
+
+`generate_image` writes an image into the project.  `prompt` is the
+description.  `path` is the file.  A relative path is resolved
+against the session directory, not the buffer's default directory.
+The bytes come from `harmless-image-generate-function`.  When that
+function is unset, the tool refuses.  Plan mode does not generate.
+A detached chat has no project to write into.
+
 ## Subagents
 
 `spawn_agent` starts a child session with its own transcript and waits

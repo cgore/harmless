@@ -40,6 +40,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Skills::              Task instructions the model can open.
 * Plugins::             One copy of skills, agents, hooks, and MCP.
 * Output styles::       Role, tone, and format for one session.
+* Image generation::    Write a generated image into the project.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -542,7 +543,8 @@ definition, references, or diagnostics.  *Note Language server::.
 ‘read_file’ also reads an image, a PDF, and a notebook.  ‘notebook_edit’
 replaces one notebook cell.  ‘I’ attaches an image to the next prompt.
 *Note File tools::.  ‘skill’ loads one skill into later turns.  *Note
-Skills::.
+Skills::.  ‘generate_image’ writes a generated image into the project.
+*Note Image generation::.
 
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -1718,7 +1720,7 @@ no project copy: ‘This chat is not attached to a project’.  A second
 copy is refused: ‘plugin is already installed: ’, followed by the id.
 
 
-File: harmless.info,  Node: Output styles,  Next: Memory,  Prev: Plugins,  Up: Top
+File: harmless.info,  Node: Output styles,  Next: Image generation,  Prev: Plugins,  Up: Top
 
 14 Output styles
 ****************
@@ -1757,9 +1759,46 @@ harness prompt stays first.  The style comes next.  Project
 instructions, path-scoped rules, and plan mode win when they disagree.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Output styles,  Up: Top
+File: harmless.info,  Node: Image generation,  Next: Memory,  Prev: Output styles,  Up: Top
 
-15 Memory
+15 Image generation
+*******************
+
+‘generate_image’ writes an image into the project.  The model passes
+‘prompt’ and ‘path’.  A relative path is resolved against the session
+directory.  It is not resolved against the buffer's default directory.
+‘~’ is not expanded.
+
+   The bytes come from ‘harmless-image-generate-function’.  When that
+variable is nil, the tool is refused: ‘image generation is not
+configured’.  The function is not called until the prompt and the path
+are accepted.  Plan mode does not call it: ‘Plan mode is on. Only
+plan.md may be edited, with write_plan’.
+
+   Nil, ‘""’, and whitespace are refused: ‘image prompt is empty’.  A
+value that is not text is refused: ‘image prompt must be a string’.  A
+missing or blank path is refused: ‘image path is empty’.  A path that is
+not text is refused: ‘image path must be a string’.  A path that names a
+directory is refused: ‘image path is not a file’.  ‘~’ is refused:
+‘image path must be absolute’.  A path outside the project is refused:
+‘image path escapes the project: ’, followed by the path.  Bytes that
+are not an image are refused: ‘image is not an image’.  Nothing is
+written in that case.
+
+   A detached chat and a blank project directory are refused: ‘This chat
+is not attached to a project’.  A relative project directory is refused
+and is not expanded: ‘image directory must be absolute’.  ‘/’ and a
+drive root are refused: ‘image directory is the filesystem root’.  ‘/’
+as a path is refused: ‘image path is the filesystem root’.
+
+   The tool is an edit.  A detached chat is not offered it.  A
+successful call reports the absolute path and the number of bytes
+written.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Image generation,  Up: Top
+
+16 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -1804,7 +1843,7 @@ index, not the notes.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-16 Plan mode
+17 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -1814,19 +1853,19 @@ call ‘enter_plan_mode’, which asks you before it switches.
    While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with ‘write_plan’, and to call
 ‘exit_plan_mode’ when the plan is ready.  ‘write_file’, ‘replace’,
-‘apply_patch’, and ‘notebook_edit’ fail.  A shell command that can write
-is refused before any permission question: ‘Error: Plan mode is on. A
-shell command that can write is refused’.  A read-only shell command
-still runs.  ‘shell_kill’ still asks.  A click, typed text, a key, and a
-browser are refused: ‘Error: Plan mode is on. Computer control is
-refused’.  A screenshot still runs.  *Note Computer use::.  A file watch
-and a read-only command still run.  A command that can write is refused.
-*Note Monitors::.  Scheduling a prompt still runs.  The later turn obeys
-plan mode.  *Note Schedules::.  A review still runs, and it does not
-edit the project.  *Note Review::.  A language server query still runs,
-and it does not edit the project.  *Note Language server::.  The header
-line shows ‘plan’.  ‘ask_user’ can still ask a question.  *Note
-Questions::.
+‘apply_patch’, ‘notebook_edit’, and ‘generate_image’ fail.  A shell
+command that can write is refused before any permission question:
+‘Error: Plan mode is on. A shell command that can write is refused’.  A
+read-only shell command still runs.  ‘shell_kill’ still asks.  A click,
+typed text, a key, and a browser are refused: ‘Error: Plan mode is on.
+Computer control is refused’.  A screenshot still runs.  *Note Computer
+use::.  A file watch and a read-only command still run.  A command that
+can write is refused.  *Note Monitors::.  Scheduling a prompt still
+runs.  The later turn obeys plan mode.  *Note Schedules::.  A review
+still runs, and it does not edit the project.  *Note Review::.  A
+language server query still runs, and it does not edit the project.
+*Note Language server::.  The header line shows ‘plan’.  ‘ask_user’ can
+still ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -1869,7 +1908,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-17 Usage
+18 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -1893,7 +1932,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-18 Files
+19 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -1944,7 +1983,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-19 Keys
+20 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2047,7 +2086,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-20 Trouble
+21 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2074,7 +2113,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-21 Manual
+22 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2101,9 +2140,10 @@ Command Index
 
 * enter_plan_mode:                       Plan mode.            (line  6)
 * exit_plan_mode:                        Plan mode.            (line  6)
+* generate_image:                        Image generation.     (line  6)
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
-* harmless-add-directory:                Tools.                (line 29)
+* harmless-add-directory:                Tools.                (line 30)
 * harmless-attach-image:                 File tools.           (line 51)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 43)
@@ -2158,7 +2198,7 @@ Key Index
 * Menu:
 
 * ! (permission):                        Permissions.          (line  6)
-* + (transcript):                        Tools.                (line 29)
+* + (transcript):                        Tools.                (line 30)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 70)
@@ -2183,47 +2223,48 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction1902
-Node: Installation2633
-Node: Starting4237
-Node: Sessions4776
-Node: Transcript6273
-Node: Prompt9902
-Node: Permissions11143
-Node: Accounts18449
-Node: Models20694
-Node: Tools21790
-Node: File tools26047
-Node: Search30554
-Node: Shell32450
-Node: Questions35235
-Node: Subagents36005
-Node: Workflows40154
-Node: Worktrees45157
-Node: Messages48285
-Node: Web search50106
-Node: Fetch a page50961
-Node: X search52194
-Node: MCP54591
-Node: Computer use57295
-Node: Monitors59311
-Node: Schedules62315
-Node: Todos64781
-Node: Review67436
-Node: Language server71019
-Node: Instructions74206
-Node: Skills77314
-Node: Plugins79644
-Node: Output styles81694
-Node: Memory83695
-Node: Plan mode84967
-Node: Usage87931
-Node: Files88950
-Node: Keys90529
-Node: Trouble92079
-Node: Manual93333
-Node: Command Index94038
-Node: Key Index97681
+Node: Introduction1968
+Node: Installation2699
+Node: Starting4303
+Node: Sessions4842
+Node: Transcript6339
+Node: Prompt9968
+Node: Permissions11209
+Node: Accounts18515
+Node: Models20760
+Node: Tools21856
+Node: File tools26204
+Node: Search30711
+Node: Shell32607
+Node: Questions35392
+Node: Subagents36162
+Node: Workflows40311
+Node: Worktrees45314
+Node: Messages48442
+Node: Web search50263
+Node: Fetch a page51118
+Node: X search52351
+Node: MCP54748
+Node: Computer use57452
+Node: Monitors59468
+Node: Schedules62472
+Node: Todos64938
+Node: Review67593
+Node: Language server71176
+Node: Instructions74363
+Node: Skills77471
+Node: Plugins79801
+Node: Output styles81851
+Node: Image generation83862
+Node: Memory85702
+Node: Plan mode86977
+Node: Usage89963
+Node: Files90982
+Node: Keys92561
+Node: Trouble94111
+Node: Manual95365
+Node: Command Index96070
+Node: Key Index99786
 
 End Tag Table
 
