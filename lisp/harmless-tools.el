@@ -38,6 +38,7 @@
 ;;
 ;; Named tools the model can call.  Each has a JSON schema, an Elisp
 ;; function, and a permission class (`read', `edit', or `shell').
+;; `classify', when set, picks the class for that one call.
 
 ;;; Code:
 
@@ -52,7 +53,8 @@
   schema
   fn
   class
-  async)
+  async
+  classify)
 
 (defvar harmless-tools nil
   "List of registered `harmless-tool' objects.")

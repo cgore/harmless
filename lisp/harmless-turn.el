@@ -54,6 +54,7 @@
 (require 'harmless-skills)
 (require 'harmless-plan)
 (require 'harmless-tools)
+(require 'harmless-tools-shell)
 (require 'harmless-perm)
 (require 'harmless-usage)
 
@@ -265,6 +266,14 @@ at a time: an allowed call starts before the next question."
       (setf (harmless-session-tool-batch session) batch)
       (harmless-turn--launch batch))))
 
+(defun harmless-turn--class (tool session args)
+  "Return the permission class for TOOL with ARGS on SESSION.
+A tool's `classify' function may narrow one shell command to `read'."
+  (let ((classify (harmless-tool-classify tool)))
+    (if (functionp classify)
+        (funcall classify session args)
+      (harmless-tool-class tool))))
+
 (defun harmless-turn--item-for (tool args)
   "Short description of TOOL with ARGS for a permission prompt."
   (pcase (harmless-tool-class tool)
@@ -362,31 +371,39 @@ inside this loop, so it must not start the loop again."
        (harmless-turn--tool-message
         call (format "Error: unknown tool %s" (plist-get call :name)))))
      (t
-      (setf (harmless-turn-batch-waiting-perm batch) t)
-      (harmless-perm-confirm
-       session
-       (harmless-tool-class tool)
-       (harmless-turn--item-for tool args)
-       (lambda (decision)
-         (setf (harmless-turn-batch-waiting-perm batch) nil)
-         (cond
-          ((harmless-turn-batch-aborted batch) nil)
-          ((eq decision 'deny)
-           (harmless-turn--finish-call
-            batch index
-            (harmless-turn--tool-message
-             call "Error: user denied this tool call")))
-          (t
-           (harmless-session-set-status session 'streaming)
-           (harmless-turn--invoke
-            tool session args
-            (lambda (result)
-              (harmless-turn--finish-call
-               batch index
-               (harmless-turn--tool-message call result))))))
-         (unless (or (harmless-turn-batch-launching batch)
-                     (harmless-turn-batch-aborted batch))
-           (harmless-turn--launch batch))))))))
+      (let ((class (harmless-turn--class tool session args))
+            (command (and (string= (harmless-tool-name tool) "run_shell")
+                          (harmless-tool-arg args :command))))
+        (if (harmless-shell-plan-refuses-p session command)
+            (harmless-turn--finish-call
+             batch index
+             (harmless-turn--tool-message
+              call harmless-shell-plan-refusal))
+          (setf (harmless-turn-batch-waiting-perm batch) t)
+          (harmless-perm-confirm
+           session
+           class
+           (harmless-turn--item-for tool args)
+           (lambda (decision)
+             (setf (harmless-turn-batch-waiting-perm batch) nil)
+             (cond
+              ((harmless-turn-batch-aborted batch) nil)
+              ((eq decision 'deny)
+               (harmless-turn--finish-call
+                batch index
+                (harmless-turn--tool-message
+                 call "Error: user denied this tool call")))
+              (t
+               (harmless-session-set-status session 'streaming)
+               (harmless-turn--invoke
+                tool session args
+                (lambda (result)
+                  (harmless-turn--finish-call
+                   batch index
+                   (harmless-turn--tool-message call result))))))
+             (unless (or (harmless-turn-batch-launching batch)
+                         (harmless-turn-batch-aborted batch))
+               (harmless-turn--launch batch))))))))))
 
 (provide 'harmless-turn)
 

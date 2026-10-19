@@ -289,6 +289,13 @@ File: harmless.info,  Node: Permissions,  Next: Accounts,  Prev: Prompt,  Up: To
 Each tool belongs to a class: ‘read’, ‘edit’, or ‘shell’.  A read never
 asks.  An edit asks.  A shell asks.
 
+   A ‘run_shell’ command that Harmless can see is read-only is treated
+as a read, so it does not ask.  A command Harmless does not recognize
+still asks.  A redirect that writes, a command substitution, and a
+subshell still ask.  ‘shell_kill’ still asks.  In plan mode a read-only
+shell command still runs, and a shell command that can write is refused
+before the question.  *Note Plan mode::.
+
    The permission mode of a session changes that.
 
 ‘ask’
@@ -564,8 +571,16 @@ is not a message the model sees on the next turn.  The jobs are kept in
 memory for this Emacs session.  They are not written to the session
 files.
 
-   Plan mode does not inspect the command.  A shell command can still
-write files while a plan is being written.  *Note Plan mode::.
+   A command Harmless recognizes as read-only does not ask for
+permission.  A command it does not recognize still asks.  A redirect
+that writes, a command substitution, and a subshell ask.  *Note
+Permissions::.
+
+   In plan mode, a shell command that can write is refused before any
+permission question: ‘Error: Plan mode is on. A shell command that can
+write is refused’.  Nil, ‘""’, and a blank command are not that refusal.
+A read-only command still runs.  ‘shell_kill’ still asks.  *Note Plan
+mode::.
 
 
 File: harmless.info,  Node: Questions,  Prev: Shell,  Up: Tools
@@ -724,8 +739,11 @@ call ‘enter_plan_mode’, which asks you before it switches.
    While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with ‘write_plan’, and to call
 ‘exit_plan_mode’ when the plan is ready.  ‘write_file’, ‘replace’, and
-‘apply_patch’ fail.  The header line shows ‘plan’.  ‘ask_user’ can still
-ask a question.  *Note Questions::.
+‘apply_patch’ fail.  A shell command that can write is refused before
+any permission question: ‘Error: Plan mode is on. A shell command that
+can write is refused’.  A read-only shell command still runs.
+‘shell_kill’ still asks.  The header line shows ‘plan’.  ‘ask_user’ can
+still ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -748,8 +766,9 @@ replace the whole file.  An empty plan is refused.
    Approving does not apply a patch by itself.  The same turn continues,
 and later tool calls do the edits.
 
-   Shell commands are not classified.  In plan mode a shell command can
-still write.  *Note Shell::.
+   A read-only shell command still runs.  A command that can write is
+refused, including when the permission mode is ‘always-approve’.  *Note
+Shell::.
 
    The flag is saved with the session.
 
@@ -1036,24 +1055,24 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions10292
-Node: Accounts11539
-Node: Models13784
-Node: Tools14880
-Node: File tools16075
-Node: Search17309
-Node: Shell18950
-Node: Questions21352
-Node: Instructions22104
-Node: Skills23850
-Node: Memory24999
-Node: Plan mode26264
-Node: Usage27677
-Node: Files28696
-Node: Keys29929
-Node: Trouble31152
-Node: Manual32168
-Node: Command Index32873
-Node: Key Index35567
+Node: Accounts11941
+Node: Models14186
+Node: Tools15282
+Node: File tools16477
+Node: Search17711
+Node: Shell19352
+Node: Questions22137
+Node: Instructions22889
+Node: Skills24635
+Node: Memory25784
+Node: Plan mode27049
+Node: Usage28732
+Node: Files29751
+Node: Keys30984
+Node: Trouble32207
+Node: Manual33223
+Node: Command Index33928
+Node: Key Index36622
 
 End Tag Table
 

@@ -448,4 +448,169 @@
       (should (string-match-p "two" (plist-get (nth 1 tools) :content)))
       (should (string-match-p "exit 0" (plist-get (nth 0 tools) :content))))))
 
+(defun harmless-turn-test--shell-turn (session provider command)
+  "Run one shell COMMAND on SESSION through PROVIDER, then stop."
+  (let ((calls 0))
+    (setf (harmless-fake-provider-script provider)
+          (lambda (_messages callback)
+            (setq calls (1+ calls))
+            (if (= calls 1)
+                (progn
+                  (funcall callback
+                           (list :tool-call "1" "run_shell"
+                                 (format "{\"command\":%S}" command)))
+                  (funcall callback '(:stop "tool_calls")))
+              (funcall callback '(:text "done"))
+              (funcall callback '(:stop "stop")))))
+    (harmless-turn-run session "go")
+    (harmless-turn-test--wait session)))
+
+(defun harmless-turn-test--tool-contents (session)
+  "Return tool-result strings recorded on SESSION, in order."
+  (mapcar (lambda (message) (plist-get message :content))
+          (seq-filter (lambda (message) (eq (plist-get message :role) :tool))
+                      (harmless-session-messages session))))
+
+(ert-deftest harmless-turn-read-only-shell-does-not-ask ()
+  (let* ((dir (make-temp-file "harmless-ro-shell-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (asked nil)
+         (harmless-perm-ask-function
+          (lambda (&rest _)
+            (setq asked t)
+            (error "A read-only shell must not ask")))
+         (provider (harmless-make-fake :name "fake" :host "none" :script #'ignore))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (unwind-protect
+        (progn
+          (harmless-turn-test--shell-turn session provider "echo hi")
+          (should-not asked)
+          (should (eq 'idle (harmless-session-status session)))
+          (let ((text (car (harmless-turn-test--tool-contents session))))
+            (should (string-match-p "hi" text))
+            (should-not (string-search "__HARMLESS_CWD__" text))))
+      (dolist (job (harmless-session-shell-jobs session))
+        (let ((proc (harmless-shell-job-proc job)))
+          (when (and (processp proc) (process-live-p proc))
+            (delete-process proc)))))))
+
+(ert-deftest harmless-turn-shell-write-asks ()
+  (let* ((dir (make-temp-file "harmless-rw-shell-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (out (expand-file-name "out.txt" dir))
+         (asked nil)
+         (item nil)
+         (harmless-perm-ask-function
+          (lambda (_session class description callback)
+            (setq asked class
+                  item description)
+            (funcall callback 'deny)))
+         (provider (harmless-make-fake :name "fake" :host "none" :script #'ignore))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (unwind-protect
+        (progn
+          (harmless-turn-test--shell-turn session provider "echo hi > out.txt")
+          (should (eq 'shell asked))
+          (should (string= "echo hi > out.txt" item))
+          (should-not (file-exists-p out))
+          (should-not (file-exists-p "/out.txt"))
+          (should (equal '("Error: user denied this tool call")
+                         (harmless-turn-test--tool-contents session))))
+      (dolist (job (harmless-session-shell-jobs session))
+        (let ((proc (harmless-shell-job-proc job)))
+          (when (and (processp proc) (process-live-p proc))
+            (delete-process proc))))
+      (when (file-exists-p out) (delete-file out)))))
+
+(ert-deftest harmless-turn-plan-refuses-shell-write-before-permission ()
+  (let* ((dir (make-temp-file "harmless-plan-shell-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (out (expand-file-name "out.txt" dir))
+         (asked nil)
+         (harmless-perm-ask-function
+          (lambda (&rest _)
+            (setq asked t)
+            (error "Plan mode must refuse before the question")))
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (if (= calls 1)
+                 (progn
+                   (funcall callback
+                            '(:tool-call "1" "run_shell"
+                              "{\"command\":\"echo hi\"}"))
+                   (funcall callback
+                            '(:tool-call "2" "run_shell"
+                              "{\"command\":\"echo hi > out.txt\"}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (funcall callback '(:text "done"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (unwind-protect
+        (progn
+          (setf (harmless-session-plan-mode session) t)
+          (setf (harmless-session-permission-mode session) 'always-approve)
+          (harmless-turn-run session "plan")
+          (harmless-turn-test--wait session)
+          (should-not asked)
+          (should (eq 'idle (harmless-session-status session)))
+          (should (= calls 2))
+          (should-not (file-exists-p out))
+          (should-not (file-exists-p "/out.txt"))
+          (let ((tools (seq-filter (lambda (m) (eq (plist-get m :role) :tool))
+                                   (harmless-session-messages session))))
+            (should (= 2 (length tools)))
+            (should (string-match-p "hi" (plist-get (nth 0 tools) :content)))
+            (should (equal harmless-shell-plan-refusal
+                           (plist-get (nth 1 tools) :content)))))
+      (dolist (job (harmless-session-shell-jobs session))
+        (let ((proc (harmless-shell-job-proc job)))
+          (when (and (processp proc) (process-live-p proc))
+            (delete-process proc))))
+      (when (file-exists-p out) (delete-file out)))))
+
+(ert-deftest harmless-turn-plan-shell-kill-still-asks ()
+  (let* ((dir (make-temp-file "harmless-plan-kill-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (asked nil)
+         (harmless-perm-ask-function
+          (lambda (_session class _item callback)
+            (setq asked class)
+            (funcall callback 'allow)))
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (if (= calls 1)
+                 (progn
+                   (funcall callback
+                            '(:tool-call "1" "shell_kill" "{\"id\":\"9\"}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (funcall callback '(:text "done"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (setf (harmless-session-plan-mode session) t)
+    (harmless-turn-run session "kill")
+    (should (eq 'shell asked))
+    (should (equal '("Error: no background shell 9")
+                   (harmless-turn-test--tool-contents session)))
+    (should (= calls 2))))
+
 (provide 'harmless-turn-tests)

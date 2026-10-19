@@ -78,7 +78,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [ ] Schedule a prompt to run later. Claude Code restores an unexpired session schedule on resume. A watchdog that survives a restart and can watch a queue or a context wall is section 4.
 - [x] Remember a `cd` that stays inside the project for later commands (Claude Code). A directory outside the project, the filesystem root, nil, and `""` are not kept. The remembered directory is saved with the session.
 - [x] Notify through Emacs when a background task finishes. A background shell posts a message and a transcript note. The note is not a message in the transcript the model sees.
-- [ ] In plan mode, treat a shell command that writes as a write. `write_file` and `replace` are already blocked.
+- [x] In plan mode, treat a shell command that writes as a write. `write_file` and `replace` are already blocked. A shell command that can write is refused before the permission question: `Plan mode is on. A shell command that can write is refused`. A read-only command still runs.
 
 ## 6. Permissions and safety
 
@@ -87,7 +87,7 @@ The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `a
 - [ ] Allow and deny rules for commands, paths, and fetch domains. Claude Code writes these as `Bash(npm run *)` and `Edit(/src/**)`.
 - [ ] A per-project allow list that survives the session.
 - [ ] A denylist for dangerous commands.
-- [ ] Classify read-only shell commands so they can skip a prompt.
+- [x] Classify read-only shell commands so they can skip a prompt. A command Harmless does not recognize still asks. A redirect, a command substitution, and a subshell still ask.
 - [ ] Auto-review. A reviewer model or a classifier decides an escalation (Codex auto-review, Claude Code auto mode, Grok Build auto-review).
 - [ ] Hooks that can block a tool call, or replace the result the model sees. Claude Code also runs a hook as an HTTP request, an MCP call, a prompt, or a subagent.
 - [ ] An OS sandbox for the shell (Landlock on Linux). Codex defaults to workspace-write and asks before the network. Grok Build's sandbox is off unless asked.

@@ -86,6 +86,8 @@
       (should (string-match-p "exit_plan_mode"
                               (plist-get (car messages) :content)))
       (should (string-match-p "apply_patch"
+                              (plist-get (car messages) :content)))
+      (should (string-match-p "shell command that can write"
                               (plist-get (car messages) :content))))))
 
 (ert-deftest harmless-plan-file-stays-out-of-filesystem-root ()

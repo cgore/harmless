@@ -939,4 +939,84 @@
               (should-not (harmless-session-shell-cwd reloaded)))))
       (harmless-shell-test-stop session))))
 
+(ert-deftest harmless-shell-command-kind-read-and-write ()
+  (dolist (command (list "echo hi" "ECHO hi" "ls" "ls -la" "ls sub/" "ls /"
+                         "ls c:/" "cat file" "pwd" "cd sub" "cd sub/" "cd /"
+                         "cd .." "DIR" "git status" "git STATUS" "git -C sub status"
+                         "git -c foo.bar=1 diff" "git diff --stat" "git log -n 5"
+                         "git show HEAD" "git branch" "git branch -vv"
+                         "git branch --list feature" "git tag" "git tag -l"
+                         "git remote -v" "git stash list" "git config user.name"
+                         "git config --get user.name" "git status 2>&1"
+                         "rg pattern" "rg -n foo" "find . -name x"
+                         "sed -n 1p file" "sed -n '1,20p' file" "sed 's/a/w/b/' f"
+                         "sed -e 1p file" "sort file" "echo hi | wc -l"
+                         "cd sub && ls" "echo 'rm -rf /'" "echo '$(rm x)'"
+                         "echo \"hello > world\"" "echo \"\"" "FOO=1 ls"
+                         "ls && echo hi" "echo hi; ls" "echo hi & echo there"
+                         (concat "echo hi\nls")))
+    (should (equal (list command 'read)
+                   (list command (harmless-shell-command-kind command)))))
+  (dolist (command (list nil "" "   " "/" "c:/" "rm foo" "rm -rf /"
+                         "./ls" "sub/ls" "/bin/ls" "make" "python -c print"
+                         "cmd /c echo hi" "echo hi > out" "echo hi > /"
+                         "echo hi > c:/out" "echo hi >> out" "echo hi 2> err"
+                         "ls >out" "$(ls)" "`ls`" "(ls)" "echo $(ls)"
+                         "echo \"hello $(ls)\"" "find . -delete"
+                         "find . -exec rm {} ;" "find . -fprint out"
+                         "sed -i s/a/b/ file" "sed -i.bak s/a/b/ file"
+                         "sed --in-place s/a/b/ f" "sed -e w/out f"
+                         "sed 's/a/b/w out' f" "sed -f script"
+                         "git commit -m x" "git checkout main" "git push"
+                         "git branch feature" "git branch -d feature"
+                         "git diff --output=out" "git stash"
+                         "git config user.name Chris" "sort -o out file"
+                         "rg --pre cat" "ls && rm x" "echo hi; rm x"
+                         "FOO=1 rm x" "echo 'hi" "\"\""))
+    (should (equal (list command 'write)
+                   (list command (harmless-shell-command-kind command)))))
+  (should (eq 'shell (harmless-tool-class (harmless-tool-by-name "run_shell"))))
+  (should (eq 'read (harmless-shell-run-class nil '(:command "echo hi"))))
+  (should (eq 'shell (harmless-shell-run-class nil '(:command "rm x"))))
+  (should (eq 'shell (harmless-shell-run-class nil '(:command nil))))
+  (should (eq 'shell (harmless-shell-run-class nil nil)))
+  (should (eq 'shell (harmless-shell-run-class nil '(:command ""))))
+  (should (eq 'shell (harmless-shell-run-class nil '(:command "/"))))
+  (should-not (harmless-tool-classify (harmless-tool-by-name "shell_kill"))))
+
+(ert-deftest harmless-shell-plan-mode-refuses-a-write ()
+  (let* ((dir (make-temp-file "harmless-shell-plan-" t))
+         (session (harmless-test--session dir))
+         (out (expand-file-name "out.txt" dir)))
+    (unwind-protect
+        (progn
+          (setf (harmless-session-plan-mode session) t)
+          (setf (harmless-session-permission-mode session) 'always-approve)
+          (should (equal harmless-shell-plan-refusal
+                         (harmless-shell-test--call
+                          session '(:command "echo hi > out.txt"))))
+          (should-not (file-exists-p out))
+          (should-not (file-exists-p "/out.txt"))
+          (should-not (harmless-session-shell-jobs session))
+          (should (equal harmless-shell-plan-refusal
+                         (harmless-shell-test--call session '(:command "/"))))
+          (should (equal harmless-shell-plan-refusal
+                         (harmless-shell-test--call session '(:command "c:/"))))
+          (should (equal harmless-shell-plan-refusal
+                         (harmless-shell-test--call
+                          session '(:command "sub/ls"))))
+          (should (equal "Error: command is empty"
+                         (harmless-shell-test--call session '(:command ""))))
+          (should (equal "Error: command is empty"
+                         (harmless-shell-test--call session '(:command nil))))
+          (should (equal "Error: command is empty"
+                         (harmless-shell-test--call session nil)))
+          (let ((text (harmless-shell-test--call
+                       session '(:command "echo hi"))))
+            (should (string-match-p "hi" text))
+            (should-not (string-search "__HARMLESS_CWD__" text)))
+          (should-not (file-exists-p out)))
+      (harmless-shell-test-stop session)
+      (when (file-exists-p out) (delete-file out)))))
+
 (provide 'harmless-tools-tests)

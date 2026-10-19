@@ -128,6 +128,470 @@ The shell prints `harmless-shell-cwd-marker' and its directory last."
       (list shell-file-name "/v:on" "/c" command)
     (list shell-file-name (or shell-command-switch "-c") command)))
 
+(defconst harmless-shell-plan-refusal
+  "Error: Plan mode is on. A shell command that can write is refused"
+  "Result when plan mode refuses a shell command that can write.")
+
+(defconst harmless-shell-read-commands
+  '("[" "ag" "basename" "cat" "cd" "chdir" "cmp" "column" "comm" "cut"
+    "date" "df" "diff" "dir" "dirname" "du" "echo" "egrep" "env" "false"
+    "fc" "fgrep" "file" "find" "findstr" "fold" "git" "grep" "head"
+    "hexdump" "id" "less" "ls" "more" "nl" "od" "printenv" "printf" "pwd"
+    "readlink" "realpath" "rev" "rg" "sed" "sort" "stat" "strings" "tac"
+    "tail" "test" "tr" "true" "type" "uname" "uniq" "wc" "where"
+    "whereis" "which" "whoami" "xxd")
+  "Command names that read unless a later check says they write.
+The lookup is the downcased file name, with no directory.")
+
+(defconst harmless-shell-git-read-subs
+  '("blame" "cat-file" "check-attr" "check-ignore" "describe" "diff"
+    "diff-files" "diff-index" "diff-tree" "for-each-ref" "grep" "help"
+    "log" "ls-files" "ls-remote" "ls-tree" "merge-base" "name-rev"
+    "rev-list" "rev-parse" "shortlog" "show" "show-ref" "status" "var"
+    "version")
+  "git subcommands that only read.")
+
+(defconst harmless-shell-find-write-words
+  '("-delete" "-exec" "-execdir" "-fls" "-fprint" "-fprint0" "-fprintf"
+    "-ok" "-okdir")
+  "find arguments that write or run another command.")
+
+(defun harmless-shell-command-kind (command)
+  "Return `read' when COMMAND cannot write a file, otherwise `write'.
+Nil, \"\", a blank command, a relative program, and a program Harmless
+does not recognize are `write'.  A redirect, a command substitution,
+and a subshell are `write' too."
+  (if (not (and (stringp command)
+                (string-match-p "[^ \t\n\r]" command)))
+      'write
+    (let ((segments (harmless-shell--segments command)))
+      (if (and segments
+               (cl-every #'harmless-shell--segment-read-p segments))
+          'read
+        'write))))
+
+(defun harmless-shell-plan-refuses-p (session command)
+  "Return non-nil when plan mode must refuse COMMAND on SESSION.
+Nil, \"\", and a blank command are not this refusal.  The caller
+refuses before asking for permission."
+  (and (harmless-session-plan-mode session)
+       (stringp command)
+       (string-match-p "[^ \t\n\r]" command)
+       (eq (harmless-shell-command-kind command) 'write)))
+
+(defun harmless-shell-run-class (_session args)
+  "Return `read' or `shell' for a run_shell call in ARGS."
+  (if (eq 'read (harmless-shell-command-kind
+                 (harmless-tool-arg args :command)))
+      'read
+    'shell))
+
+(defun harmless-shell--digits-p (chars)
+  "Return non-nil when every character in CHARS is a digit.
+Nil is all digits, so a bare `>&1' can be a file-descriptor copy."
+  (cl-every (lambda (ch) (and (<= ?0 ch) (<= ch ?9))) chars))
+
+(defun harmless-shell--segments (command)
+  "Return simple-command word lists in COMMAND.
+Return nil when COMMAND might write: an unquoted redirect, a command
+substitution, a subshell, or a quote that does not close.  A copy
+such as `2>&1' is not a redirect to a file."
+  (let ((segments nil)
+        (words nil)
+        (word nil)
+        (quoted nil)
+        (i 0)
+        (n (length command))
+        (fail nil))
+    (cl-labels
+        ((emit-word ()
+           (when (or word quoted)
+             (push (apply #'string (nreverse word)) words)
+             (setq word nil quoted nil)))
+         (emit-segment ()
+           (emit-word)
+           (when words
+             (push (nreverse words) segments)
+             (setq words nil))))
+      (while (and (not fail) (< i n))
+        (let ((c (aref command i)))
+          (cond
+           ((eq c ?')
+            (setq quoted t
+                  i (1+ i))
+            (while (and (< i n) (not (eq (aref command i) ?')))
+              (push (aref command i) word)
+              (setq i (1+ i)))
+            (if (>= i n)
+                (setq fail t)
+              (setq i (1+ i))))
+           ((eq c ?\")
+            (setq quoted t
+                  i (1+ i))
+            (while (and (not fail) (< i n)
+                        (not (eq (aref command i) ?\")))
+              (let ((d (aref command i)))
+                (cond
+                 ((and (eq d ?\\) (< (1+ i) n))
+                  (push (aref command (1+ i)) word)
+                  (setq i (+ i 2)))
+                 ((eq d ?`)
+                  (setq fail t))
+                 ((and (eq d ?$)
+                       (< (1+ i) n)
+                       (eq (aref command (1+ i)) ?\())
+                  (setq fail t))
+                 (t
+                  (push d word)
+                  (setq i (1+ i))))))
+            (if (or fail (>= i n))
+                (setq fail t)
+              (setq i (1+ i))))
+           ((or (eq c ?`) (eq c ?\() (eq c ?\)))
+            (setq fail t))
+           ((and (eq c ?$)
+                 (< (1+ i) n)
+                 (eq (aref command (1+ i)) ?\())
+            (setq fail t))
+           ((eq c ?>)
+            (if (and (harmless-shell--digits-p word)
+                     (< (1+ i) n)
+                     (eq (aref command (1+ i)) ?&)
+                     (< (+ i 2) n)
+                     (or (eq (aref command (+ i 2)) ?-)
+                         (<= ?0 (aref command (+ i 2)) ?9)))
+                (progn
+                  (setq word nil
+                        i (+ i 3))
+                  (while (and (< i n) (<= ?0 (aref command i) ?9))
+                    (setq i (1+ i))))
+              (setq fail t)))
+           ((memq c '(?\s ?\t ?\r ?<))
+            (emit-word)
+            (setq i (1+ i)))
+           ((memq c '(?| ?& ?\; ?\n))
+            (emit-segment)
+            (setq i (1+ i))
+            (when (and (< i n) (eq (aref command i) c) (memq c '(?| ?&)))
+              (setq i (1+ i))))
+           (t
+            (push c word)
+            (setq i (1+ i))))))
+      (unless fail
+        (emit-segment)
+        (nreverse segments)))))
+
+(defun harmless-shell--drop-assignments (words)
+  "Drop leading NAME=value words from WORDS."
+  (while (and words
+              (string-match-p "\\`[A-Za-z_][A-Za-z0-9_]*=" (car words)))
+    (setq words (cdr words)))
+  words)
+
+(defun harmless-shell--segment-read-p (words)
+  "Return non-nil when the simple command WORDS only reads."
+  (let ((words (harmless-shell--drop-assignments words)))
+    (or (null words)
+        (let ((argv0 (car words)))
+          (and (not (string-match-p "[\\\\/]" argv0))
+               (not (string-empty-p argv0))
+               (harmless-shell--argv-read-p
+                (downcase argv0) (cdr words)))))))
+
+(defun harmless-shell--argv-read-p (name args)
+  "Return non-nil when NAME with ARGS is a known read-only command.
+NAME is already downcased and has no directory."
+  (and (member name harmless-shell-read-commands)
+       (pcase name
+         ("git" (harmless-shell--git-read-p args))
+         ("find" (harmless-shell--find-read-p args))
+         ("sed" (harmless-shell--sed-read-p args))
+         ("sort" (harmless-shell--sort-read-p args))
+         ("rg" (harmless-shell--rg-read-p args))
+         (_ t))))
+
+(defun harmless-shell--git-skip-globals (args)
+  "Drop read-only git global options from ARGS.
+Return nil when an option is missing its argument or is unknown."
+  (let (fail)
+    (while (and args (not fail) (string-prefix-p "-" (car args)))
+      (let ((opt (car args)))
+        (cond
+         ((member opt '("-C" "-c" "--git-dir" "--work-tree"
+                        "--namespace" "--exec-path"))
+          (if (cdr args)
+              (setq args (cddr args))
+            (setq fail t)))
+         ((or (and (string-prefix-p "-C" opt) (> (length opt) 2))
+              (and (string-prefix-p "-c" opt) (> (length opt) 2))
+              (string-prefix-p "--git-dir=" opt)
+              (string-prefix-p "--work-tree=" opt)
+              (string-prefix-p "--namespace=" opt)
+              (string-prefix-p "--exec-path=" opt))
+          (setq args (cdr args)))
+         ((member opt '("--no-pager" "--paginate" "-p" "--bare"
+                        "--literal-pathspecs" "--glob-pathspecs"
+                        "--noglob-pathspecs" "--icase-pathspecs"
+                        "--no-optional-locks" "--no-replace-objects"))
+          (setq args (cdr args)))
+         (t (setq fail t)))))
+    (if fail nil args)))
+
+(defun harmless-shell--git-output-p (args)
+  "Return non-nil when git ARGS name an `--output' file."
+  (cl-some (lambda (arg)
+             (let ((down (downcase arg)))
+               (or (string= down "--output")
+                   (string-prefix-p "--output=" down))))
+           args))
+
+(defun harmless-shell--git-branch-read-p (args)
+  "Return non-nil when git branch ARGS only list branches."
+  (and (not (cl-some #'harmless-shell--git-branch-writes-p args))
+       (or (null args)
+           (member "--list" args)
+           (member "-l" args)
+           (cl-every (lambda (arg) (string-prefix-p "-" arg)) args))))
+
+(defun harmless-shell--git-branch-writes-p (arg)
+  "Return non-nil when git branch ARG creates, moves, or deletes."
+  (let ((down (downcase arg)))
+    (or (member down '("-d" "-m" "-c" "--delete" "--move" "--copy"
+                       "--edit-description" "-u" "--unset-upstream"
+                       "--set-upstream"))
+        (string-prefix-p "--set-upstream-to" down)
+        (string-prefix-p "--edit-description" down))))
+
+(defun harmless-shell--git-tag-read-p (args)
+  "Return non-nil when git tag ARGS only list tags."
+  (and (not (cl-some #'harmless-shell--git-tag-writes-p args))
+       (or (null args)
+           (member "--list" args)
+           (member "-l" args)
+           (cl-every (lambda (arg) (string-prefix-p "-" arg)) args))))
+
+(defun harmless-shell--git-tag-writes-p (arg)
+  "Return non-nil when git tag ARG creates or deletes a tag."
+  (let ((down (downcase arg)))
+    (or (member down '("-d" "-a" "-s" "-f" "-u" "--delete" "--annotate"
+                       "--sign" "--force" "--local-user" "--cleanup"))
+        (string-prefix-p "-m" down)
+        (string-prefix-p "--file" down)
+        (string-prefix-p "-f" down))))
+
+(defun harmless-shell--git-remote-read-p (args)
+  "Return non-nil when git remote ARGS only read."
+  (cond
+   ((null args) t)
+   ((string-prefix-p "-" (car args))
+    (cl-every (lambda (arg) (member arg '("-v" "--verbose"))) args))
+   ((member (downcase (car args)) '("show" "get-url"))
+    (not (cl-some (lambda (arg) (member arg '("--prune" "-p")))
+                  (cdr args))))
+   (t nil)))
+
+(defun harmless-shell--git-config-read-p (args)
+  "Return non-nil when git config ARGS only read a value."
+  (let ((positionals 0)
+        (write nil))
+    (while (and args (not write))
+      (let ((arg (car args))
+            (down (downcase (car args))))
+        (cond
+         ((member down '("--default" "--file"))
+          (if (cdr args)
+              (setq args (cddr args))
+            (setq write t)))
+         ((member down '("--get" "--get-all" "--get-regexp" "--list" "-l"
+                         "--show-origin" "--show-scope" "--null" "-z"
+                         "--local" "--global" "--system" "--worktree"
+                         "--name-only" "--includes" "--no-includes"))
+          (setq args (cdr args)))
+         ((or (member down '("--unset" "--unset-all" "--add" "--replace-all"
+                             "--rename-section" "--remove-section"
+                             "--edit" "-e"))
+              (string-prefix-p "--unset" down)
+              (string-prefix-p "--replace" down))
+          (setq write t))
+         ((string-prefix-p "-" arg)
+          (setq write t))
+         (t
+          (setq positionals (1+ positionals)
+                args (cdr args))))))
+    (and (not write) (<= positionals 1))))
+
+(defun harmless-shell--git-read-p (args)
+  "Return non-nil when git ARGS only read."
+  (let ((args (harmless-shell--git-skip-globals args)))
+    (when args
+      (let ((sub (downcase (car args)))
+            (rest (cdr args)))
+        (and (not (harmless-shell--git-output-p rest))
+             (cond
+              ((member sub harmless-shell-git-read-subs) t)
+              ((string= sub "branch")
+               (harmless-shell--git-branch-read-p rest))
+              ((string= sub "tag")
+               (harmless-shell--git-tag-read-p rest))
+              ((string= sub "remote")
+               (harmless-shell--git-remote-read-p rest))
+              ((string= sub "config")
+               (harmless-shell--git-config-read-p rest))
+              ((string= sub "stash")
+               (and rest
+                    (member (downcase (car rest)) '("list" "show"))))
+              ((string= sub "reflog")
+               (and (not (cl-some
+                          (lambda (arg)
+                            (member (downcase arg) '("delete" "expire")))
+                          rest))
+                    (or (null rest)
+                        (member (downcase (car rest)) '("show" "exists"))
+                        (string-prefix-p "-" (car rest)))))
+              (t nil)))))))
+
+(defun harmless-shell--find-read-p (args)
+  "Return non-nil when find ARGS do not write or run a command."
+  (not (cl-some (lambda (arg)
+                  (member (downcase arg) harmless-shell-find-write-words))
+                args)))
+
+(defun harmless-shell--sort-read-p (args)
+  "Return non-nil when sort ARGS do not name an output file."
+  (not (cl-some (lambda (arg)
+                  (let ((down (downcase arg)))
+                    (or (string= down "-o")
+                        (string= down "--output")
+                        (string-prefix-p "--output=" down)
+                        (and (string-prefix-p "-o" down)
+                             (> (length down) 2)))))
+                args)))
+
+(defun harmless-shell--rg-read-p (args)
+  "Return non-nil when rg ARGS do not run a preprocessor."
+  (not (cl-some (lambda (arg)
+                  (let ((down (downcase arg)))
+                    (or (string= down "--pre")
+                        (string= down "--pre-glob")
+                        (string-prefix-p "--pre=" down)
+                        (string-prefix-p "--pre-glob=" down))))
+                args)))
+
+(defun harmless-shell--scan-to (script j delim)
+  "Scan SCRIPT from J until DELIM.  Return the index after it, or nil."
+  (let ((n (length script)))
+    (while (and (< j n) (not (eq (aref script j) delim)))
+      (setq j (if (and (eq (aref script j) ?\\) (< (1+ j) n))
+                  (+ j 2)
+                (1+ j))))
+    (and (< j n) (1+ j))))
+
+(defun harmless-shell--sed-skip-s (script i)
+  "Return the index after the sed s command at I, or the symbol `write'."
+  (let ((n (length script)))
+    (if (>= (+ i 2) n)
+        n
+      (let ((delim (aref script (1+ i))))
+        (if (memq delim '(?\s ?\t ?\n ?\;))
+            (1+ i)
+          (let ((j (harmless-shell--scan-to script (+ i 2) delim)))
+            (setq j (and j (harmless-shell--scan-to script j delim)))
+            (if (null j)
+                n
+              (let (write)
+                (while (and (< j n)
+                            (not (memq (aref script j)
+                                       '(?\s ?\t ?\n ?\;))))
+                  (when (memq (aref script j) '(?w ?W))
+                    (setq write t))
+                  (setq j (1+ j)))
+                (if write 'write j)))))))))
+
+(defun harmless-shell--sed-skip-y (script i)
+  "Return the index after the sed y command at I."
+  (let ((n (length script)))
+    (if (>= (+ i 2) n)
+        n
+      (let ((delim (aref script (1+ i))))
+        (if (memq delim '(?\s ?\t ?\n ?\;))
+            (1+ i)
+          (let ((j (harmless-shell--scan-to script (+ i 2) delim)))
+            (or (and j (harmless-shell--scan-to script j delim)) n)))))))
+
+(defun harmless-shell--sed-script-writes-p (script)
+  "Return non-nil if sed SCRIPT writes a file."
+  (let ((i 0)
+        (n (length script))
+        (write nil))
+    (while (and (not write) (< i n))
+      (let ((c (aref script i)))
+        (cond
+         ((memq c '(?\s ?\t ?\n ?\; ?\{ ?\}))
+          (setq i (1+ i)))
+         ((memq c '(?w ?W))
+          (setq write t))
+         ((eq c ?/)
+          (setq i (or (harmless-shell--scan-to script (1+ i) ?/) n)))
+         ((eq c ?s)
+          (let ((next (harmless-shell--sed-skip-s script i)))
+            (if (eq next 'write)
+                (setq write t)
+              (setq i next))))
+         ((eq c ?y)
+          (setq i (harmless-shell--sed-skip-y script i)))
+         (t
+          (setq i (1+ i))))))
+    write))
+
+(defun harmless-shell--sed-inplace-p (arg)
+  "Return non-nil when sed ARG edits files in place."
+  (or (string-prefix-p "-i" arg)
+      (string-prefix-p "--in-place" arg)))
+
+(defun harmless-shell--sed-read-p (args)
+  "Return non-nil when sed ARGS do not write a file."
+  (let ((scripts nil)
+        (write nil)
+        (seen nil)
+        (case-fold-search nil))
+    (save-match-data
+    (while (and args (not write))
+      (let ((arg (car args)))
+        (cond
+         ((or (string= arg "-e") (string= arg "--expression"))
+          (if (cdr args)
+              (progn
+                (push (cadr args) scripts)
+                (setq seen t
+                      args (cddr args)))
+            (setq write t)))
+         ((string-prefix-p "--expression=" arg)
+          (push (substring arg (length "--expression=")) scripts)
+          (setq seen t
+                args (cdr args)))
+         ((or (string= arg "-f")
+              (string= arg "--file")
+              (string-prefix-p "--file=" arg)
+              (harmless-shell--sed-inplace-p arg))
+          (setq write t))
+         ((string-prefix-p "-" arg)
+          (cond
+           ((string-match "\\`-e\\(.+\\)\\'" arg)
+            (push (match-string 1 arg) scripts)
+            (setq seen t))
+           ((string-match "\\`-[nErRuUl]+e\\(.+\\)\\'" arg)
+            (push (match-string 1 arg) scripts)
+            (setq seen t)))
+          (setq args (cdr args)))
+         ((not seen)
+          (push arg scripts)
+          (setq seen t
+                args (cdr args)))
+         (t
+          (setq args (cdr args))))))
+    (and (not write)
+         (cl-notany #'harmless-shell--sed-script-writes-p scripts)))))
+
 (defun harmless-shell--split-cwd (text)
   "Return (OUTPUT . DIR) with the last cwd marker removed from TEXT.
 DIR is nil when the marker is absent."
@@ -392,8 +856,12 @@ are refused."
         (funcall callback "Error: command is empty")
       (let ((cwd (harmless-session-require-project session))
             (timeout (harmless-shell--run-timeout args)))
-        (if (stringp timeout)
-            (funcall callback timeout)
+        (cond
+         ((stringp timeout)
+          (funcall callback timeout))
+         ((harmless-shell-plan-refuses-p session command)
+          (funcall callback harmless-shell-plan-refusal))
+         (t
           (let* ((background (harmless-json-true-p
                               (harmless-tool-arg args :background)))
                  (buf (generate-new-buffer " *harmless-shell*"))
@@ -449,7 +917,7 @@ are refused."
                        (not (harmless-shell-job-delivered job)))
               (setf (harmless-shell-job-delivered job) t)
               (funcall callback (harmless-shell--background-text job)))
-            proc))))))
+            proc)))))))
 
 (defun harmless-tools-shell--output (session args callback)
   "Call CALLBACK with the output of the background shell in ARGS.
@@ -508,8 +976,9 @@ An unknown id, an empty id, and a shell that is not running are refused."
   (harmless-register-tool
    (harmless-tool-create
     :name "run_shell"
-    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill."
+    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. A read-only command does not ask for permission. In plan mode a command that can write is refused. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill."
     :class 'shell
+    :classify #'harmless-shell-run-class
     :async t
     :schema '(:type "object"
               :properties (:command (:type "string"

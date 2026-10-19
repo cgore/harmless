@@ -338,6 +338,14 @@ send is refused until you answer it.  @xref{Permissions}.
 Each tool belongs to a class: @code{read}, @code{edit}, or
 @code{shell}.  A read never asks.  An edit asks.  A shell asks.
 
+A @code{run_shell} command that Harmless can see is read-only is
+treated as a read, so it does not ask.  A command Harmless does not
+recognize still asks.  A redirect that writes, a command
+substitution, and a subshell still ask.  @code{shell_kill} still
+asks.  In plan mode a read-only shell command still runs, and a
+shell command that can write is refused before the question.
+@xref{Plan mode}.
+
 The permission mode of a session changes that.
 
 @table @code
@@ -626,8 +634,17 @@ is not a message the model sees on the next turn.  The jobs are kept
 in memory for this Emacs session.  They are not written to the session
 files.
 
-Plan mode does not inspect the command.  A shell command can still
-write files while a plan is being written.  @xref{Plan mode}.
+A command Harmless recognizes as read-only does not ask for
+permission.  A command it does not recognize still asks.  A redirect
+that writes, a command substitution, and a subshell ask.
+@xref{Permissions}.
+
+In plan mode, a shell command that can write is refused before any
+permission question:
+@samp{Error: Plan mode is on. A shell command that can write is refused}.
+Nil, @code{""}, and a blank command are not that refusal.  A
+read-only command still runs.  @code{shell_kill} still asks.
+@xref{Plan mode}.
 
 @node Questions
 @section Questions
@@ -804,8 +821,11 @@ also call @code{enter_plan_mode}, which asks you before it switches.
 While plan mode is on, the model is told to explore with read-only
 tools, to write the plan only with @code{write_plan}, and to call
 @code{exit_plan_mode} when the plan is ready.  @code{write_file},
-@code{replace}, and @code{apply_patch} fail.  The header line shows
-@samp{plan}.
+@code{replace}, and @code{apply_patch} fail.  A shell command that
+can write is refused before any permission question:
+@samp{Error: Plan mode is on. A shell command that can write is refused}.
+A read-only shell command still runs.  @code{shell_kill} still asks.
+The header line shows @samp{plan}.
 @code{ask_user} can still ask a question.  @xref{Questions}.
 
 @code{write_plan} writes @file{plan.md} in the session directory.  The
@@ -832,8 +852,9 @@ files.
 Approving does not apply a patch by itself.  The same turn continues,
 and later tool calls do the edits.
 
-Shell commands are not classified.  In plan mode a shell command can
-still write.  @xref{Shell}.
+A read-only shell command still runs.  A command that can write is
+refused, including when the permission mode is @code{always-approve}.
+@xref{Shell}.
 
 The flag is saved with the session.
 
