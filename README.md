@@ -152,6 +152,10 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-edge` | Record an edge between two seats |
 | `M-x harmless-team-edges` | Read the edges on a rig |
 | `M-x harmless-team-launch-order` | Read the order `delegates_to` and `spawned_by` decide |
+| `M-x harmless-team-preview` | Show the seats, edges, and launch order a boot would record |
+| `M-x harmless-team-boot` | Record a rig from `starter`, a JSON spec, or a bundle |
+| `M-x harmless-team-grow` | Add a seat to a rig that is already recorded |
+| `M-x harmless-team-remove` | Remove a seat. Work needs a fallback seat |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -324,6 +328,15 @@ before the source.  `can_observe`, `collaborates_with`, and
 `escalates_to` are recorded and do not change that order.
 `M-x harmless-team-launch-order` reads the order.  It does not
 start a seat.
+
+`M-x harmless-team-preview` shows the seats, the edges, and the
+launch order a spec would record.  It does not write.  The spec
+is `starter`, an absolute JSON file, or a directory with
+`rig.json`.  `M-x harmless-team-boot` records that rig.  A second
+boot of the same rig is refused.  `M-x harmless-team-grow` adds a
+seat.  `M-x harmless-team-remove` shrinks the rig: it drops a
+seat and the edges that touch it.  A seat that still holds work
+needs a fallback seat.
 
 ## Subagents
 

@@ -61,6 +61,10 @@
 ;;   M-x harmless-publish      ; publish Markdown or HTML as a page
 ;;   M-x harmless-team-add-seat ; record one seat in a rig
 ;;   M-x harmless-team-edge    ; record an edge between seats
+;;   M-x harmless-team-preview ; show a boot before it writes
+;;   M-x harmless-team-boot    ; record a rig from a spec
+;;   M-x harmless-team-grow    ; add a seat to a running rig
+;;   M-x harmless-team-remove  ; drop a seat, moving work first
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

@@ -43,6 +43,23 @@
         :session session
         :work work))
 
+(defun harmless-team-test-starter-plan ()
+  "Return the preview plist of the built-in starter."
+  (list :name "starter"
+        :seats (list (list "dev-build@starter" "implementer")
+                     (list "dev-review@starter" "checker"))
+        :edges (list (list :kind "delegates_to"
+                           :from "dev-build@starter"
+                           :to "dev-review@starter"))
+        :order (list "dev-build@starter"
+                     "dev-review@starter")))
+
+(defun harmless-team-test-write (path text)
+  "Write TEXT to PATH and return PATH."
+  (let ((coding-system-for-write 'utf-8-unix))
+    (write-region text nil path nil 'silent))
+  path)
+
 (ert-deftest harmless-team-seat-keeps-its-work ()
   (let* ((base (make-temp-file "harmless-team-" t))
          (elsewhere (expand-file-name "elsewhere" base))
@@ -463,4 +480,323 @@
                         (harmless-team-edge
                          "Workshop" "delegates_to" "Qa.Note" "Dev.Build")))
                      "team edge already exists")))
+    (should (equal roots (harmless-team-test-roots)))))
+
+(ert-deftest harmless-team-boot-previews-and-removes ()
+  (let* ((base (make-temp-file "harmless-team-boot-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (specs (expand-file-name "specs" base))
+         (bundle (expand-file-name "bundle" base))
+         (empty (expand-file-name "emptybundle" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "starter.json" teams))
+         (roots (harmless-team-test-roots))
+         (plan (harmless-team-test-starter-plan))
+         (cycle (expand-file-name "cycle.json" specs))
+         (self (expand-file-name "self.json" specs))
+         (ghost (expand-file-name "ghost.json" specs))
+         (kind (expand-file-name "kind.json" specs))
+         (dup (expand-file-name "dup.json" specs))
+         (brace (expand-file-name "brace.json" specs))
+         (paper (expand-file-name "paper.json" specs))
+         (paper-plan
+          (list :name "paper"
+                :seats (list (list "dev-build@paper" "implementer")
+                             (list "dev-review@paper" "checker"))
+                :edges (list (list :kind "spawned_by"
+                                   :from "dev-build@paper"
+                                   :to "dev-review@paper"))
+                :order (list "dev-review@paper" "dev-build@paper")))
+         (kit-plan
+          (list :name "kit"
+                :seats (list (list "ops-run@kit" "runner"))
+                :edges nil
+                :order (list "ops-run@kit"))))
+    (make-directory elsewhere t)
+    (make-directory specs t)
+    (make-directory bundle t)
+    (make-directory empty t)
+    (harmless-team-test-write
+     cycle
+     (concat "{\"name\":\"cycle\",\"pods\":[{\"name\":\"dev\","
+             "\"seats\":[{\"name\":\"build\",\"role\":\"implementer\"},"
+             "{\"name\":\"review\",\"role\":\"checker\"}]}],"
+             "\"edges\":[{\"kind\":\"delegates_to\","
+             "\"from\":\"dev.build\",\"to\":\"dev.review\"},"
+             "{\"kind\":\"delegates_to\",\"from\":\"dev.review\","
+             "\"to\":\"dev.build\"}]}"))
+    (harmless-team-test-write
+     self
+     (concat "{\"name\":\"self\",\"pods\":[{\"name\":\"dev\","
+             "\"seats\":[{\"name\":\"build\",\"role\":\"implementer\"},"
+             "{\"name\":\"review\",\"role\":\"checker\"}]}],"
+             "\"edges\":[{\"kind\":\"delegates_to\","
+             "\"from\":\"dev.build\",\"to\":\"dev.build\"}]}"))
+    (harmless-team-test-write
+     ghost
+     (concat "{\"name\":\"ghost\",\"pods\":[{\"name\":\"dev\","
+             "\"seats\":[{\"name\":\"build\",\"role\":\"implementer\"}]}],"
+             "\"edges\":[{\"kind\":\"delegates_to\","
+             "\"from\":\"dev.absent\",\"to\":\"dev.build\"}]}"))
+    (harmless-team-test-write
+     kind
+     (concat "{\"name\":\"kind\",\"pods\":[{\"name\":\"dev\","
+             "\"seats\":[{\"name\":\"build\",\"role\":\"implementer\"},"
+             "{\"name\":\"review\",\"role\":\"checker\"}]}],"
+             "\"edges\":[{\"kind\":\"owns\",\"from\":\"dev.build\","
+             "\"to\":\"dev.review\"}]}"))
+    (harmless-team-test-write
+     dup
+     (concat "{\"name\":\"dup\",\"pods\":[{\"name\":\"dev\","
+             "\"seats\":[{\"name\":\"build\",\"role\":\"implementer\"},"
+             "{\"name\":\"build\",\"role\":\"other\"}]}]}"))
+    (harmless-team-test-write brace "{")
+    (harmless-team-test-write
+     paper
+     (concat "{\"name\":\"paper\",\"pods\":[{\"name\":\"dev\","
+             "\"seats\":[{\"name\":\"build\",\"role\":\" implementer \"},"
+             "{\"name\":\"review\",\"role\":\"checker\"}]}],"
+             "\"edges\":[{\"kind\":\"spawned_by\","
+             "\"from\":\"dev.build\",\"to\":\"dev.review\"}]}"))
+    (harmless-team-test-write
+     (expand-file-name "rig.json" bundle)
+     (concat "{\"name\":\"kit\",\"pods\":[{\"name\":\"ops\","
+             "\"seats\":[{\"name\":\"run\",\"role\":\"runner\"}]}]}"))
+    (should (equal (let ((harmless-directory "/"))
+                     (harmless-team-preview "starter"))
+                   plan))
+    (should (equal (harmless-team-preview " starter ") plan))
+    (should-not (file-directory-p teams))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (let ((harmless-directory "/"))
+                        (harmless-team-boot "starter"))))
+                   "Refusing to store a team at /"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (let ((harmless-directory "c:"))
+                        (harmless-team-boot "starter"))))
+                   "Refusing to store a team at c:"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (let ((harmless-directory " c:/ "))
+                        (harmless-team-boot "starter"))))
+                   "Refusing to store a team at c:/"))
+    (dolist (bad (list "/" "c:/" " / " " c:/ " "c:" "\\"))
+      (should (equal (harmless-team-test-signal
+                      (lambda () (harmless-team-boot bad)))
+                     "team spec is the filesystem root")))
+    (dolist (bad (list "~" "notes" "rig.json" "sub/" "  notes  "))
+      (should (equal (harmless-team-test-signal
+                      (lambda () (harmless-team-boot bad)))
+                     "team spec must be absolute")))
+    (dolist (bad (list nil "" "   "))
+      (should (equal (harmless-team-test-signal
+                      (lambda () (harmless-team-boot bad)))
+                     "team spec is empty")))
+    (should (equal (harmless-team-test-signal
+                    (lambda () (harmless-team-boot 42)))
+                   "team spec must be a string"))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-boot
+                       (expand-file-name "missing.json" specs))))
+                   "team spec is missing"))
+    (should (equal (harmless-team-test-signal
+                    (lambda () (harmless-team-boot empty)))
+                   "team spec is missing"))
+    (dolist (bad (list cycle self ghost kind dup brace))
+      (let ((bytes (harmless-team-test-bytes bad)))
+        (should (equal (harmless-team-test-signal
+                        (lambda () (harmless-team-boot bad)))
+                       "team spec is not valid"))
+        (should (equal (harmless-team-test-bytes bad) bytes))))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-remove "starter" "dev" "review")))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+    (should-not (file-exists-p (expand-file-name "sub" elsewhere)))
+    (should-not (file-exists-p (expand-file-name "rig.json" elsewhere)))
+    (should-not (file-exists-p (expand-file-name "notes" base)))
+    (should (equal (harmless-team-boot "starter") plan))
+    (should (file-regular-p file))
+    (should (file-name-absolute-p file))
+    (should (harmless-directory-strictly-under-p file base))
+    (should-not (equal (file-truename file) (file-truename "/")))
+    (let ((text (harmless-team-test-read file)))
+      (should (string-search "dev-build@starter" text))
+      (should (string-search "dev-review@starter" text))
+      (should (string-search "delegates_to" text))
+      (should (string-search "implementer" text)))
+    (should (equal (harmless-team-edges "starter")
+                   (plist-get plan :edges)))
+    (should (equal (harmless-team-launch-order "starter")
+                   (plist-get plan :order)))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-preview "starter") plan))
+      (should (equal (harmless-team-test-signal
+                      (lambda () (harmless-team-boot " starter ")))
+                     "team rig already exists"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-grow
+                         "starter" "dev" "build" "implementer")))
+                     "team seat already exists"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (when (eq system-type 'windows-nt)
+      (let ((bytes (harmless-team-test-bytes file))
+            (cased (expand-file-name "cased.json" specs)))
+        (harmless-team-test-write
+         cased
+         (concat "{\"name\":\"Starter\",\"pods\":[{\"name\":\"qa\","
+                 "\"seats\":[{\"name\":\"note\",\"role\":\"notes\"}]}]}"))
+        (let ((cased-bytes (harmless-team-test-bytes cased)))
+          (should (equal (harmless-team-test-signal
+                          (lambda () (harmless-team-boot cased)))
+                         "team rig already exists"))
+          (should (equal (harmless-team-test-bytes file) bytes))
+          (should (equal (harmless-team-test-bytes cased) cased-bytes)))))
+    (should (equal (harmless-team-grow "starter" "qa" "note" "notes")
+                   (list :rig "starter" :pod "qa" :name "note"
+                         :role "notes" :address "qa-note@starter"
+                         :session "" :work nil)))
+    (should (equal (plist-get (harmless-team-seat "starter" "dev" "build")
+                              :role)
+                   "implementer"))
+    (should (equal (harmless-team-edges "starter")
+                   (plist-get plan :edges)))
+    (should (equal (harmless-team-launch-order "starter")
+                   (list "dev-build@starter" "dev-review@starter"
+                         "qa-note@starter")))
+    (should (equal (harmless-team-remove "starter" "dev" "build")
+                   (list :removed "dev-build@starter"
+                         :fallback nil :work nil)))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-seat "starter" "dev" "build")))
+                   "team seat is missing"))
+    (should (equal (harmless-team-edges "starter") nil))
+    (should-not (string-search "delegates_to"
+                               (harmless-team-test-read file)))
+    (should-not (string-search "dev-build@starter"
+                               (harmless-team-test-read file)))
+    (should (equal (harmless-team-launch-order "starter")
+                   (list "dev-review@starter" "qa-note@starter")))
+    (harmless-team-add-work "starter" "dev" "review" "keep the tests")
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove "starter" "dev" "review")))
+                     "team seat holds work"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove
+                         "starter" "dev" "review" "dev.review")))
+                     "team fallback is the same seat"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove
+                         "starter" "dev" "review" "/")))
+                     "team edge is not a seat"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove
+                         "starter" "dev" "review" "qa.absent")))
+                     "team seat is missing"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove
+                         "starter" "dev" "review" "")))
+                     "team edge is empty"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (should (equal (harmless-team-remove
+                    "starter" "dev" "review" "qa.note")
+                   (list :removed "dev-review@starter"
+                         :fallback "qa-note@starter"
+                         :work '("keep the tests"))))
+    (should (equal (harmless-team-seat "starter" "qa" "note")
+                   (list :rig "starter" :pod "qa" :name "note"
+                         :role "notes" :address "qa-note@starter"
+                         :session "" :work '("keep the tests"))))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-seat "starter" "dev" "review")))
+                   "team seat is missing"))
+    (should (equal (harmless-team-launch-order "starter")
+                   (list "qa-note@starter")))
+    (should (string-search "keep the tests"
+                           (harmless-team-test-read file)))
+    (should-not (string-search "dev-review@starter"
+                               (harmless-team-test-read file)))
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove "starter" "qa" "note")))
+                     "team seat holds work"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-remove
+                         "starter" "qa" "note" "qa.note")))
+                     "team fallback is the same seat"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (let ((bundle-file (expand-file-name "rig.json" bundle))
+          (kit (expand-file-name "kit.json" teams))
+          (paper-file (expand-file-name "paper.json" teams)))
+      (let ((bundle-bytes (harmless-team-test-bytes bundle-file))
+            (paper-bytes (harmless-team-test-bytes paper)))
+        (should (equal (harmless-team-preview bundle) kit-plan))
+        (should-not (file-exists-p kit))
+        (should (equal (harmless-team-boot
+                        (file-name-as-directory bundle))
+                       kit-plan))
+        (should (equal (harmless-team-test-bytes bundle-file)
+                       bundle-bytes))
+        (should (file-regular-p kit))
+        (should (file-name-absolute-p kit))
+        (should (harmless-directory-strictly-under-p kit base))
+        (should-not (equal (file-truename kit) (file-truename "/")))
+        (should (equal (harmless-team-test-signal
+                        (lambda () (harmless-team-boot bundle)))
+                       "team rig already exists"))
+        (should (equal (harmless-team-remove "kit" "ops" "run")
+                       (list :removed "ops-run@kit"
+                             :fallback nil :work nil)))
+        (should (file-regular-p kit))
+        (should (equal (harmless-team-launch-order "kit") nil))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-seat "kit" "ops" "run")))
+                       "team seat is missing"))
+        (should-not (string-search "ops-run@kit"
+                                   (harmless-team-test-read kit)))
+        (should (equal (harmless-team-preview paper) paper-plan))
+        (should-not (file-exists-p paper-file))
+        (should (equal (harmless-team-boot paper) paper-plan))
+        (should (equal (harmless-team-test-bytes paper) paper-bytes))
+        (should (equal (harmless-team-launch-order "paper")
+                       (plist-get paper-plan :order)))
+        (should (string-search "spawned_by"
+                               (harmless-team-test-read paper-file)))
+        (should (file-name-absolute-p paper-file))
+        (should (harmless-directory-strictly-under-p paper-file base))
+        (should-not (equal (file-truename paper-file)
+                           (file-truename "/")))))
+    (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+    (should (equal harmless-team--starter
+                   (list :name "starter"
+                         :pods (list
+                                (list :name "dev"
+                                      :seats
+                                      (list (list :name "build"
+                                                  :role "implementer")
+                                            (list :name "review"
+                                                  :role "checker"))))
+                         :edges (list
+                                 (list :kind "delegates_to"
+                                       :from "dev.build"
+                                       :to "dev.review")))))
     (should (equal roots (harmless-team-test-roots)))))

@@ -2201,6 +2201,10 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-edge
 @findex harmless-team-edges
 @findex harmless-team-launch-order
+@findex harmless-team-preview
+@findex harmless-team-boot
+@findex harmless-team-grow
+@findex harmless-team-remove
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2228,6 +2232,21 @@ and shown, and they do not change the order.
 @kbd{M-x harmless-team-launch-order} reads the order.  It does
 not start a seat.
 
+@kbd{M-x harmless-team-preview} shows the seats, the edges, and
+the launch order a boot would record.  It does not write.  The
+spec is the name @code{starter}, an absolute JSON file, or a
+directory that contains @file{rig.json}.  @code{starter} records
+two seats and one @code{delegates_to} edge.
+@kbd{M-x harmless-team-boot} records that rig.  Booting the same
+rig again is refused: @samp{team rig already exists}.
+@kbd{M-x harmless-team-grow} adds a seat to a rig that is already
+recorded.  @kbd{M-x harmless-team-remove} shrinks the rig: it
+drops a seat and every edge that touches it.  A seat that still
+holds work needs another seat to take that work.  Without one
+the removal is refused: @samp{team seat holds work}.  Naming the
+same seat is refused: @samp{team fallback is the same seat}.
+The rig file stays when its last seat is removed.
+
 Nil, @code{""}, and whitespace are refused: @samp{team edge is
 empty}.  An edge that is not text is refused: @samp{team edge
 must be a string}.  Any other kind is refused: @samp{team edge
@@ -2237,6 +2256,15 @@ to itself is refused: @samp{team edge is the same seat}.  The
 same edge again is refused: @samp{team edge already exists}.
 An edge that would loop the launch order is refused:
 @samp{team edge is a cycle}.  The rig file is left unchanged.
+
+A blank spec is refused: @samp{team spec is empty}.  A spec that
+is not text is refused: @samp{team spec must be a string}.
+@code{/} and a drive root are refused: @samp{team spec is the
+filesystem root}.  @code{~} and a relative path are refused and
+are not expanded: @samp{team spec must be absolute}.  A missing
+file, or a directory with no @file{rig.json}, is refused:
+@samp{team spec is missing}.  A broken spec is refused:
+@samp{team spec is not valid}.  The spec file is left unchanged.
 
 Nil, @code{""}, and whitespace are refused: @samp{team rig is
 empty}.  A rig that is not text is refused: @samp{team rig must

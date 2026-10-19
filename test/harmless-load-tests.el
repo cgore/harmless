@@ -66,6 +66,10 @@
   (should (fboundp 'harmless-team-edge))
   (should (fboundp 'harmless-team-edges))
   (should (fboundp 'harmless-team-launch-order))
+  (should (fboundp 'harmless-team-preview))
+  (should (fboundp 'harmless-team-boot))
+  (should (fboundp 'harmless-team-grow))
+  (should (fboundp 'harmless-team-remove))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

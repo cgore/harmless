@@ -1973,6 +1973,19 @@ do not change the order.  ‘M-x harmless-team-edges’ reads the edges.
 ‘M-x harmless-team-launch-order’ reads the order.  It does not start a
 seat.
 
+   ‘M-x harmless-team-preview’ shows the seats, the edges, and the
+launch order a boot would record.  It does not write.  The spec is the
+name ‘starter’, an absolute JSON file, or a directory that contains
+‘rig.json’.  ‘starter’ records two seats and one ‘delegates_to’ edge.
+‘M-x harmless-team-boot’ records that rig.  Booting the same rig again
+is refused: ‘team rig already exists’.  ‘M-x harmless-team-grow’ adds a
+seat to a rig that is already recorded.  ‘M-x harmless-team-remove’
+shrinks the rig: it drops a seat and every edge that touches it.  A seat
+that still holds work needs another seat to take that work.  Without one
+the removal is refused: ‘team seat holds work’.  Naming the same seat is
+refused: ‘team fallback is the same seat’.  The rig file stays when its
+last seat is removed.
+
    Nil, ‘""’, and whitespace are refused: ‘team edge is empty’.  An edge
 that is not text is refused: ‘team edge must be a string’.  Any other
 kind is refused: ‘team edge is not a kind’.  An end that is not a seat
@@ -1981,6 +1994,14 @@ itself is refused: ‘team edge is the same seat’.  The same edge again is
 refused: ‘team edge already exists’.  An edge that would loop the launch
 order is refused: ‘team edge is a cycle’.  The rig file is left
 unchanged.
+
+   A blank spec is refused: ‘team spec is empty’.  A spec that is not
+text is refused: ‘team spec must be a string’.  ‘/’ and a drive root are
+refused: ‘team spec is the filesystem root’.  ‘~’ and a relative path
+are refused and are not expanded: ‘team spec must be absolute’.  A
+missing file, or a directory with no ‘rig.json’, is refused: ‘team spec
+is missing’.  A broken spec is refused: ‘team spec is not valid’.  The
+spec file is left unchanged.
 
    Nil, ‘""’, and whitespace are refused: ‘team rig is empty’.  A rig
 that is not text is refused: ‘team rig must be a string’.  A path is
@@ -2432,10 +2453,14 @@ Command Index
 * harmless-task-status:                  Headless.             (line  6)
 * harmless-team-add-seat:                Team.                 (line  6)
 * harmless-team-add-work:                Team.                 (line  6)
+* harmless-team-boot:                    Team.                 (line  6)
 * harmless-team-edge:                    Team.                 (line  6)
 * harmless-team-edges:                   Team.                 (line  6)
+* harmless-team-grow:                    Team.                 (line  6)
 * harmless-team-launch-order:            Team.                 (line  6)
 * harmless-team-occupy:                  Team.                 (line  6)
+* harmless-team-preview:                 Team.                 (line  6)
+* harmless-team-remove:                  Team.                 (line  6)
 * harmless-team-seat:                    Team.                 (line  6)
 * harmless-usage:                        Usage.                (line  6)
 * harmless-worktree:                     Worktrees.            (line  6)
@@ -2519,15 +2544,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory96046
-Node: Plan mode98636
-Node: Usage101622
-Node: Files102641
-Node: Keys104408
-Node: Trouble106090
-Node: Manual107344
-Node: Command Index108049
-Node: Key Index112860
+Node: Memory97380
+Node: Plan mode99970
+Node: Usage102956
+Node: Files103975
+Node: Keys105742
+Node: Trouble107424
+Node: Manual108678
+Node: Command Index109383
+Node: Key Index114486
 
 End Tag Table
 

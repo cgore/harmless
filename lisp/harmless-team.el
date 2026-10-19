@@ -40,8 +40,9 @@
 ;; an address `pod-member@rig`.  The session id can be replaced.
 ;; The name, the role, and the inbound work stay.  Edges are
 ;; recorded on the rig.  `delegates_to` and `spawned_by` decide
-;; the launch order.  This file does not boot a team, send to a
-;; seat, or register another machine.
+;; the launch order.  A spec, the built-in starter, or a bundle
+;; can boot a rig.  Preview does not write.  This file does not
+;; send to a seat or register another machine.
 
 ;;; Code:
 
@@ -759,6 +760,354 @@ edges do not.  This does not start a seat."
   (let ((order (harmless-team--order rig)))
     (message "%s" (mapconcat #'identity order ", "))
     order))
+
+(defconst harmless-team--starter
+  (list :name "starter"
+        :pods (list
+               (list :name "dev"
+                     :seats (list
+                             (list :name "build"
+                                   :role "implementer")
+                             (list :name "review"
+                                   :role "checker"))))
+        :edges (list
+                (list :kind "delegates_to"
+                      :from "dev.build"
+                      :to "dev.review")))
+  "The built-in starter rig.  Preview and boot copy it.")
+
+(defun harmless-team--find-logical (members text)
+  "Return the member in MEMBERS named by TEXT, or nil.
+TEXT is `pod.member'."
+  (when (and (stringp text)
+             (string-match
+              "\\`\\([A-Za-z0-9]+\\)\\.\\([A-Za-z0-9]+\\)\\'" text))
+    (let ((pod (match-string 1 text))
+          (seat (match-string 2 text))
+          (found nil))
+      (dolist (item members)
+        (when (and (not found)
+                   (harmless-team--same-p (plist-get item :pod) pod)
+                   (harmless-team--same-p (plist-get item :seat) seat))
+          (setq found item)))
+      found)))
+
+(defun harmless-team--normalize (spec)
+  "Return SPEC in the form boot writes, or signal.
+A broken spec signals \"team spec is not valid\"."
+  (unless (and (harmless-plist-p spec)
+               (harmless-team--rig-name-p (plist-get spec :name))
+               (consp (plist-get spec :pods)))
+    (error "team spec is not valid"))
+  (let ((name (plist-get spec :name))
+        (pods nil)
+        (pod-seen nil)
+        (members nil))
+    (dolist (pod (plist-get spec :pods))
+      (unless (and (harmless-plist-p pod)
+                   (harmless-team--member-name-p (plist-get pod :name))
+                   (not (harmless-team--seen-p
+                         (plist-get pod :name) pod-seen))
+                   (consp (plist-get pod :seats)))
+        (error "team spec is not valid"))
+      (setq pod-seen (cons (plist-get pod :name) pod-seen))
+      (let ((seats nil)
+            (seat-seen nil))
+        (dolist (seat (plist-get pod :seats))
+          (unless (and (harmless-plist-p seat)
+                       (harmless-team--member-name-p
+                        (plist-get seat :name))
+                       (not (harmless-team--seen-p
+                             (plist-get seat :name) seat-seen))
+                       (stringp (plist-get seat :role))
+                       (not (string-empty-p
+                             (string-trim (plist-get seat :role)))))
+            (error "team spec is not valid"))
+          (setq seat-seen (cons (plist-get seat :name) seat-seen))
+          (let* ((role (string-trim (plist-get seat :role)))
+                 (logical (format "%s.%s"
+                                  (plist-get pod :name)
+                                  (plist-get seat :name)))
+                 (address (format "%s-%s@%s"
+                                  (plist-get pod :name)
+                                  (plist-get seat :name)
+                                  name)))
+            (setq members
+                  (append members
+                          (list (list :logical logical
+                                      :role role
+                                      :pod (plist-get pod :name)
+                                      :seat (plist-get seat :name)
+                                      :address address))))
+            (setq seats (append seats
+                                (list (list :name (plist-get seat :name)
+                                            :role role))))))
+        (setq pods (append pods
+                           (list (list :name (plist-get pod :name)
+                                       :seats seats))))))
+    (let ((edges nil)
+          (edge-seen nil)
+          (raw (plist-get spec :edges)))
+      (when (and raw (not (consp raw)))
+        (error "team spec is not valid"))
+      (dolist (edge raw)
+        (let ((from (and (harmless-plist-p edge)
+                         (harmless-team--find-logical
+                          members (plist-get edge :from))))
+              (to (and (harmless-plist-p edge)
+                       (harmless-team--find-logical
+                        members (plist-get edge :to)))))
+          (unless (and from to
+                       (harmless-team--edge-kind-p
+                        (plist-get edge :kind))
+                       (not (harmless-team--same-p
+                             (plist-get from :address)
+                             (plist-get to :address))))
+            (error "team spec is not valid"))
+          (let ((new (list :kind (plist-get edge :kind)
+                           :from (plist-get from :logical)
+                           :to (plist-get to :logical)
+                           :from-address (plist-get from :address)
+                           :to-address (plist-get to :address))))
+            (when (harmless-team--edge-seen-p
+                   (list :kind (plist-get new :kind)
+                         :from (plist-get new :from-address)
+                         :to (plist-get new :to-address))
+                   edge-seen)
+              (error "team spec is not valid"))
+            (setq edge-seen
+                  (cons (list :kind (plist-get new :kind)
+                              :from (plist-get new :from-address)
+                              :to (plist-get new :to-address))
+                        edge-seen))
+            (setq edges (append edges (list new))))))
+      (let* ((addresses (mapcar (lambda (member)
+                                  (plist-get member :address))
+                                members))
+             (order-edges
+              (mapcar (lambda (edge)
+                        (list :kind (plist-get edge :kind)
+                              :from (plist-get edge :from-address)
+                              :to (plist-get edge :to-address)))
+                      edges))
+             (order (harmless-team--launch-list addresses order-edges)))
+        (when (eq order 'cycle)
+          (error "team spec is not valid"))
+        (list :name name
+              :pods pods
+              :members members
+              :edges edges
+              :order order)))))
+
+(defun harmless-team--plan (spec)
+  "Return the preview plist for a normalized SPEC."
+  (list :name (plist-get spec :name)
+        :seats (mapcar (lambda (member)
+                         (list (plist-get member :address)
+                               (plist-get member :role)))
+                       (plist-get spec :members))
+        :edges (mapcar (lambda (edge)
+                         (list :kind (plist-get edge :kind)
+                               :from (plist-get edge :from-address)
+                               :to (plist-get edge :to-address)))
+                       (plist-get spec :edges))
+        :order (plist-get spec :order)))
+
+(defun harmless-team--read-spec-file (path)
+  "Return the spec plist in PATH, or signal."
+  (let ((obj (with-temp-buffer
+               (let ((coding-system-for-read 'utf-8-unix))
+                 (insert-file-contents path))
+               (harmless-json-decode-safe (buffer-string)))))
+    (unless (harmless-plist-p obj)
+      (error "team spec is not valid"))
+    obj))
+
+(defun harmless-team--read-bundle (dir)
+  "Return the spec in DIR's rig.json, or signal."
+  (let ((path (expand-file-name "rig.json" dir)))
+    (unless (and (file-regular-p path)
+                 (harmless-directory-strictly-under-p path dir)
+                 (not (equal (file-truename path)
+                             (file-truename "/"))))
+      (error "team spec is missing"))
+    (harmless-team--read-spec-file path)))
+
+(defun harmless-team--spec (text)
+  "Return the spec TEXT names, or signal.
+TEXT is \"starter\", an absolute spec file, or a bundle
+directory.  \"~\" is not expanded.  Nothing is written."
+  (cond
+   ((null text) (error "team spec is empty"))
+   ((not (stringp text))
+    (error "team spec must be a string")))
+  (setq text (string-trim text))
+  (cond
+   ((string-empty-p text) (error "team spec is empty"))
+   ((harmless-team--root-text-p text)
+    (error "team spec is the filesystem root"))
+   ((equal text "starter")
+    harmless-team--starter)
+   ((or (string-prefix-p "~" text)
+        (not (file-name-absolute-p text)))
+    (error "team spec must be absolute")))
+  (when (equal text "starter")
+    (setq text nil))
+  (if (null text)
+      harmless-team--starter
+    (progn
+      (setq text (directory-file-name (expand-file-name text)))
+      (when (or (harmless-team--root-text-p text)
+                (equal (file-truename text) (file-truename "/")))
+        (error "team spec is the filesystem root"))
+      (cond
+       ((not (file-exists-p text))
+        (error "team spec is missing"))
+       ((file-directory-p text)
+        (harmless-team--read-bundle text))
+       ((file-regular-p text)
+        (harmless-team--read-spec-file text))
+       (t (error "team spec is not valid"))))))
+
+(defun harmless-team--preview (text)
+  "Return the boot preview for TEXT.  Write nothing."
+  (harmless-team--plan (harmless-team--normalize
+                        (harmless-team--spec text))))
+
+(defun harmless-team--boot (text)
+  "Create the rig TEXT names and return the preview plist."
+  (let* ((spec (harmless-team--normalize (harmless-team--spec text)))
+         (name (plist-get spec :name))
+         (root (harmless-team--teams-root nil)))
+    (when (harmless-team--existing root name)
+      (error "team rig already exists"))
+    (dolist (pod (plist-get spec :pods))
+      (dolist (seat (plist-get pod :seats))
+        (harmless-team--add name
+                            (plist-get pod :name)
+                            (plist-get seat :name)
+                            (plist-get seat :role))))
+    (dolist (edge (plist-get spec :edges))
+      (harmless-team--connect name
+                              (plist-get edge :kind)
+                              (plist-get edge :from)
+                              (plist-get edge :to)))
+    (harmless-team--plan spec)))
+
+(defun harmless-team--find-address (rig address)
+  "Return the seat plist in RIG with ADDRESS, or nil."
+  (let ((found nil))
+    (dolist (pod (plist-get rig :pods))
+      (dolist (seat (plist-get pod :seats))
+        (when (and (not found)
+                   (harmless-team--same-p
+                    (plist-get seat :address) address))
+          (setq found seat))))
+    found))
+
+(defun harmless-team--excise (rig pod seat address)
+  "Remove SEAT and edges that touch ADDRESS from RIG."
+  (let ((pods nil))
+    (dolist (item (plist-get rig :pods))
+      (if (harmless-team--same-p (plist-get item :name) pod)
+          (let ((seats nil))
+            (dolist (one (plist-get item :seats))
+              (unless (harmless-team--same-p
+                       (plist-get one :name) seat)
+                (setq seats (append seats (list one)))))
+            (when seats
+              (setq pods (append pods
+                                 (list (plist-put item :seats seats))))))
+        (setq pods (append pods (list item)))))
+    (plist-put rig :pods pods))
+  (let ((edges nil))
+    (dolist (edge (plist-get rig :edges))
+      (unless (or (harmless-team--same-p (plist-get edge :from) address)
+                  (harmless-team--same-p (plist-get edge :to) address))
+        (setq edges (append edges (list edge)))))
+    (plist-put rig :edges edges))
+  rig)
+
+(defun harmless-team--drop (rig pod seat fallback)
+  "Remove SEAT from RIG.  Work moves to FALLBACK when it exists."
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let* ((seat-item (cdr found))
+           (address (plist-get seat-item :address))
+           (work (plist-get seat-item :work))
+           (target nil))
+      (when (and work (null fallback))
+        (error "team seat holds work"))
+      (when fallback
+        (setq target (harmless-team--endpoint stored fallback))
+        (when (harmless-team--same-p target address)
+          (error "team fallback is the same seat"))
+        (when work
+          (let ((other (harmless-team--find-address stored target)))
+            (unless other
+              (error "team seat is missing"))
+            (plist-put other :work
+                       (append (plist-get other :work) work)))))
+      (harmless-team--excise stored pod seat address)
+      (harmless-team--write (car loaded) stored)
+      (list :removed address :fallback target :work work))))
+
+;;;###autoload
+(defun harmless-team-preview (spec)
+  "Return what booting SPEC would record.
+SPEC is \"starter\", an absolute JSON file, or a directory
+with rig.json.  This does not write."
+  (interactive (list (read-string "Spec: ")))
+  (let ((plan (harmless-team--preview spec)))
+    (message "Preview %s" (plist-get plan :name))
+    plan))
+
+;;;###autoload
+(defun harmless-team-boot (spec)
+  "Create the rig described by SPEC.
+A second boot of the same rig is refused.  Return the preview
+plist."
+  (interactive (list (read-string "Spec: ")))
+  (let ((plan (harmless-team--boot spec)))
+    (message "Booted %s" (plist-get plan :name))
+    plan))
+
+;;;###autoload
+(defun harmless-team-grow (rig pod seat role)
+  "Add SEAT to the running rig RIG.
+The pod is created when it is new.  Return the seat plist."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-string "Role: ")))
+  (let ((saved (harmless-team--add rig pod seat role)))
+    (message "Grew %s" (plist-get saved :address))
+    saved))
+
+;;;###autoload
+(defun harmless-team-remove (rig pod seat &optional fallback)
+  "Remove SEAT from the running rig RIG.
+When the seat holds work, FALLBACK receives that work.  Without
+a fallback the removal is refused.  Edges that touch the seat
+are dropped.  Return a plist of what was removed."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (let ((answer (read-string "Fallback seat: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))))
+  (let ((removed (harmless-team--drop rig pod seat fallback)))
+    (message "Removed %s" (plist-get removed :removed))
+    removed))
 
 (provide 'harmless-team)
 
