@@ -391,12 +391,15 @@ A failure to resolve the sandbox is `edit'."
         (format "Error: this subagent cannot use %s" name))
        ((and (eq (plist-get agent :sandbox) 'read-only)
              (not (eq (harmless-turn--class tool session args) 'read))
-             (not (harmless-agent--blank-shell-p tool args)))
+             (not (harmless-agent--blank-shell-p tool args))
+             (not (string= name "send_message")))
         harmless-agent-read-only-refusal)
        (t nil)))))
 
 (defun harmless-agent-filter-tools (session tools)
-  "Return TOOLS with a subagent's limits applied."
+  "Return TOOLS with a subagent's limits applied.
+A read-only subagent keeps read tools, `run_shell', and
+`send_message'."
   (if (not (eq (harmless-session-source session) 'agent))
       tools
     (let* ((agent (harmless-session-agent session))
@@ -420,7 +423,8 @@ A failure to resolve the sandbox is `edit'."
           (seq-filter
            (lambda (tool)
              (or (eq (harmless-tool-class tool) 'read)
-                 (string= (harmless-tool-name tool) "run_shell")))
+                 (member (harmless-tool-name tool)
+                         '("run_shell" "send_message"))))
            tools)
         tools))))
 

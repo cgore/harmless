@@ -40,6 +40,8 @@
 ;; the source of truth; buffers are views.  `parent-id' links a fork or a
 ;; subagent to the session that started it.  `agent' is the in-memory
 ;; subagent run; the saved fields are its sandbox, tool list, and prompt.
+;; `findings' is a queue of findings from other live sessions.  It is not
+;; saved.  A flushed finding is an ordinary transcript line.
 
 ;;; Code:
 
@@ -53,6 +55,7 @@
 
 (declare-function harmless-tools-shell-kill "harmless-tools-shell" (proc))
 (declare-function harmless-agent-settle "harmless-agent" (session))
+(declare-function harmless-message-flush "harmless-message" (session))
 
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
@@ -111,7 +114,8 @@ location.  A relative path or the filesystem root is refused."
   shell-cwd
   steers
   agent
-  worktree)
+  worktree
+  findings)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -339,13 +343,16 @@ combined with :cwd."
 
 (defun harmless-session-set-status (session status)
   "Set SESSION status to STATUS and notify observers.
-When STATUS is idle or error, a subagent run settles and reports."
+When STATUS is idle or error, queued findings are written into the
+transcript and a subagent run settles and reports."
   (setf (harmless-session-status session) status
         (harmless-session-updated-at session) (harmless-now-iso))
   (harmless-emit session (list :status status))
-  (when (and (memq status '(idle error))
-             (fboundp 'harmless-agent-settle))
-    (harmless-agent-settle session)))
+  (when (memq status '(idle error))
+    (when (fboundp 'harmless-message-flush)
+      (harmless-message-flush session))
+    (when (fboundp 'harmless-agent-settle)
+      (harmless-agent-settle session))))
 
 (defun harmless-session-append (session message)
   "Append canonical MESSAGE to SESSION and persist."

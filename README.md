@@ -236,6 +236,15 @@ harmless-worktree-exit` do the same from the minibuffer.  `spawn_agent`
 takes `worktree` so the child edits that checkout while the parent
 stays put.
 
+## Messages
+
+`list_sessions` lists the sessions that are live in this Emacs.  A
+session that is only on disk is omitted.  `send_message` delivers
+`text` to one of those ids.  An idle session gets the finding in its
+transcript immediately.  A session that is in a turn receives it at
+the next safe point.  The finding does not start a turn.  Closing
+Emacs before a queued finding is written drops it.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

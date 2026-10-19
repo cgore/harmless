@@ -514,6 +514,8 @@ own state there.
 A detached chat is offered @code{memory_read},
 @code{memory_remember}, @code{memory_write_topic}, and
 @code{ask_user}.  @xref{Memory}.  @xref{Questions}.
+It can list live sessions and send one a finding.
+@xref{Messages}.
 
 @menu
 * File tools::  Read, list, write, replace, and patch.
@@ -523,6 +525,7 @@ A detached chat is offered @code{memory_read},
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
 * Worktrees::   Isolated checkouts of the same repository.
+* Messages::    A finding sent to another live session.
 @end menu
 
 @node File tools
@@ -750,8 +753,9 @@ for the parent.  A subagent does not receive that list.
 A read-only child may read files and run a shell command that cannot
 write.  A tool that can write is refused before the permission
 question: @samp{This subagent is read-only. A tool that can write is
-refused}.  A blank shell command is not that refusal.  A workspace
-child uses the parent's permission mode.
+refused}.  A blank shell command is not that refusal.  A read-only
+child may send a finding to another live session.  @xref{Messages}.
+A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is @code{always-approve}:
@@ -961,6 +965,42 @@ that child.  A workflow agent accepts @code{:worktree}.  That script
 can write.  A fork keeps the checkout the session is in.  It does
 not create another one, and it can leave.  Aborting a turn does not
 delete a checkout.
+
+@node Messages
+@section Messages
+
+@cindex send_message
+@cindex list_sessions
+@code{list_sessions} lists the sessions that are live in this Emacs.
+Each line is the id, the status, and the title.  A session that is
+only on disk is not listed.  Nil and an empty registry still return
+the heading @samp{Live sessions:}.
+
+@code{send_message} sends @code{text} to the live session whose id is
+@code{session}.  Nil, @code{""}, and whitespace are refused:
+@samp{session id is empty}.  A value that is not text is refused:
+@samp{session id is not an id}.  A missing or non-text finding is
+refused: @samp{message must be a string}.  @code{""} and whitespace
+are refused: @samp{message is empty}.  The sender is refused:
+@samp{a session cannot message itself}.  An id that is not live,
+including one that was closed, is refused: @samp{no live session}
+followed by that id.  @code{sub}, @code{sub/}, @code{/}, and
+@code{c:/} are ids, not paths.
+
+The finding is a line in the other session's transcript.  It does not
+start a turn, and it does not change that session's title.  A session
+that is idle receives it immediately: @samp{Delivered to }, followed
+by the id.  A session that is streaming or waiting on permission
+keeps it in memory until the transcript can take a line:
+@samp{Queued for }, followed by the id.  That line is written before
+the next provider call, or when the turn becomes idle or ends in an
+error.  Aborting the turn writes a finding that was still queued.
+Closing Emacs before that write drops it.  The finding is not a task,
+and it is not kept for a session that later replaces this one.
+
+The tool asks in @code{ask} mode.  @code{accept-edits} allows it.
+Plan mode does not refuse it.  A read-only subagent may send one.  A
+detached chat may list sessions and send a finding.
 
 @node Instructions
 @chapter Instructions
@@ -1207,7 +1247,8 @@ OAuth tokens for each connection.  Mode 0600.
 The session's model, status, totals, and plan flag.
 
 @item sessions/@var{project}/@var{id}/messages.jsonl
-The transcript, one JSON object per line.
+The transcript, one JSON object per line.  A finding from another
+live session is one of those lines.  @xref{Messages}.
 
 @item sessions/@var{project}/@var{id}/plan.md
 The plan, when plan mode has written one.

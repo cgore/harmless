@@ -620,10 +620,12 @@
     (let ((names (mapcar #'harmless-tool-name
                          (harmless-tools-for-session b))))
       (should (equal '("ask_user"
+                       "list_sessions"
                        "memory_read"
                        "memory_remember"
                        "memory_write_topic"
                        "run_workflow"
+                       "send_message"
                        "spawn_agent")
                      (sort names #'string<)))
       (should-not (member "read_file" names))

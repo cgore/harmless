@@ -453,7 +453,8 @@ state there.
 
    A detached chat is offered ‘memory_read’, ‘memory_remember’,
 ‘memory_write_topic’, and ‘ask_user’.  *Note Memory::.  *Note
-Questions::.
+Questions::.  It can list live sessions and send one a finding.  *Note
+Messages::.
 
 * Menu:
 
@@ -464,6 +465,7 @@ Questions::.
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
 * Worktrees::   Isolated checkouts of the same repository.
+* Messages::    A finding sent to another live session.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -675,8 +677,9 @@ available agents for the parent.  A subagent does not receive that list.
    A read-only child may read files and run a shell command that cannot
 write.  A tool that can write is refused before the permission question:
 ‘This subagent is read-only. A tool that can write is refused’.  A blank
-shell command is not that refusal.  A workspace child uses the parent's
-permission mode.
+shell command is not that refusal.  A read-only child may send a finding
+to another live session.  *Note Messages::.  A workspace child uses the
+parent's permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -803,7 +806,7 @@ script.  A named script needs a project directory.  Nil, ‘""’, ‘sub’,
 ‘sub/’, and ‘/’ are not directories Harmless searches.
 
 
-File: harmless.info,  Node: Worktrees,  Prev: Workflows,  Up: Tools
+File: harmless.info,  Node: Worktrees,  Next: Messages,  Prev: Workflows,  Up: Tools
 
 10.7 Worktrees
 ==============
@@ -857,6 +860,41 @@ a write, so plan mode refuses it even for that child.  A workflow agent
 accepts ‘:worktree’.  That script can write.  A fork keeps the checkout
 the session is in.  It does not create another one, and it can leave.
 Aborting a turn does not delete a checkout.
+
+
+File: harmless.info,  Node: Messages,  Prev: Worktrees,  Up: Tools
+
+10.8 Messages
+=============
+
+‘list_sessions’ lists the sessions that are live in this Emacs.  Each
+line is the id, the status, and the title.  A session that is only on
+disk is not listed.  Nil and an empty registry still return the heading
+‘Live sessions:’.
+
+   ‘send_message’ sends ‘text’ to the live session whose id is
+‘session’.  Nil, ‘""’, and whitespace are refused: ‘session id is
+empty’.  A value that is not text is refused: ‘session id is not an id’.
+A missing or non-text finding is refused: ‘message must be a string’.
+‘""’  and whitespace are refused: ‘message is empty’.  The sender is
+refused: ‘a session cannot message itself’.  An id that is not live,
+including one that was closed, is refused: ‘no live session’ followed by
+that id.  ‘sub’, ‘sub/’, ‘/’, and ‘c:/’ are ids, not paths.
+
+   The finding is a line in the other session's transcript.  It does not
+start a turn, and it does not change that session's title.  A session
+that is idle receives it immediately: ‘Delivered to ’, followed by the
+id.  A session that is streaming or waiting on permission keeps it in
+memory until the transcript can take a line: ‘Queued for ’, followed by
+the id.  That line is written before the next provider call, or when the
+turn becomes idle or ends in an error.  Aborting the turn writes a
+finding that was still queued.  Closing Emacs before that write drops
+it.  The finding is not a task, and it is not kept for a session that
+later replaces this one.
+
+   The tool asks in ‘ask’ mode.  ‘accept-edits’ allows it.  Plan mode
+does not refuse it.  A read-only subagent may send one.  A detached chat
+may list sessions and send a finding.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1077,7 +1115,8 @@ replaced with ‘/’.
      The session's model, status, totals, and plan flag.
 
 ‘sessions/PROJECT/ID/messages.jsonl’
-     The transcript, one JSON object per line.
+     The transcript, one JSON object per line.  A finding from another
+     live session is one of those lines.  *Note Messages::.
 
 ‘sessions/PROJECT/ID/plan.md’
      The plan, when plan mode has written one.
@@ -1323,24 +1362,25 @@ Node: Permissions11011
 Node: Accounts12660
 Node: Models14905
 Node: Tools16001
-Node: File tools17372
-Node: Search18606
-Node: Shell20247
-Node: Questions23032
-Node: Subagents23802
-Node: Workflows27400
-Node: Worktrees32403
-Node: Instructions35514
-Node: Skills37260
-Node: Memory38409
-Node: Plan mode39674
-Node: Usage41357
-Node: Files42376
-Node: Keys43709
-Node: Trouble44932
-Node: Manual46186
-Node: Command Index46891
-Node: Key Index49804
+Node: File tools17498
+Node: Search18732
+Node: Shell20373
+Node: Questions23158
+Node: Subagents23928
+Node: Workflows27608
+Node: Worktrees32611
+Node: Messages35739
+Node: Instructions37541
+Node: Skills39287
+Node: Memory40436
+Node: Plan mode41701
+Node: Usage43384
+Node: Files44403
+Node: Keys45820
+Node: Trouble47043
+Node: Manual48297
+Node: Command Index49002
+Node: Key Index51915
 
 End Tag Table
 

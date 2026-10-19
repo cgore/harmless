@@ -279,6 +279,8 @@ directory, which lives under the Harmless data directory.  Setting
     ("run_workflow" "workflow")
     ("enter_worktree" "worktree")
     ("exit_worktree" "leave")
+    ("list_sessions" "sessions")
+    ("send_message" "message")
     (_ (or name "?"))))
 
 (defun harmless-ui--tool-groupable-p (name)
@@ -315,6 +317,8 @@ directory, which lives under the Harmless data directory.  Setting
                                 ""))
             ((or "enter_worktree" "exit_worktree")
              (or (harmless-tool-arg args :name) ""))
+            ("send_message" (or (harmless-tool-arg args :session) ""))
+            ("list_sessions" "")
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)
@@ -698,6 +702,11 @@ If that fold is already collapsed, collapse its parent group."
   (harmless-ui--insert-label "You" 'harmless-user-face)
   (insert (or (plist-get msg :content) "") "\n\n"))
 
+(defun harmless-ui--insert-finding (msg)
+  "Insert finding MSG at point."
+  (harmless-ui--insert-label "Finding" 'harmless-user-face)
+  (insert (or (plist-get msg :content) "") "\n\n"))
+
 (defun harmless-ui--mark-turn (start turn)
   "Mark the text from START to point as user turn TURN.
 TURN is 1-based.  A nil START, or an empty range, is left unmarked."
@@ -750,6 +759,8 @@ A summary before the first user turn is left unmarked."
             ((or :summary 'summary "summary")
              (harmless-ui--insert-label "Summary" 'harmless-assistant-face)
              (harmless-ui--insert-assistant-body msg))
+            ((or :finding 'finding "finding")
+             (harmless-ui--insert-finding msg))
             ((or :tool 'tool "tool")
              (harmless-ui--insert-tool-fold
               (list :id (plist-get msg :id)
@@ -906,6 +917,13 @@ would swallow the following tool block into the streamed prose."
          session
          (lambda ()
            (harmless-ui--attach-tool-result msg))))
+       ((or :finding 'finding "finding")
+        (harmless-ui-ensure-session-buffer session)
+        (harmless-ui--with-session-buffer
+         session
+         (lambda ()
+           (goto-char (point-max))
+           (harmless-ui--insert-finding msg))))
        (_ nil)))
     (`(:text ,s)
      (harmless-ui--stream-text session s))

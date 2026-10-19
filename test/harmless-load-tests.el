@@ -20,7 +20,9 @@
   (should (harmless-tool-by-name "spawn_agent"))
   (should (harmless-tool-by-name "run_workflow"))
   (should (harmless-tool-by-name "enter_worktree"))
-  (should (harmless-tool-by-name "exit_worktree")))
+  (should (harmless-tool-by-name "exit_worktree"))
+  (should (harmless-tool-by-name "list_sessions"))
+  (should (harmless-tool-by-name "send_message")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

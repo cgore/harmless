@@ -100,6 +100,7 @@
                   (session tool args))
 (declare-function harmless-worktree-plan-refuses-p "harmless-worktree"
                   (session tool args))
+(declare-function harmless-message-flush "harmless-message" (session))
 
 (cl-defstruct (harmless-turn-batch
                (:constructor harmless-turn-batch-create)
@@ -195,16 +196,18 @@ summarized before the provider sees TEXT."
 (defun harmless-tools-for-session (session)
   "Return the tools offered to SESSION.
 A detached chat can use global memory, ask the user a question,
-start a subagent, or run a workflow.  It is not offered project
-files, a shell, or plan mode.  A subagent is not offered
-`spawn_agent' or `run_workflow'."
+start a subagent, run a workflow, or message another live session.
+It is not offered project files, a shell, or plan mode.  A subagent
+is not offered `spawn_agent' or `run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
            (let ((allowed '("ask_user"
+                            "list_sessions"
                             "memory_read"
                             "memory_remember"
                             "memory_write_topic"
+                            "send_message"
                             "spawn_agent"
                             "run_workflow")))
              (seq-filter (lambda (tool)
@@ -236,6 +239,8 @@ A workflow catalog is included for a session that is not a subagent."
 
 (defun harmless-turn--call (session)
   "Send SESSION messages to the provider."
+  (when (fboundp 'harmless-message-flush)
+    (harmless-message-flush session))
   (if (and (fboundp 'harmless-agent-limited-p)
            (harmless-agent-limited-p session))
       (harmless-agent-stop-for-limit session)
