@@ -207,18 +207,26 @@ undecoded process), interpret those bytes as UTF-8."
 
 (defun harmless-collapse-path (path)
   "Return absolute PATH with \".\" and \"..\" removed.
-PATH must already be absolute.  This does not read `default-directory'."
+PATH must already be absolute.  This does not read `default-directory'.
+A Windows drive letter stays on that drive.  A leading slash would make
+a later `expand-file-name' paste the path onto the current drive."
   (unless (and (stringp path) (file-name-absolute-p path))
     (error "Not an absolute path: %S" path))
-  (let (parts)
-    (dolist (part (split-string path "/" t))
+  (save-match-data
+    (let* ((drive (and (string-match "\\`\\([A-Za-z]:\\)" path)
+                       (match-string 1 path)))
+           (body (if drive (substring path (match-end 0)) path))
+           (parts nil))
+      (dolist (part (split-string body "[\\\\/]" t))
+        (cond
+         ((string= part ".") nil)
+         ((string= part "..") (setq parts (cdr parts)))
+         (t (push part parts))))
+      (setq parts (nreverse parts))
       (cond
-       ((string= part "."))
-       ((string= part "..") (setq parts (cdr parts)))
-       (t (push part parts))))
-    (if parts
-        (concat "/" (mapconcat #'identity (nreverse parts) "/"))
-      "/")))
+       (drive (concat drive "/" (mapconcat #'identity parts "/")))
+       (parts (concat "/" (mapconcat #'identity parts "/")))
+       (t "/")))))
 
 (defun harmless-filesystem-root-p (path)
   "Return non-nil if PATH is the filesystem root.
