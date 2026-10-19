@@ -1,4 +1,4 @@
-This is harmless.info, produced by makeinfo version 7.3 from
+This is harmless.info, produced by .\makeinfo version 7.3 from
 harmless.texi.
 
 Copyright © 2026 Christopher Mark Gore.
@@ -327,7 +327,8 @@ session.  The menu key is ‘p’.  New sessions take the value of
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
 query.  For a fetched page, it is the URL. For an X search, it is the
-query or the post id.
+query or the post id.  For an MCP call, it is the resource uri or the
+server name.
 
 ‘y’
      Allow this call.
@@ -458,7 +459,8 @@ state there.
 Questions::.  It can list live sessions and send one a finding.  *Note
 Messages::.  It can search the web and fetch a page.  *Note Web
 search::.  *Note Fetch a page::.  It can search X for posts, a thread,
-and accounts.  *Note X search::.
+and accounts.  *Note X search::.  It can list and read MCP resources.
+*Note MCP::.
 
 * Menu:
 
@@ -473,6 +475,7 @@ and accounts.  *Note X search::.
 * Web search::  Look up a query on the web.
 * Fetch a page::  Read one http or https page.
 * X search::    Find posts, a thread, and accounts on X.
+* MCP::         Call a configured server and read its resources.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -687,8 +690,8 @@ write.  A tool that can write is refused before the permission question:
 shell command is not that refusal.  A read-only child may send a finding
 to another live session.  *Note Messages::.  It may also search the web.
 *Note Web search::.  It may fetch a page.  *Note Fetch a page::.  It may
-search X. *Note X search::.  A workspace child uses the parent's
-permission mode.
+search X. *Note X search::.  It may list and read MCP resources.  *Note
+MCP::.  A workspace child uses the parent's permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -953,7 +956,7 @@ refuse it.  A read-only subagent may fetch a page.  A detached chat may
 fetch a page.  A failed request is ‘web request failed’.
 
 
-File: harmless.info,  Node: X search,  Prev: Fetch a page,  Up: Tools
+File: harmless.info,  Node: X search,  Next: MCP,  Prev: Fetch a page,  Up: Tools
 
 10.11 X search
 ==============
@@ -998,6 +1001,54 @@ refuse them.  A read-only subagent may search X. A detached chat may
 search X. A response that is not JSON is ‘X search failed’.  A request
 that does not succeed is ‘web request failed’.  Nothing is written into
 the project.
+
+
+File: harmless.info,  Node: MCP,  Prev: X search,  Up: Tools
+
+10.12 MCP
+=========
+
+Harmless calls tools on a local MCP server and reads that server's
+resources.  Servers are named in ‘mcp.json’.  The project file is
+‘.harmless/mcp.json’ in the session directory.  The global file is
+‘mcp.json’ under the Harmless data directory.  A name in both files uses
+the project command.  A detached chat reads only the global file.  A
+relative directory, an empty directory, and the filesystem root do not
+select a project file.
+
+   The file is a JSON object.  ‘mcpServers’ maps a server name to a
+‘command’ and an optional ‘args’ list.  A name that is not a single
+token is refused: ‘MCP server name is not a name’.  ‘sub’ with
+surrounding spaces is that token.  A missing command is refused: ‘MCP
+command is empty’.  A command that is not text is refused: ‘MCP command
+must be a string’.  An argument that is not text is refused: ‘MCP
+argument must be a string’.  A file that is not JSON is refused:
+‘mcp.json is not valid’.  A file with no ‘mcpServers’ object is refused:
+‘mcp.json has no servers’.  A missing file means no servers.
+
+   Each server tool is offered as ‘mcp__’, the server name, ‘__’, and
+the tool name.  The offered schema is an empty object.  Harmless loads
+the server's schema when the tool is about to be called.  A missing
+required argument is refused: ‘MCP argument ’, the name, and ‘ is
+required’.  The class is ‘network’.  A tool from the server is not
+offered to a read-only subagent, because that tool can write.
+
+   ‘mcp_list_resources’ lists resources for ‘server’.
+‘mcp_read_resource’ reads ‘uri’ from that server.  Nil, ‘""’, and
+whitespace are refused: ‘server name is empty’ or ‘resource uri is
+empty’.  A value that is not text is refused: ‘server name must be a
+string’ or ‘resource uri must be a string’.  A server name that is not a
+token, including ‘/’ and ‘c:/’, is refused: ‘server name is not a name’.
+‘/’ and ‘c:/’ are ordinary resource URIs.  An unknown server is refused:
+‘no MCP server ’, followed by the name.  No resources returns ‘No
+resources’.  A resource with no text returns ‘resource has no text’.
+
+   The tools ask in ‘ask’ mode and in ‘accept-edits’.  ‘always-approve’
+does not ask.  Plan mode does not refuse them.  A read-only subagent may
+list and read resources.  A detached chat may do that too.  A failed
+call is ‘MCP call failed’.  A command that is not a program is refused
+before it starts: ‘MCP command is not a program’.  Nothing is written
+into the project.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1454,39 +1505,40 @@ Key Index
 
 
 Tag Table:
-Node: Top371
-Node: Introduction1770
-Node: Installation2501
-Node: Starting4105
-Node: Sessions4644
-Node: Transcript6141
-Node: Prompt9770
-Node: Permissions11011
-Node: Accounts12868
-Node: Models15113
-Node: Tools16209
-Node: File tools18010
-Node: Search19244
-Node: Shell20885
-Node: Questions23670
-Node: Subagents24440
-Node: Workflows28250
-Node: Worktrees33253
-Node: Messages36381
-Node: Web search38202
-Node: Fetch a page39057
-Node: X search40290
-Node: Instructions42675
-Node: Skills44421
-Node: Memory45570
-Node: Plan mode46835
-Node: Usage48518
-Node: Files49537
-Node: Keys50954
-Node: Trouble52177
-Node: Manual53431
-Node: Command Index54136
-Node: Key Index57049
+Node: Top373
+Node: Introduction1772
+Node: Installation2503
+Node: Starting4107
+Node: Sessions4646
+Node: Transcript6143
+Node: Prompt9772
+Node: Permissions11013
+Node: Accounts12931
+Node: Models15176
+Node: Tools16272
+Node: File tools18188
+Node: Search19422
+Node: Shell21063
+Node: Questions23848
+Node: Subagents24618
+Node: Workflows28479
+Node: Worktrees33482
+Node: Messages36610
+Node: Web search38431
+Node: Fetch a page39286
+Node: X search40519
+Node: MCP42916
+Node: Instructions45599
+Node: Skills47345
+Node: Memory48494
+Node: Plan mode49759
+Node: Usage51442
+Node: Files52461
+Node: Keys53878
+Node: Trouble55101
+Node: Manual56355
+Node: Command Index57060
+Node: Key Index59973
 
 End Tag Table
 

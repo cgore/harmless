@@ -197,9 +197,9 @@ summarized before the provider sees TEXT."
   "Return the tools offered to SESSION.
 A detached chat can use global memory, ask the user a question,
 start a subagent, run a workflow, message another live session,
-or search the web, fetch a page, and look up X.  It is not
-offered project files, a shell, or plan mode.  A subagent is
-not offered `spawn_agent' or `run_workflow'."
+search the web, fetch a page, look up X, and read MCP resources.
+It is not offered project files, a shell, or plan mode.  A
+subagent is not offered `spawn_agent' or `run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
@@ -215,10 +215,14 @@ not offered `spawn_agent' or `run_workflow'."
                             "web_search"
                             "x_keyword_search"
                             "x_thread_fetch"
-                            "x_user_search")))
+                            "x_user_search"
+                            "mcp_list_resources"
+                            "mcp_read_resource")))
              (seq-filter (lambda (tool)
                            (member (harmless-tool-name tool) allowed))
                          (harmless-tools-enabled))))))
+    (when (fboundp 'harmless-mcp-tools)
+      (setq tools (append tools (harmless-mcp-tools session))))
     (if (fboundp 'harmless-agent-filter-tools)
         (harmless-agent-filter-tools session tools)
       tools)))
@@ -383,6 +387,8 @@ A tool's `classify' function may narrow one shell command to `read'."
     ('network (or (harmless-tool-arg args :query)
                   (harmless-tool-arg args :url)
                   (harmless-tool-arg args :post_id)
+                  (harmless-tool-arg args :uri)
+                  (harmless-tool-arg args :server)
                   (harmless-tool-name tool)))
     (_ (harmless-tool-name tool))))
 
@@ -462,12 +468,20 @@ inside this loop, so it must not start the loop again."
       (setf (harmless-turn-batch-launching batch) nil))
     (harmless-turn--maybe-finish batch)))
 
+(defun harmless-turn--tool (session name)
+  "Return the tool named NAME for SESSION.
+A dynamic MCP tool is found on SESSION.  Built-in tools come
+from the registry."
+  (or (and (fboundp 'harmless-mcp-tool-by-name)
+           (harmless-mcp-tool-by-name session name))
+      (harmless-tool-by-name name)))
+
 (defun harmless-turn--start-one (batch index)
   "Start call INDEX in BATCH."
   (let* ((session (harmless-turn-batch-session batch))
          (call (nth index (harmless-turn-batch-calls batch)))
          (args (harmless-tool-parse-args (plist-get call :args)))
-         (tool (harmless-tool-by-name (plist-get call :name))))
+         (tool (harmless-turn--tool session (plist-get call :name))))
     (cond
      ((harmless-turn-batch-aborted batch) nil)
      ((not tool)

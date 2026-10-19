@@ -394,14 +394,17 @@ A failure to resolve the sandbox is `edit'."
              (not (harmless-agent--blank-shell-p tool args))
              (not (member name '("send_message" "web_search" "web_fetch"
                                  "x_keyword_search" "x_thread_fetch"
-                                 "x_user_search"))))
+                                 "x_user_search"
+                                 "mcp_list_resources"
+                                 "mcp_read_resource"))))
         harmless-agent-read-only-refusal)
        (t nil)))))
 
 (defun harmless-agent-filter-tools (session tools)
   "Return TOOLS with a subagent's limits applied.
 A read-only subagent keeps read tools, `run_shell',
-`send_message', `web_search', `web_fetch', and X search."
+`send_message', `web_search', `web_fetch', X search, and MCP
+resources."
   (if (not (eq (harmless-session-source session) 'agent))
       tools
     (let* ((agent (harmless-session-agent session))
@@ -429,7 +432,9 @@ A read-only subagent keeps read tools, `run_shell',
                          '("run_shell" "send_message"
                            "web_search" "web_fetch"
                            "x_keyword_search" "x_thread_fetch"
-                           "x_user_search"))))
+                           "x_user_search"
+                           "mcp_list_resources"
+                           "mcp_read_resource"))))
            tools)
         tools))))
 

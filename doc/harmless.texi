@@ -381,7 +381,8 @@ When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
 query.  For a fetched page, it is the URL.  For an X search, it
-is the query or the post id.
+is the query or the post id.  For an MCP call, it is the resource
+uri or the server name.
 
 @table @kbd
 @item y
@@ -523,6 +524,7 @@ It can search the web and fetch a page.  @xref{Web search}.
 @xref{Fetch a page}.
 It can search X for posts, a thread, and accounts.
 @xref{X search}.
+It can list and read MCP resources.  @xref{MCP}.
 
 @menu
 * File tools::  Read, list, write, replace, and patch.
@@ -536,6 +538,7 @@ It can search X for posts, a thread, and accounts.
 * Web search::  Look up a query on the web.
 * Fetch a page::  Read one http or https page.
 * X search::    Find posts, a thread, and accounts on X.
+* MCP::         Call a configured server and read its resources.
 @end menu
 
 @node File tools
@@ -768,6 +771,7 @@ child may send a finding to another live session.  @xref{Messages}.
 It may also search the web.  @xref{Web search}.
 It may fetch a page.  @xref{Fetch a page}.
 It may search X.  @xref{X search}.
+It may list and read MCP resources.  @xref{MCP}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1114,6 +1118,59 @@ Plan mode does not refuse them.  A read-only subagent may search
 X.  A detached chat may search X.  A response that is not JSON is
 @samp{X search failed}.  A request that does not succeed is
 @samp{web request failed}.  Nothing is written into the project.
+
+@node MCP
+@section MCP
+
+@cindex MCP
+@cindex mcp_list_resources
+@cindex mcp_read_resource
+Harmless calls tools on a local MCP server and reads that server's
+resources.  Servers are named in @file{mcp.json}.  The project file
+is @file{.harmless/mcp.json} in the session directory.  The global
+file is @file{mcp.json} under the Harmless data directory.  A name
+in both files uses the project command.  A detached chat reads only
+the global file.  A relative directory, an empty directory, and the
+filesystem root do not select a project file.
+
+The file is a JSON object.  @code{mcpServers} maps a server name to
+a @code{command} and an optional @code{args} list.  A name that is
+not a single token is refused: @samp{MCP server name is not a
+name}.  @code{sub} with surrounding spaces is that token.  A
+missing command is refused: @samp{MCP command is empty}.  A command
+that is not text is refused: @samp{MCP command must be a string}.
+An argument that is not text is refused: @samp{MCP argument must
+be a string}.  A file that is not JSON is refused: @samp{mcp.json
+is not valid}.  A file with no @code{mcpServers} object is refused:
+@samp{mcp.json has no servers}.  A missing file means no servers.
+
+Each server tool is offered as @code{mcp__}, the server name,
+@code{__}, and the tool name.  The offered schema is an empty
+object.  Harmless loads the server's schema when the tool is about
+to be called.  A missing required argument is refused:
+@samp{MCP argument }, the name, and @samp{ is required}.  The class
+is @code{network}.  A tool from the server is not offered to a
+read-only subagent, because that tool can write.
+
+@code{mcp_list_resources} lists resources for @code{server}.
+@code{mcp_read_resource} reads @code{uri} from that server.  Nil,
+@code{""}, and whitespace are refused: @samp{server name is empty}
+or @samp{resource uri is empty}.  A value that is not text is
+refused: @samp{server name must be a string} or @samp{resource uri
+must be a string}.  A server name that is not a token, including
+@code{/} and @code{c:/}, is refused: @samp{server name is not a
+name}.  @code{/} and @code{c:/} are ordinary resource URIs.  An
+unknown server is refused: @samp{no MCP server }, followed by the
+name.  No resources returns @samp{No resources}.  A resource with
+no text returns @samp{resource has no text}.
+
+The tools ask in @code{ask} mode and in @code{accept-edits}.
+@code{always-approve} does not ask.  Plan mode does not refuse
+them.  A read-only subagent may list and read resources.  A
+detached chat may do that too.  A failed call is @samp{MCP call
+failed}.  A command that is not a program is refused before it
+starts: @samp{MCP command is not a program}.  Nothing is written
+into the project.
 
 @node Instructions
 @chapter Instructions

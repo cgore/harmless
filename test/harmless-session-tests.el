@@ -621,6 +621,8 @@
                          (harmless-tools-for-session b))))
       (should (equal '("ask_user"
                        "list_sessions"
+                       "mcp_list_resources"
+                       "mcp_read_resource"
                        "memory_read"
                        "memory_remember"
                        "memory_write_topic"

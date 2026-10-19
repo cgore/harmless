@@ -267,6 +267,17 @@ token is `harmless-x-bearer`, `X_BEARER_TOKEN`, or an auth-source
 entry for `api.x.com`.  A missing token is refused before a
 request.  Nothing is written into the project.
 
+## MCP
+
+`mcp.json` names local MCP servers.  The project file is
+`.harmless/mcp.json`.  The global file is `mcp.json` under the
+Harmless data directory.  A server tool is offered as
+`mcp__SERVER__TOOL`.  Its schema is loaded when the tool is about
+to be called.  `mcp_list_resources` and `mcp_read_resource` read
+resources.  The class is `network`, so accepting edits still asks.
+A read-only subagent may read resources.  Nothing is written into
+the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

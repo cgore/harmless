@@ -286,7 +286,11 @@ directory, which lives under the Harmless data directory.  Setting
     ("x_keyword_search" "posts")
     ("x_thread_fetch" "thread")
     ("x_user_search" "users")
-    (_ (or name "?"))))
+    ("mcp_list_resources" "resources")
+    ("mcp_read_resource" "resource")
+    (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
+           "mcp"
+         (or name "?")))))
 
 (defun harmless-ui--tool-groupable-p (name)
   "Return non-nil if NAME joins an explored group."
@@ -333,6 +337,18 @@ directory, which lives under the Harmless data directory.  Setting
             ("x_thread_fetch"
              (let ((id (harmless-tool-arg args :post_id)))
                (if (stringp id) id "")))
+            ("mcp_list_resources"
+             (let ((server (harmless-tool-arg args :server)))
+               (if (stringp server) server "")))
+            ((or "mcp_read_resource"
+                 (pred (lambda (tool-name)
+                         (and (stringp tool-name)
+                              (string-prefix-p "mcp__" tool-name)))))
+             (let ((uri (harmless-tool-arg args :uri)))
+               (if (stringp uri)
+                   uri
+                 (let ((server (harmless-tool-arg args :server)))
+                   (if (stringp server) server "")))))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

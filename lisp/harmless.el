@@ -90,6 +90,7 @@
 (require 'harmless-message)
 (require 'harmless-web)
 (require 'harmless-x)
+(require 'harmless-mcp)
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-compact)

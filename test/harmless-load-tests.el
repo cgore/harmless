@@ -27,7 +27,9 @@
   (should (harmless-tool-by-name "web_fetch"))
   (should (harmless-tool-by-name "x_keyword_search"))
   (should (harmless-tool-by-name "x_thread_fetch"))
-  (should (harmless-tool-by-name "x_user_search")))
+  (should (harmless-tool-by-name "x_user_search"))
+  (should (harmless-tool-by-name "mcp_list_resources"))
+  (should (harmless-tool-by-name "mcp_read_resource")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)
