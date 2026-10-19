@@ -421,6 +421,18 @@ harmless-set-permission-mode’ accepts ‘auto’.  Nil uses the default
 mode.  An unknown mode is refused: ‘permission mode is not a mode’.  A
 saved mode Harmless does not know is loaded as ‘ask’.
 
+   ‘harmless-hooks’ is a list of hooks.  It is not saved on the session.
+A ‘pre’ hook can block a tool call before the question.  The model
+receives ‘Error: hook blocked this tool call’, or that text, a colon,
+and the reason.  A block does not run the tool.  A hook cannot override
+plan mode, the dangerous-command list, or a deny rule, and a hook cannot
+skip the question.  A ‘post’ hook runs after the tool and can replace
+the result the model sees.  The files the tool wrote stay as they are.
+A hook error blocks before the call and leaves the result it was given
+after the call.  A hook is a function, a command, an HTTP request, an
+MCP call, a prompt, or a subagent.  Nil, ‘""’, ‘/’, and ‘c:/’ are not
+URLs and are not fetched.
+
 
 File: harmless.info,  Node: Accounts,  Next: Models,  Prev: Permissions,  Up: Top
 
@@ -1745,35 +1757,35 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts17555
-Node: Models19800
-Node: Tools20896
-Node: File tools23118
-Node: Search24352
-Node: Shell25993
-Node: Questions28778
-Node: Subagents29548
-Node: Workflows33697
-Node: Worktrees38700
-Node: Messages41828
-Node: Web search43649
-Node: Fetch a page44504
-Node: X search45737
-Node: MCP48134
-Node: Computer use50838
-Node: Monitors52854
-Node: Schedules55787
-Node: Instructions58239
-Node: Skills59985
-Node: Memory61134
-Node: Plan mode62399
-Node: Usage64436
-Node: Files65455
-Node: Keys67000
-Node: Trouble68223
-Node: Manual69477
-Node: Command Index70182
-Node: Key Index73095
+Node: Accounts18317
+Node: Models20562
+Node: Tools21658
+Node: File tools23880
+Node: Search25114
+Node: Shell26755
+Node: Questions29540
+Node: Subagents30310
+Node: Workflows34459
+Node: Worktrees39462
+Node: Messages42590
+Node: Web search44411
+Node: Fetch a page45266
+Node: X search46499
+Node: MCP48896
+Node: Computer use51600
+Node: Monitors53616
+Node: Schedules56549
+Node: Instructions59001
+Node: Skills60747
+Node: Memory61896
+Node: Plan mode63161
+Node: Usage65198
+Node: Files66217
+Node: Keys67762
+Node: Trouble68985
+Node: Manual70239
+Node: Command Index70944
+Node: Key Index73857
 
 End Tag Table
 

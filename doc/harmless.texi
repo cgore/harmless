@@ -492,6 +492,21 @@ default mode.  An unknown mode is refused: @samp{permission mode
 is not a mode}.  A saved mode Harmless does not know is loaded
 as @code{ask}.
 
+@vindex harmless-hooks
+@code{harmless-hooks} is a list of hooks.  It is not saved on the
+session.  A @code{pre} hook can block a tool call before the
+question.  The model receives @samp{Error: hook blocked this tool
+call}, or that text, a colon, and the reason.  A block does not
+run the tool.  A hook cannot override plan mode, the
+dangerous-command list, or a deny rule, and a hook cannot skip
+the question.  A @code{post} hook runs after the tool and can
+replace the result the model sees.  The files the tool wrote stay
+as they are.  A hook error blocks before the call and leaves the
+result it was given after the call.  A hook is a function, a
+command, an HTTP request, an MCP call, a prompt, or a subagent.
+Nil, @code{""}, @code{/}, and @code{c:/} are not URLs and are not
+fetched.
+
 @node Accounts
 @chapter Accounts
 

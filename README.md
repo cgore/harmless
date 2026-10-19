@@ -340,6 +340,12 @@ classifier, or the reviewer model when the classifier is nil,
 before a call that would otherwise prompt.  `allow` skips the
 question.  Anything else asks.  An allow rule skips the reviewer.
 A deny, a dangerous command, and plan mode still refuse first.
+`harmless-hooks` can block a tool call before the question, or
+replace the result the model sees after the tool runs.  A hook
+does not override plan mode, a deny rule, or the
+dangerous-command list, and it does not skip the question.  A
+hook is a function, a command, an HTTP request, an MCP call, a
+prompt, or a subagent.  The list is not saved on the session.
 
 ## Plan mode
 

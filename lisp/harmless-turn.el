@@ -41,6 +41,8 @@
 ;; Tool calls from one reply start together.  Permission is one question
 ;; at a time, and an allowed call starts before the next question.
 ;; In auto mode a reviewer decides whether that question is asked.
+;; A pre hook can block the call before that question.  A post hook
+;; can replace the result the model sees.
 
 ;;; Code:
 
@@ -58,6 +60,7 @@
 (require 'harmless-tools-shell)
 (require 'harmless-perm)
 (require 'harmless-auto)
+(require 'harmless-hook)
 (require 'harmless-usage)
 
 (defvar harmless--perm-callback)
@@ -544,12 +547,36 @@ question the way an allow rule does."
          (harmless-turn--invoke
           tool session args
           (lambda (result)
-            (harmless-turn--finish-call
-             batch index
-             (harmless-turn--tool-message call result))))))
+            (if (harmless-turn-batch-aborted batch)
+                nil
+              (harmless-hook-post
+               session tool args result
+               (lambda (text)
+                 (harmless-turn--finish-call
+                  batch index
+                  (harmless-turn--tool-message call text)))))))))
        (unless (or (harmless-turn-batch-launching batch)
                    (harmless-turn-batch-aborted batch))
          (harmless-turn--launch batch))))))
+
+(defun harmless-turn--after-pre (batch index call tool args class)
+  "Review or confirm CALL after a pre hook let it through.
+Waiting-perm is already set.  CLASS is the permission class."
+  (let ((session (harmless-turn-batch-session batch)))
+    (if (and (eq (harmless-session-permission-mode session) 'auto)
+             (harmless-perm-needed-p session class)
+             (not (harmless-perm-rule-allows-p session tool args)))
+        (progn
+          (harmless-session-set-status session 'waiting-permission)
+          (harmless-auto-review
+           session tool args
+           (lambda (decision)
+             (unless (harmless-turn-batch-aborted batch)
+               (harmless-turn--permit
+                batch index call tool args class
+                (eq decision 'allow))))))
+      (harmless-turn--permit
+       batch index call tool args class nil))))
 
 (defun harmless-turn--start-one (batch index)
   "Start call INDEX in BATCH."
@@ -607,20 +634,22 @@ question the way an allow rule does."
               call (or agent-refusal plan-refusal
                        dangerous-refusal rule-refusal)))
           (setf (harmless-turn-batch-waiting-perm batch) t)
-          (if (and (eq (harmless-session-permission-mode session) 'auto)
-                   (harmless-perm-needed-p session class)
-                   (not (harmless-perm-rule-allows-p session tool args)))
-              (progn
-                (harmless-session-set-status session 'waiting-permission)
-                (harmless-auto-review
-                 session tool args
-                 (lambda (decision)
-                   (unless (harmless-turn-batch-aborted batch)
-                     (harmless-turn--permit
-                      batch index call tool args class
-                      (eq decision 'allow))))))
-            (harmless-turn--permit
-             batch index call tool args class nil))))))))
+          (harmless-hook-pre
+           session tool args
+           (lambda (blocked)
+             (cond
+              ((harmless-turn-batch-aborted batch) nil)
+              (blocked
+               (setf (harmless-turn-batch-waiting-perm batch) nil)
+               (harmless-turn--finish-call
+                batch index
+                (harmless-turn--tool-message call blocked))
+               (unless (or (harmless-turn-batch-launching batch)
+                           (harmless-turn-batch-aborted batch))
+                 (harmless-turn--launch batch)))
+              (t
+               (harmless-turn--after-pre
+                batch index call tool args class)))))))))))
 
 (provide 'harmless-turn)
 
