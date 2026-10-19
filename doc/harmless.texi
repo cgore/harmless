@@ -1802,6 +1802,24 @@ The text is sent with every turn.  It is not copied into the
 transcript.  A detached chat does not walk @code{default-directory}
 looking for these files.
 
+@heading Path-scoped rules
+@cindex path-scoped rules
+@cindex .claude/rules
+Harmless also reads Markdown files under @file{.claude/rules/} in the
+session directory.  Files in subdirectories are included.  The
+subdirectory name does not choose which project files the rule applies
+to.  A file with no @code{paths} field in its YAML frontmatter is sent
+on every turn.  A file with @code{paths} is sent only when a tool call
+in the transcript names a file that matches one of those globs.
+@code{*} matches inside one path segment.  @code{**} matches across
+segments, including none.  A rule in a parent directory is not read.
+Nil, an empty string, a relative path, and the filesystem root are not
+searched.
+
+The rule text is added to the system message for that turn.  It is not
+copied into the transcript.  When two rules disagree, the later file in
+sorted path order wins.
+
 @node Skills
 @chapter Skills
 

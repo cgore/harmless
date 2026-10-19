@@ -178,6 +178,20 @@ A file can include another file with `@path`.  The path is relative to
 the file that contains it and must stay inside the session directory.
 The text is sent with every turn and is not stored in the transcript.
 
+## Path-scoped rules
+
+Harmless reads Markdown files in `.claude/rules/` in the session
+directory, including files in subdirectories.  The subdirectory name
+does not scope the rule.  A file with no `paths` field in its YAML
+frontmatter is sent on every turn.  A file with `paths` is sent only
+when a tool call in the transcript names a file that matches one of
+those globs.  `*` stays inside one path segment.  `**` crosses
+segments, including none.  A rule in a parent directory is not read.
+Nil, an empty string, a relative path, and the filesystem root are
+not searched.  The text is sent with the turn and is not stored in
+the transcript.  When two rules disagree, the later file in sorted
+path order wins.
+
 ## Skills
 
 A skill is a directory with a `SKILL.md` file.  The file starts with

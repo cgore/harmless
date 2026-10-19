@@ -44,7 +44,8 @@
   (should (harmless-tool-by-name "lsp"))
   (should (fboundp 'harmless-lsp))
   (should (harmless-tool-by-name "notebook_edit"))
-  (should (fboundp 'harmless-attach-image)))
+  (should (fboundp 'harmless-attach-image))
+  (should (fboundp 'harmless-path-rules-text)))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

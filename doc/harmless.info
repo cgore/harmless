@@ -1591,6 +1591,23 @@ session.  The filesystem root is not a directory an import may enter.
 transcript.  A detached chat does not walk ‘default-directory’ looking
 for these files.
 
+Path-scoped rules
+=================
+
+Harmless also reads Markdown files under ‘.claude/rules/’ in the session
+directory.  Files in subdirectories are included.  The subdirectory name
+does not choose which project files the rule applies to.  A file with no
+‘paths’ field in its YAML frontmatter is sent on every turn.  A file
+with ‘paths’ is sent only when a tool call in the transcript names a
+file that matches one of those globs.  ‘*’ matches inside one path
+segment.  ‘**’ matches across segments, including none.  A rule in a
+parent directory is not read.  Nil, an empty string, a relative path,
+and the filesystem root are not searched.
+
+   The rule text is added to the system message for that turn.  It is
+not copied into the transcript.  When two rules disagree, the later file
+in sorted path order wins.
+
 
 File: harmless.info,  Node: Skills,  Next: Memory,  Prev: Instructions,  Up: Top
 
@@ -2081,16 +2098,16 @@ Node: Todos64585
 Node: Review67240
 Node: Language server70823
 Node: Instructions74010
-Node: Skills75756
-Node: Memory76905
-Node: Plan mode78170
-Node: Usage81134
-Node: Files82153
-Node: Keys83732
-Node: Trouble85282
-Node: Manual86536
-Node: Command Index87241
-Node: Key Index90665
+Node: Skills76590
+Node: Memory77739
+Node: Plan mode79004
+Node: Usage81968
+Node: Files82987
+Node: Keys84566
+Node: Trouble86116
+Node: Manual87370
+Node: Command Index88075
+Node: Key Index91499
 
 End Tag Table
 
