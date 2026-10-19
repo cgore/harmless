@@ -23,7 +23,8 @@
   (should (harmless-tool-by-name "exit_worktree"))
   (should (harmless-tool-by-name "list_sessions"))
   (should (harmless-tool-by-name "send_message"))
-  (should (harmless-tool-by-name "web_search")))
+  (should (harmless-tool-by-name "web_search"))
+  (should (harmless-tool-by-name "web_fetch")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

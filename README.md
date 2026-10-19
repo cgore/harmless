@@ -252,6 +252,12 @@ title, a URL, and a snippet for each hit.  The class is `network`, so
 accepting edits still asks before a search.  The result is not written
 into the project.
 
+## Fetch a page
+
+`web_fetch` reads one http or https page and returns its text.  HTML
+is reduced to text.  The class is `network`, so accepting edits still
+asks.  The page is not written into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

@@ -380,7 +380,7 @@ session.  The menu key is @kbd{p}.  New sessions take the value of
 When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
-query.
+query.  For a fetched page, it is the URL.
 
 @table @kbd
 @item y
@@ -518,6 +518,8 @@ A detached chat is offered @code{memory_read},
 @code{ask_user}.  @xref{Memory}.  @xref{Questions}.
 It can list live sessions and send one a finding.
 @xref{Messages}.
+It can search the web and fetch a page.  @xref{Web search}.
+@xref{Fetch a page}.
 
 @menu
 * File tools::  Read, list, write, replace, and patch.
@@ -529,6 +531,7 @@ It can list live sessions and send one a finding.
 * Worktrees::   Isolated checkouts of the same repository.
 * Messages::    A finding sent to another live session.
 * Web search::  Look up a query on the web.
+* Fetch a page::  Read one http or https page.
 @end menu
 
 @node File tools
@@ -759,6 +762,7 @@ question: @samp{This subagent is read-only. A tool that can write is
 refused}.  A blank shell command is not that refusal.  A read-only
 child may send a finding to another live session.  @xref{Messages}.
 It may also search the web.  @xref{Web search}.
+It may fetch a page.  @xref{Fetch a page}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1026,6 +1030,33 @@ in @code{accept-edits}.  @code{always-approve} does not ask.  Plan
 mode does not refuse it.  A read-only subagent may search.  A
 detached chat may search.  A failed request is
 @samp{web search failed}.
+
+@node Fetch a page
+@section Fetch a page
+
+@cindex web_fetch
+@code{web_fetch} reads one page at @code{url}.  Only @code{http} and
+@code{https} are accepted.  Nothing is written into the project.
+
+Nil, @code{""}, and whitespace are refused: @samp{url is empty}.
+A value that is not text is refused: @samp{url must be a string}.
+A path, another scheme, or a URL with a space is refused:
+@samp{url must be http or https}.  @code{/}, @code{c:/},
+@code{sub}, and @code{file:///} are not pages.  A scheme without
+@code{://} is refused too.
+
+HTML is reduced to text.  A script, a style sheet, and a comment
+are dropped.  A link keeps its label.  A body that contains an
+HTML tag is reduced the same way.  Other text is returned as
+text.  Surrounding whitespace is dropped.  An empty page returns
+@samp{Empty page}.  A page longer than 100000 characters is cut
+and ends with @samp{[truncated]}.
+
+The tool's class is @code{network}.  It asks in @code{ask} mode and
+in @code{accept-edits}.  @code{always-approve} does not ask.  Plan
+mode does not refuse it.  A read-only subagent may fetch a page.  A
+detached chat may fetch a page.  A failed request is
+@samp{web request failed}.
 
 @node Instructions
 @chapter Instructions

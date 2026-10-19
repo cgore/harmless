@@ -392,14 +392,14 @@ A failure to resolve the sandbox is `edit'."
        ((and (eq (plist-get agent :sandbox) 'read-only)
              (not (eq (harmless-turn--class tool session args) 'read))
              (not (harmless-agent--blank-shell-p tool args))
-             (not (member name '("send_message" "web_search"))))
+             (not (member name '("send_message" "web_search" "web_fetch"))))
         harmless-agent-read-only-refusal)
        (t nil)))))
 
 (defun harmless-agent-filter-tools (session tools)
   "Return TOOLS with a subagent's limits applied.
 A read-only subagent keeps read tools, `run_shell',
-`send_message', and `web_search'."
+`send_message', `web_search', and `web_fetch'."
   (if (not (eq (harmless-session-source session) 'agent))
       tools
     (let* ((agent (harmless-session-agent session))
@@ -424,7 +424,8 @@ A read-only subagent keeps read tools, `run_shell',
            (lambda (tool)
              (or (eq (harmless-tool-class tool) 'read)
                  (member (harmless-tool-name tool)
-                         '("run_shell" "send_message" "web_search"))))
+                         '("run_shell" "send_message"
+                           "web_search" "web_fetch"))))
            tools)
         tools))))
 

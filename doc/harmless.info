@@ -326,7 +326,7 @@ session.  The menu key is ‘p’.  New sessions take the value of
    When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
-query.
+query.  For a fetched page, it is the URL.
 
 ‘y’
      Allow this call.
@@ -455,7 +455,8 @@ state there.
    A detached chat is offered ‘memory_read’, ‘memory_remember’,
 ‘memory_write_topic’, and ‘ask_user’.  *Note Memory::.  *Note
 Questions::.  It can list live sessions and send one a finding.  *Note
-Messages::.
+Messages::.  It can search the web and fetch a page.  *Note Web
+search::.  *Note Fetch a page::.
 
 * Menu:
 
@@ -468,6 +469,7 @@ Messages::.
 * Worktrees::   Isolated checkouts of the same repository.
 * Messages::    A finding sent to another live session.
 * Web search::  Look up a query on the web.
+* Fetch a page::  Read one http or https page.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -681,8 +683,8 @@ write.  A tool that can write is refused before the permission question:
 ‘This subagent is read-only. A tool that can write is refused’.  A blank
 shell command is not that refusal.  A read-only child may send a finding
 to another live session.  *Note Messages::.  It may also search the web.
-*Note Web search::.  A workspace child uses the parent's permission
-mode.
+*Note Web search::.  It may fetch a page.  *Note Fetch a page::.  A
+workspace child uses the parent's permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -900,7 +902,7 @@ does not refuse it.  A read-only subagent may send one.  A detached chat
 may list sessions and send a finding.
 
 
-File: harmless.info,  Node: Web search,  Prev: Messages,  Up: Tools
+File: harmless.info,  Node: Web search,  Next: Fetch a page,  Prev: Messages,  Up: Tools
 
 10.9 Web search
 ===============
@@ -919,6 +921,32 @@ once.
 ‘accept-edits’.  ‘always-approve’ does not ask.  Plan mode does not
 refuse it.  A read-only subagent may search.  A detached chat may
 search.  A failed request is ‘web search failed’.
+
+
+File: harmless.info,  Node: Fetch a page,  Prev: Web search,  Up: Tools
+
+10.10 Fetch a page
+==================
+
+‘web_fetch’ reads one page at ‘url’.  Only ‘http’ and ‘https’ are
+accepted.  Nothing is written into the project.
+
+   Nil, ‘""’, and whitespace are refused: ‘url is empty’.  A value that
+is not text is refused: ‘url must be a string’.  A path, another scheme,
+or a URL with a space is refused: ‘url must be http or https’.  ‘/’,
+‘c:/’, ‘sub’, and ‘file:///’ are not pages.  A scheme without ‘://’ is
+refused too.
+
+   HTML is reduced to text.  A script, a style sheet, and a comment are
+dropped.  A link keeps its label.  A body that contains an HTML tag is
+reduced the same way.  Other text is returned as text.  Surrounding
+whitespace is dropped.  An empty page returns ‘Empty page’.  A page
+longer than 100000 characters is cut and ends with ‘[truncated]’.
+
+   The tool's class is ‘network’.  It asks in ‘ask’ mode and in
+‘accept-edits’.  ‘always-approve’ does not ask.  Plan mode does not
+refuse it.  A read-only subagent may fetch a page.  A detached chat may
+fetch a page.  A failed request is ‘web request failed’.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1383,29 +1411,30 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts12783
-Node: Models15028
-Node: Tools16124
-Node: File tools17665
-Node: Search18899
-Node: Shell20540
-Node: Questions23325
-Node: Subagents24095
-Node: Workflows27824
-Node: Worktrees32827
-Node: Messages35955
-Node: Web search37776
-Node: Instructions38610
-Node: Skills40356
-Node: Memory41505
-Node: Plan mode42770
-Node: Usage44453
-Node: Files45472
-Node: Keys46889
-Node: Trouble48112
-Node: Manual49366
-Node: Command Index50071
-Node: Key Index52984
+Node: Accounts12819
+Node: Models15064
+Node: Tools16160
+Node: File tools17833
+Node: Search19067
+Node: Shell20708
+Node: Questions23493
+Node: Subagents24263
+Node: Workflows28037
+Node: Worktrees33040
+Node: Messages36168
+Node: Web search37989
+Node: Fetch a page38844
+Node: Instructions40060
+Node: Skills41806
+Node: Memory42955
+Node: Plan mode44220
+Node: Usage45903
+Node: Files46922
+Node: Keys48339
+Node: Trouble49562
+Node: Manual50816
+Node: Command Index51521
+Node: Key Index54434
 
 End Tag Table
 

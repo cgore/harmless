@@ -627,6 +627,7 @@
                        "run_workflow"
                        "send_message"
                        "spawn_agent"
+                       "web_fetch"
                        "web_search")
                      (sort names #'string<)))
       (should-not (member "read_file" names))

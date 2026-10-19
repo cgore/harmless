@@ -1,4 +1,4 @@
-;;; harmless-web.el --- Web search for Harmless -*- lexical-binding: t; -*-
+;;; harmless-web.el --- Web search and fetch for Harmless -*- lexical-binding: t; -*-
 
 ;;;; Copyright (c) 2026, Christopher Mark Gore,
 ;;;; Soli Deo Gloria,
@@ -37,9 +37,10 @@
 ;;; Commentary:
 ;;
 ;; `web_search' sends a query to DuckDuckGo over https and returns the
-;; title, URL, and snippet of each result.  The tool's class is
-;; `network', so accept-edits still asks.  The response is not written
-;; into the project.
+;; title, URL, and snippet of each result.  `web_fetch' reads one http
+;; or https page and returns its text.  Both tools use the class
+;; `network', so accept-edits still asks.  Nothing is written into the
+;; project.
 
 ;;; Code:
 
@@ -78,6 +79,9 @@ including a filesystem path."
      ((not (string-match "\\`\\([a-zA-Z][a-zA-Z0-9+.-]*\\):" value))
       (error "url must be http or https"))
      ((not (member (downcase (match-string 1 value)) '("http" "https")))
+      (error "url must be http or https"))
+     ((let ((case-fold-search t))
+        (not (string-match-p "\\`https?://" value)))
       (error "url must be http or https"))
      (t value)))))
 
@@ -219,8 +223,114 @@ URL must be http or https.  The project is not written."
       (error "web search failed"))
     (harmless-web--format-results results)))
 
+(defconst harmless-web-fetch-limit 100000
+  "Most characters of page text one fetch returns.")
+
+(defconst harmless-web--block-tag-re
+  (concat "</?\\(?:p\\|div\\|li\\|tr\\|ul\\|ol\\|pre\\|table\\|"
+          "title\\|header\\|footer\\|section\\|article\\|"
+          "blockquote\\|h[1-6]\\)\\b[^>]*>")
+  "Regexp for an HTML tag that becomes a new line.")
+
+(defun harmless-web--looks-like-html (text)
+  "Return non-nil when TEXT looks like HTML."
+  (let ((case-fold-search t))
+    (or (string-match-p "\\`[[:space:]]*<" text)
+        (string-match-p
+         (concat "<\\(?:!doctype\\|html\\|head\\|body\\|div\\|"
+                 "p\\|br\\|span\\|a\\|li\\|h[1-6]\\)\\b")
+         text))))
+
+(defun harmless-web--drop-blocks (text)
+  "Remove script, style, and noscript elements from TEXT."
+  (let ((case-fold-search t))
+    (dolist (tag '("script" "style" "noscript"))
+      (setq text
+            (replace-regexp-in-string
+             (format "<%s\\b\\(?:.\\|\n\\)*?</%s>" tag tag)
+             "" text t t)))
+    text))
+
+(defun harmless-web--decode-numeric (text regexp base)
+  "Replace REGEXP matches in TEXT with characters in BASE."
+  (replace-regexp-in-string
+   regexp
+   (lambda (match)
+     (if (string-match regexp match)
+         (let ((n (string-to-number (match-string 1 match) base)))
+           (if (<= 1 n #x10FFFF)
+               (char-to-string n)
+             match))
+       match))
+   text t t))
+
+(defun harmless-web--decode-entities (text)
+  "Return TEXT with common HTML entities decoded once."
+  (setq text (harmless-web--decode-numeric text "&#\\([0-9]+\\);" 10))
+  (setq text
+        (harmless-web--decode-numeric
+         text "&#[xX]\\([0-9A-Fa-f]+\\);" 16))
+  (let ((case-fold-search t))
+    (dolist (pair '(("&lt;" . "<")
+                    ("&gt;" . ">")
+                    ("&quot;" . "\"")
+                    ("&apos;" . "'")
+                    ("&nbsp;" . " ")
+                    ("&amp;" . "&")))
+      (setq text (replace-regexp-in-string
+                  (regexp-quote (car pair)) (cdr pair) text t t))))
+  text)
+
+(defun harmless-web--html-text (text)
+  "Return TEXT with tags removed and entities decoded."
+  (let ((case-fold-search t))
+    (setq text (replace-regexp-in-string
+                "<!--\\(?:.\\|\n\\)*?-->" "" text t t))
+    (setq text (harmless-web--drop-blocks text))
+    (setq text (replace-regexp-in-string
+                "<\\(?:br\\|hr\\)\\b[^>]*>" "\n" text t t))
+    (setq text (replace-regexp-in-string
+                harmless-web--block-tag-re "\n" text t t))
+    (setq text (replace-regexp-in-string "<[^>]*>" "" text t t)))
+  (setq text (harmless-web--decode-entities text))
+  (setq text (replace-regexp-in-string "[ \t\r\f]+" " " text t t))
+  (setq text (replace-regexp-in-string " *\n *" "\n" text t t))
+  (setq text (replace-regexp-in-string "\n\\{3,\\}" "\n\n" text t t))
+  (string-trim text))
+
+(defun harmless-web--limit-text (text)
+  "Cut TEXT at `harmless-web-fetch-limit'."
+  (if (> (length text) harmless-web-fetch-limit)
+      (concat (substring text 0 harmless-web-fetch-limit)
+              "\n[truncated]")
+    text))
+
+(defun harmless-web--page (body)
+  "Return text for response BODY.
+A body that is not a string is an error.  HTML is reduced to text.
+A body longer than four times `harmless-web-fetch-limit' is cut
+before that reduction.  The result is at most that limit.  A cut
+result ends with \"[truncated]\".  An empty page is \"Empty page\"."
+  (unless (stringp body)
+    (error "web request failed"))
+  (when (> (length body) (* 4 harmless-web-fetch-limit))
+    (setq body (substring body 0 (* 4 harmless-web-fetch-limit))))
+  (setq body
+        (if (harmless-web--looks-like-html body)
+            (harmless-web--html-text body)
+          (string-trim body)))
+  (if (string-empty-p body)
+      "Empty page"
+    (harmless-web--limit-text body)))
+
+(defun harmless-web-fetch (session args)
+  "web_fetch implementation."
+  (ignore session)
+  (harmless-web--page
+   (harmless-web-get (harmless-tool-arg args :url))))
+
 (defun harmless-web-register ()
-  "Register the web_search tool."
+  "Register the web_search and web_fetch tools."
   (harmless-register-tool
    (harmless-tool-create
     :name "web_search"
@@ -230,7 +340,17 @@ URL must be http or https.  The project is not written."
               :properties (:query (:type "string"
                                    :description "Text to search for"))
               :required ["query"])
-    :fn #'harmless-web-search)))
+    :fn #'harmless-web-search))
+  (harmless-register-tool
+   (harmless-tool-create
+    :name "web_fetch"
+    :description "Fetch one http or https page and return its text. URL is the address. HTML is reduced to text. Nothing is written into the project."
+    :class 'network
+    :schema '(:type "object"
+              :properties (:url (:type "string"
+                                 :description "http or https address"))
+              :required ["url"])
+    :fn #'harmless-web-fetch)))
 
 (harmless-web-register)
 
