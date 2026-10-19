@@ -205,8 +205,16 @@ transcript.
 
 A skill is a directory with a `SKILL.md` file.  The file starts with
 `name` and `description` frontmatter.  Each turn lists the name,
-description, and path.  The model reads that file with `read_file`
-when the task fits.  The body is not sent until then.
+description, and path.  The model can still read that file with
+`read_file`.  The body is not in the catalog.
+
+Load one with the `skill` tool, with `M-x harmless-load-skill`, or by
+starting the prompt with `/name`.  The name is a skill id, not a path.
+Later turns include the body.  The prompt that loaded it stays in the
+transcript.  Frontmatter `allowed-tools` limits the tools those turns
+can call.  A skill with no `allowed-tools` field does not narrow the
+tools.  An empty list offers no tools.  A tool name Harmless does not
+have is refused, and the skill that was already loaded stays loaded.
 
 Harmless looks for `skills/` inside these directories, at every level
 from your home directory down to the session.  A skill closer to the

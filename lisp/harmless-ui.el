@@ -316,6 +316,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("review" "review")
     ("lsp" "lsp")
     ("notebook_edit" "notebook")
+    ("skill" "skill")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -466,6 +467,9 @@ directory, which lives under the Harmless data directory.  Setting
                 ((stringp cell) cell)
                 ((integerp cell) (number-to-string cell))
                 (t ""))))
+            ("skill"
+             (let ((name (harmless-tool-arg args :name)))
+               (if (stringp name) name "")))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

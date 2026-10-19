@@ -205,6 +205,21 @@ With a prefix argument, open the dashboard instead."
     (harmless-current)))
 
 ;;;###autoload
+(defun harmless-load-skill (session name)
+  "Load skill NAME into SESSION.
+The skill body is sent on later turns.  Its allowed-tools list, when
+present, is the only set of tools those turns can call.  NAME is a
+skill id, not a path.  A prompt that starts with /NAME loads it too."
+  (interactive
+   (progn
+     (harmless-ensure-configured)
+     (list (or (harmless--context-session) (harmless-current))
+           (read-string "Skill: "))))
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (harmless-skill-load session name))
+
+;;;###autoload
 (defun harmless-current ()
   "Open or resume the most recent session for the current project."
   (interactive)

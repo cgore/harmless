@@ -112,7 +112,7 @@ Plan mode already has `enter_plan_mode`, `write_plan`, and `exit_plan_mode`, wit
 
 ## 9. Later
 
-- [ ] Load a skill into the turn when the user invokes it or the model selects it, including an `allowed-tools` list. Today the catalog lists the name, description, and path, and the model is told to `read_file` the skill.
+- [x] Load a skill into the turn when the user invokes it or the model selects it, including an `allowed-tools` list. Today the catalog lists the name, description, and path, and the model is told to `read_file` the skill.
 - [ ] Plugins and marketplaces, so a bundle of skills, hooks, agents, and MCP servers installs as one unit.
 - [ ] Output styles (Claude Code): a session-wide role, tone, and format that can be switched without editing project instructions.
 - [ ] Image generation (Grok Build, Codex).

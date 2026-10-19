@@ -621,6 +621,7 @@ definition, references, or diagnostics.  @xref{Language server}.
 @code{read_file} also reads an image, a PDF, and a notebook.
 @code{notebook_edit} replaces one notebook cell.  @kbd{I} attaches
 an image to the next prompt.  @xref{File tools}.
+@code{skill} loads one skill into later turns.  @xref{Skills}.
 
 Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -1836,14 +1837,36 @@ still receive the prompt, and they still do not walk
 
 @cindex skills
 @cindex SKILL.md
+@findex harmless-load-skill
 A skill is a directory that contains @file{SKILL.md}.  The file starts
 with @code{name} and @code{description} in YAML frontmatter.  If the
 name is missing, Harmless uses the directory name.  If the description
 is missing, it uses the first paragraph of the body.
 
 Each turn receives a catalog: the name, the description, and the path.
-The body is not sent until the model reads that file with
-@code{read_file}.
+The body stays out of that catalog.  The model can still open the file
+with @code{read_file}.
+
+Load one skill with the @code{skill} tool, with
+@kbd{M-x harmless-load-skill}, or by starting a prompt with
+@code{/name}.  The name is a skill id, not a path.  Later turns
+include the body.  The prompt that loaded it stays in the transcript.
+A detached chat cannot load a skill, and it is not offered the tool.
+
+@code{allowed-tools} in the frontmatter limits the tools on those
+turns.  A missing field leaves the tools unchanged.  An empty list
+offers no tools.  A tool name Harmless does not have is refused, and
+the skill that was already loaded stays loaded.  A read-only subagent
+still cannot write, even when the list names a writing tool.
+
+Nil, @code{""}, and whitespace are refused: @samp{skill name is
+empty}.  A value that is not text is refused: @samp{skill name must
+be a string}.  A path, @code{~}, and the filesystem root are refused:
+@samp{skill name is not a name}.  A missing skill is refused:
+@samp{no skill named }, followed by the id.  A relative project
+directory, including @code{~}, is refused and is not expanded:
+@samp{skill directory must be absolute}.  @code{/} and a drive root
+are refused: @samp{skill directory is the filesystem root}.
 
 Harmless looks for a @file{skills} directory inside these vendor
 directories, from your home directory down to the session:

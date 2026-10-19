@@ -539,7 +539,8 @@ Review::.  ‘lsp’ asks a language server that is already running for a
 definition, references, or diagnostics.  *Note Language server::.
 ‘read_file’ also reads an image, a PDF, and a notebook.  ‘notebook_edit’
 replaces one notebook cell.  ‘I’ attaches an image to the next prompt.
-*Note File tools::.
+*Note File tools::.  ‘skill’ loads one skill into later turns.  *Note
+Skills::.
 
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -1631,8 +1632,28 @@ Harmless uses the directory name.  If the description is missing, it
 uses the first paragraph of the body.
 
    Each turn receives a catalog: the name, the description, and the
-path.  The body is not sent until the model reads that file with
-‘read_file’.
+path.  The body stays out of that catalog.  The model can still open the
+file with ‘read_file’.
+
+   Load one skill with the ‘skill’ tool, with ‘M-x harmless-load-skill’,
+or by starting a prompt with ‘/name’.  The name is a skill id, not a
+path.  Later turns include the body.  The prompt that loaded it stays in
+the transcript.  A detached chat cannot load a skill, and it is not
+offered the tool.
+
+   ‘allowed-tools’ in the frontmatter limits the tools on those turns.
+A missing field leaves the tools unchanged.  An empty list offers no
+tools.  A tool name Harmless does not have is refused, and the skill
+that was already loaded stays loaded.  A read-only subagent still cannot
+write, even when the list names a writing tool.
+
+   Nil, ‘""’, and whitespace are refused: ‘skill name is empty’.  A
+value that is not text is refused: ‘skill name must be a string’.  A
+path, ‘~’, and the filesystem root are refused: ‘skill name is not a
+name’.  A missing skill is refused: ‘no skill named ’, followed by the
+id.  A relative project directory, including ‘~’, is refused and is not
+expanded: ‘skill directory must be absolute’.  ‘/’ and a drive root are
+refused: ‘skill directory is the filesystem root’.
 
    Harmless looks for a ‘skills’ directory inside these vendor
 directories, from your home directory down to the session:
@@ -2003,7 +2024,7 @@ Command Index
 * exit_plan_mode:                        Plan mode.            (line  6)
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
-* harmless-add-directory:                Tools.                (line 28)
+* harmless-add-directory:                Tools.                (line 29)
 * harmless-attach-image:                 File tools.           (line 51)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 43)
@@ -2013,6 +2034,7 @@ Command Index
 * harmless-edit-prompt:                  Transcript.           (line 70)
 * harmless-fork:                         Transcript.           (line 79)
 * harmless-info:                         Manual.               (line  6)
+* harmless-load-skill:                   Skills.               (line  6)
 * harmless-login:                        Accounts.             (line  6)
 * harmless-logout:                       Accounts.             (line  6)
 * harmless-lsp:                          Language server.      (line  6)
@@ -2055,7 +2077,7 @@ Key Index
 * Menu:
 
 * ! (permission):                        Permissions.          (line  6)
-* + (transcript):                        Tools.                (line 28)
+* + (transcript):                        Tools.                (line 29)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 70)
@@ -2090,35 +2112,35 @@ Node: Permissions11011
 Node: Accounts18317
 Node: Models20562
 Node: Tools21658
-Node: File tools25851
-Node: Search30358
-Node: Shell32254
-Node: Questions35039
-Node: Subagents35809
-Node: Workflows39958
-Node: Worktrees44961
-Node: Messages48089
-Node: Web search49910
-Node: Fetch a page50765
-Node: X search51998
-Node: MCP54395
-Node: Computer use57099
-Node: Monitors59115
-Node: Schedules62119
-Node: Todos64585
-Node: Review67240
-Node: Language server70823
-Node: Instructions74010
-Node: Skills77118
-Node: Memory78267
-Node: Plan mode79532
-Node: Usage82496
-Node: Files83515
-Node: Keys85094
-Node: Trouble86644
-Node: Manual87898
-Node: Command Index88603
-Node: Key Index92027
+Node: File tools25915
+Node: Search30422
+Node: Shell32318
+Node: Questions35103
+Node: Subagents35873
+Node: Workflows40022
+Node: Worktrees45025
+Node: Messages48153
+Node: Web search49974
+Node: Fetch a page50829
+Node: X search52062
+Node: MCP54459
+Node: Computer use57163
+Node: Monitors59179
+Node: Schedules62183
+Node: Todos64649
+Node: Review67304
+Node: Language server70887
+Node: Instructions74074
+Node: Skills77182
+Node: Memory79511
+Node: Plan mode80776
+Node: Usage83740
+Node: Files84759
+Node: Keys86338
+Node: Trouble87888
+Node: Manual89142
+Node: Command Index89847
+Node: Key Index93344
 
 End Tag Table
 

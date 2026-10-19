@@ -46,7 +46,9 @@
   (should (harmless-tool-by-name "notebook_edit"))
   (should (fboundp 'harmless-attach-image))
   (should (fboundp 'harmless-path-rules-text))
-  (should (boundp 'harmless-harness-prompt)))
+  (should (boundp 'harmless-harness-prompt))
+  (should (harmless-tool-by-name "skill"))
+  (should (fboundp 'harmless-load-skill)))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

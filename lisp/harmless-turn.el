@@ -197,6 +197,8 @@ summarized before the provider sees TEXT."
     (harmless-turn-abort session))
   (when (fboundp 'harmless-compact--validate-threshold)
     (harmless-compact--validate-threshold))
+  (when (fboundp 'harmless-skill-prompt)
+    (harmless-skill-prompt session text))
   (harmless-session-append-user session text)
   (when (fboundp 'harmless-media-consume)
     (harmless-media-consume session))
@@ -245,9 +247,11 @@ project shell, or plan mode.  A subagent is not offered
                          (harmless-tools-enabled))))))
     (when (fboundp 'harmless-mcp-tools)
       (setq tools (append tools (harmless-mcp-tools session))))
-    (if (fboundp 'harmless-agent-filter-tools)
-        (harmless-agent-filter-tools session tools)
-      tools)))
+    (when (fboundp 'harmless-agent-filter-tools)
+      (setq tools (harmless-agent-filter-tools session tools)))
+    (when (fboundp 'harmless-skill-filter-tools)
+      (setq tools (harmless-skill-filter-tools session tools)))
+    tools))
 
 (defun harmless-turn--messages (session)
   "Return the provider messages for SESSION, including agent context.
@@ -258,7 +262,8 @@ A workflow catalog is included for a session that is not a subagent."
            (harmless-session-cwd session)
            (harmless-session-messages session)
            nil
-           (harmless-session-model session))
+           (harmless-session-model session)
+           session)
           (when (harmless-session-plan-mode session)
             (harmless-plan-instructions)))))
     (setq messages

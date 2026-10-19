@@ -37,8 +37,9 @@
 ;;; Commentary:
 ;;
 ;; A skill is a directory containing SKILL.md.  Each turn lists the
-;; name, description, and path.  The model reads the file when the
-;; skill applies.  Discovery walks the same directories as project
+;; name, description, and path.  The user or the model can load one
+;; skill.  Later turns include its body.  allowed-tools limits those
+;; turns.  Discovery walks the same directories as project
 ;; instructions and reads Harmless, Grok, Claude, and Codex layouts.
 ;; A directory closer to the session wins.  In one directory the
 ;; later vendor wins: agents, codex, claude, grok, then harmless.
@@ -50,6 +51,8 @@
 (require 'harmless-util)
 (require 'harmless-instructions)
 (require 'harmless-memory)
+(require 'harmless-tools)
+(require 'harmless-tools-fs)
 
 (defconst harmless-skill-vendors
   '("agents" "codex" "claude" "grok" "harmless")
@@ -122,26 +125,71 @@ STOP is passed to `harmless-instruction-directories'."
       (string-join (nreverse lines) " "))))
 
 (defun harmless-skill--frontmatter (text)
-  "Return (NAME DESCRIPTION BODY) from TEXT.
+  "Return (NAME DESCRIPTION BODY TOOLS) from TEXT.
 NAME and DESCRIPTION are nil when the field is absent.  BODY is the
-markdown after the frontmatter, or all of TEXT when there is none."
-  (if (not (string-match "\\`---[ \t]*\n\\(\\(?:.*\n\\)*?\\)---[ \t]*\n?" text))
-      (list nil nil text)
-    (let ((name nil)
-          (description nil))
-      (dolist (line (split-string (match-string 1 text) "\n" t))
-        (when (string-match "\\`\\([A-Za-z0-9_-]+\\):[ \t]*\\(.*\\)\\'" line)
-          (let ((key (match-string 1 line))
-                (value (harmless-skill--unquote (string-trim (match-string 2 line)))))
-            (cond
-             ((string= key "name") (setq name value))
-             ((and (string= key "description")
-                   (not (member value '("" ">" "|" ">-" "|-" ">"))))
-              (setq description value))))))
-      (list name description (substring text (match-end 0))))))
+markdown after the frontmatter, or all of TEXT when there is none.
+TOOLS is the symbol `all' when `allowed-tools' is absent, or a list
+of tool names when that field is present.  CRLF is read as a newline."
+  (save-match-data
+    (setq text (replace-regexp-in-string "\r\n?" "\n" (or text "")))
+    (if (not (string-match
+              "\\`---[ \t]*\n\\(\\(?:.*\n\\)*?\\)---[ \t]*\n?"
+              text))
+        (list nil nil text 'all)
+      (let ((raw (match-string 1 text))
+            (body (substring text (match-end 0)))
+            (name nil)
+            (description nil)
+            (tools nil)
+            (saw-tools nil)
+            (in-tools nil))
+        (dolist (line (split-string raw "\n"))
+          (cond
+           ((and in-tools
+                 (string-match "\\`[ \t]*-[ \t]*\\(.*\\)\\'" line))
+            (let ((item (harmless-skill--unquote
+                         (string-trim (match-string 1 line)))))
+              (when (and (stringp item) (not (string-empty-p item)))
+                (setq tools
+                      (append tools (split-string item "[, \t]+" t))))))
+           ((string-match
+             "\\`\\([A-Za-z0-9_-]+\\):[ \t]*\\(.*\\)\\'"
+             line)
+            (let ((key (match-string 1 line))
+                  (value (match-string 2 line)))
+              (setq value (harmless-skill--unquote (string-trim value)))
+              (setq in-tools nil)
+              (cond
+               ((string= key "name") (setq name value))
+               ((and (string= key "description")
+                     (not (member value '("" ">" "|" ">-" "|-"))))
+                (setq description value))
+               ((string= key "allowed-tools")
+                (setq saw-tools t)
+                (cond
+                 ((or (string-empty-p value) (string= value "[]"))
+                  (when (string-empty-p value)
+                    (setq in-tools t)))
+                 ((string-match "\\`\\[\\(.*\\)\\]\\'" value)
+                  (let ((inner (match-string 1 value)))
+                    (setq tools
+                          (append
+                           tools
+                           (mapcar
+                            (lambda (part)
+                              (harmless-skill--unquote (string-trim part)))
+                            (split-string inner "," t))))))
+                 (t
+                  (setq tools
+                        (append tools
+                                (split-string value "[, \t]+" t)))))))))
+           (t (setq in-tools nil))))
+        (list name description body (if saw-tools tools 'all))))))
 
 (defun harmless-skill--parse (path)
-  "Return a skill plist for PATH, or nil when it has no usable summary."
+  "Return a skill plist for PATH, or nil when it has no usable summary.
+`:restricted' is non-nil when `allowed-tools' is present.  `:tools'
+is that list, possibly empty.  `:body' is the markdown."
   (let* ((raw (with-temp-buffer
                 (let ((coding-system-for-read 'utf-8-unix))
                   (insert-file-contents path))
@@ -152,13 +200,17 @@ markdown after the frontmatter, or all of TEXT when there is none."
                     (file-name-nondirectory
                      (directory-file-name (file-name-directory path))))))
          (description (or (nth 1 parsed)
-                          (harmless-skill--first-paragraph (nth 2 parsed)))))
+                          (harmless-skill--first-paragraph (nth 2 parsed))))
+         (tools (nth 3 parsed)))
     (when (and (not (string-empty-p name))
                description
                (not (string-empty-p (string-trim description))))
       (list :name name
             :description (harmless-truncate (string-trim description) 500)
-            :path path))))
+            :path path
+            :body (nth 2 parsed)
+            :restricted (not (eq tools 'all))
+            :tools (and (not (eq tools 'all)) tools)))))
 
 (defun harmless-skills-discover (dir &optional stop)
   "Return skills that apply to DIR, sorted by name.
@@ -180,7 +232,7 @@ STOP is passed to `harmless-skills-discover'."
   (let ((skills (harmless-skills-discover dir stop)))
     (when skills
       (concat
-       "Skills available for this session.  Read a skill's SKILL.md with read_file when it applies to the task.\n\n"
+       "Skills available for this session.  Read a skill's SKILL.md with read_file when it applies to the task.  Load one with the skill tool, or start the prompt with /name.\n\n"
        (mapconcat
         (lambda (skill)
           (format "- %s (%s): %s"
@@ -200,30 +252,182 @@ STOP is passed to `harmless-skills-discover'."
       (harmless-harness-prepend messages)
     messages))
 
-(defun harmless-context-messages (dir messages &optional stop model)
+(defun harmless-context-messages (dir messages &optional stop model session)
   "Return MESSAGES with the harness prompt, instructions, and context.
 STOP bounds the instruction and skill walks.  MODEL selects whether
 `CLAUDE.md' is included.  Path rules, when loaded, come from
-`.claude/rules/' in DIR.  The harness prompt is first.  Later project
-text wins when it disagrees.  The transcript is not modified.  A
-missing or relative DIR is a detached chat: it does not walk
-`default-directory', so a missing directory is not /."
+`.claude/rules/' in DIR.  SESSION's loaded skill, if any, is included.
+The harness prompt is first.  Later project text wins when it
+disagrees.  The transcript is not modified.  A missing or relative
+DIR is a detached chat: it does not walk `default-directory', so a
+missing directory is not /."
   (if (not (and (stringp dir)
                 (not (string-empty-p dir))
                 (file-name-absolute-p dir)))
       (harmless-context--with-harness
        (harmless-context-append
-        (harmless-context-append messages harmless-detached-chat-instructions)
-        (harmless-memory-catalog nil)))
+        (harmless-context-append
+         (harmless-context-append
+          messages harmless-detached-chat-instructions)
+         (harmless-memory-catalog nil))
+        (harmless-skill-context-block session)))
     (harmless-context--with-harness
      (harmless-context-append
       (harmless-context-append
        (harmless-context-append
-        (harmless-instructions-apply dir messages stop model)
-        (and (fboundp 'harmless-path-rules-text)
-             (harmless-path-rules-text dir messages)))
-       (harmless-skills-catalog dir stop))
+        (harmless-context-append
+         (harmless-instructions-apply dir messages stop model)
+         (and (fboundp 'harmless-path-rules-text)
+              (harmless-path-rules-text dir messages)))
+        (harmless-skills-catalog dir stop))
+       (harmless-skill-context-block session))
       (harmless-memory-catalog dir)))))
+
+(defvar harmless-skill-active (make-hash-table :test 'equal)
+  "Loaded skill plists, keyed by session id.
+The entry is not saved and is not copied to a forked session.")
+
+(defun harmless-skill-active (session)
+  "Return the skill loaded into SESSION, or nil."
+  (and (harmless-session-p session)
+       (gethash (harmless-session-id session) harmless-skill-active)))
+
+(defun harmless-skill-name-p (name)
+  "Return non-nil if NAME is a skill id, not a path."
+  (and (stringp name)
+       (string-match-p "\\`[a-z0-9]+\\(?:-[a-z0-9]+\\)*\\'" name)))
+
+(defun harmless-skill--name (name)
+  "Return NAME as a skill id, or signal.
+Nil and \"\" are empty.  A path, \"~\", and the filesystem root are
+not names and are not expanded."
+  (cond
+   ((null name) (error "skill name is empty"))
+   ((not (stringp name)) (error "skill name must be a string"))
+   (t
+    (let ((raw (string-trim name)))
+      (cond
+       ((string-empty-p raw) (error "skill name is empty"))
+       ((or (string-prefix-p "~" raw)
+            (string-prefix-p "/" raw)
+            (string-prefix-p "\\" raw)
+            (string-match-p "[/\\\\]" raw)
+            (string-match-p "\\`[A-Za-z]:[/\\]?\\'" raw)
+            (file-name-absolute-p raw))
+        (error "skill name is not a name"))
+       (t
+        (setq raw (harmless-skill--normalize-name raw))
+        (if (harmless-skill-name-p raw)
+            raw
+          (error "skill name is not a name"))))))))
+
+(defun harmless-skill--directory (session)
+  "Return SESSION's project directory, or signal.
+A detached chat, a relative path, \"~\", and the filesystem root
+are refused.  This does not consult `default-directory'."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (when (harmless-session-detached-p session)
+    (error "This chat is not attached to a project"))
+  (let ((dir (harmless-session-cwd session)))
+    (cond
+     ((or (not (stringp dir))
+          (string-empty-p (string-trim dir)))
+      (error "This chat is not attached to a project"))
+     ((or (harmless-filesystem-root-p dir)
+          (string-match-p "\\`[A-Za-z]:[/\\]?\\'" (string-trim dir))
+          (harmless-extra-root-text-p dir))
+      (error "skill directory is the filesystem root"))
+     ((or (string-prefix-p "~" (string-trim dir))
+          (not (file-name-absolute-p dir)))
+      (error "skill directory must be absolute"))
+     (t (harmless-absolute-directory dir)))))
+
+(defun harmless-skill-find (dir name &optional stop)
+  "Return the skill named NAME for DIR, or nil.
+STOP is passed to `harmless-skills-discover'."
+  (car (cl-remove-if-not
+        (lambda (skill) (equal (plist-get skill :name) name))
+        (harmless-skills-discover dir stop))))
+
+(defun harmless-skill--check-tools (tools)
+  "Signal when TOOLS names a tool Harmless does not have."
+  (dolist (tool tools)
+    (unless (and (stringp tool) (harmless-tool-by-name tool))
+      (error "skill tool is unknown: %s" tool))))
+
+(defun harmless-skill-load (session name)
+  "Load the skill NAME into SESSION and return its plist.
+A later turn sends the body.  When the skill lists allowed-tools,
+those turns are offered only that list.  The transcript is not
+changed.  Nothing is written."
+  (setq name (harmless-skill--name name))
+  (let* ((dir (harmless-skill--directory session))
+         (skill (harmless-skill-find dir name)))
+    (unless skill
+      (error "no skill named %s" name))
+    (when (plist-get skill :restricted)
+      (harmless-skill--check-tools (plist-get skill :tools)))
+    (setq skill (list :name (plist-get skill :name)
+                      :body (string-trim (or (plist-get skill :body) ""))
+                      :path (plist-get skill :path)
+                      :restricted (plist-get skill :restricted)
+                      :tools (plist-get skill :tools)))
+    (puthash (harmless-session-id session) skill harmless-skill-active)
+    skill))
+
+(defun harmless-skill-prompt (session text)
+  "Load a `/NAME' skill from TEXT, or return nil when TEXT is not one.
+A matching name that is not a skill signals `no skill named NAME'.
+TEXT that does not start with one skill id is left alone."
+  (when (and (stringp text)
+             (string-match
+              "\\`/\\([A-Za-z0-9][A-Za-z0-9_-]*\\)\\(?:[ \t]+\\(.*\\)\\)?\\'"
+              text))
+    (let ((name (match-string 1 text)))
+      (harmless-skill-load session name)
+      name)))
+
+(defun harmless-skill-context-block (session)
+  "Return the loaded skill text for SESSION, or nil."
+  (let ((skill (harmless-skill-active session)))
+    (when skill
+      (format "Loaded skill %s.\n\n%s"
+              (plist-get skill :name)
+              (or (plist-get skill :body) "")))))
+
+(defun harmless-skill-filter-tools (session tools)
+  "Return TOOLS allowed by SESSION's loaded skill.
+A skill with no allowed-tools list does not narrow TOOLS."
+  (let ((skill (harmless-skill-active session)))
+    (if (or (null skill) (not (plist-get skill :restricted)))
+        tools
+      (cl-remove-if-not
+       (lambda (tool)
+         (member (harmless-tool-name tool) (plist-get skill :tools)))
+       tools))))
+
+(defun harmless-skill--tool (session args)
+  "skill implementation.  Load the named skill and return its body."
+  (let ((skill (harmless-skill-load session (harmless-tool-arg args :name))))
+    (format "Loaded skill %s\n\n%s"
+            (plist-get skill :name)
+            (or (plist-get skill :body) ""))))
+
+(defun harmless-skill-register ()
+  "Register the skill tool."
+  (harmless-register-tool
+   (harmless-tool-create
+    :name "skill"
+    :description "Load a skill by name. The body is included on later turns. allowed-tools in the skill limits which tools those turns can call. The name is a skill id, not a path."
+    :class 'read
+    :schema '(:type "object"
+              :properties (:name (:type "string"
+                                  :description "Skill id."))
+              :required ["name"])
+    :fn #'harmless-skill--tool)))
+
+(harmless-skill-register)
 
 (provide 'harmless-skills)
 
