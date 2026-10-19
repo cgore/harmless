@@ -402,9 +402,9 @@ A failure to resolve the sandbox is `edit'."
 
 (defun harmless-agent-filter-tools (session tools)
   "Return TOOLS with a subagent's limits applied.
-A read-only subagent keeps read tools, `run_shell',
-`send_message', `web_search', `web_fetch', X search, and MCP
-resources.  Computer control is left out."
+A read-only subagent keeps read tools, `run_shell', `monitor',
+`monitor_stop', `send_message', `web_search', `web_fetch', X
+search, and MCP resources.  Computer control is left out."
   (if (not (eq (harmless-session-source session) 'agent))
       tools
     (let* ((agent (harmless-session-agent session))
@@ -429,7 +429,8 @@ resources.  Computer control is left out."
            (lambda (tool)
              (or (eq (harmless-tool-class tool) 'read)
                  (member (harmless-tool-name tool)
-                         '("run_shell" "send_message"
+                         '("run_shell" "monitor" "monitor_stop"
+                           "send_message"
                            "web_search" "web_fetch"
                            "x_keyword_search" "x_thread_fetch"
                            "x_user_search"

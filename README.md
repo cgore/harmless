@@ -289,6 +289,14 @@ text, a key, and the browser.  A screenshot still runs.  A
 read-only subagent cannot use these tools.  Nothing is written
 into the project.
 
+## Monitors
+
+`monitor` watches a file in the project, a command, or a
+background shell.  A line that matches `pattern` wakes the
+session.  A file watch does not ask.  A command that can write
+still asks, and plan mode refuses it.  `monitor_stop` stops the
+watch.  Nothing is written into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

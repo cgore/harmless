@@ -102,6 +102,8 @@
                   (session tool args))
 (declare-function harmless-computer-plan-refuses-p "harmless-computer"
                   (session tool args))
+(declare-function harmless-monitor-plan-refuses-p "harmless-monitor"
+                  (session tool args))
 (declare-function harmless-message-flush "harmless-message" (session))
 
 (cl-defstruct (harmless-turn-batch
@@ -530,6 +532,9 @@ from the registry."
                              session tool args))
                        (and (fboundp 'harmless-computer-plan-refuses-p)
                             (harmless-computer-plan-refuses-p
+                             session tool args))
+                       (and (fboundp 'harmless-monitor-plan-refuses-p)
+                            (harmless-monitor-plan-refuses-p
                              session tool args))))))
         (if (or agent-refusal plan-refusal)
             (harmless-turn--finish-call

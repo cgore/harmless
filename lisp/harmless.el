@@ -92,6 +92,7 @@
 (require 'harmless-x)
 (require 'harmless-mcp)
 (require 'harmless-computer)
+(require 'harmless-monitor)
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-compact)

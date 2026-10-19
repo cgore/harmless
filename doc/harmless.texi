@@ -359,6 +359,8 @@ substitution, and a subshell still ask.  @code{shell_kill} still
 asks.  In plan mode a read-only shell command still runs, and a
 shell command that can write is refused before the question.
 @xref{Plan mode}.
+A file watch does not ask.  A command that can write asks, and the
+question shows that command.  @xref{Monitors}.
 
 The permission mode of a session changes that.
 
@@ -384,7 +386,8 @@ query.  For a fetched page, it is the URL.  For an X search, it
 is the query or the post id.  For an MCP call, it is the resource
 uri or the server name.  For a click, it is the point.  For typed
 text, it is the text.  For a key, it is the key.  For a browser,
-it is the URL.  A screenshot shows the tool name.
+it is the URL.  A screenshot shows the tool name.  A file
+watch does not ask.  A command that can write shows the command.
 
 @table @kbd
 @item y
@@ -544,6 +547,7 @@ It can see the screen, click, type, and open a browser.
 * X search::    Find posts, a thread, and accounts on X.
 * MCP::         Call a configured server and read its resources.
 * Computer use::  See the screen, click, type, and open a browser.
+* Monitors::    Wake when a line in a file or a stream matches.
 @end menu
 
 @node File tools
@@ -779,6 +783,8 @@ It may search X.  @xref{X search}.
 It may list and read MCP resources.  @xref{MCP}.
 A read-only child is not offered computer control.
 @xref{Computer use}.
+It may watch a file or a read-only command.  A command that can
+write is refused.  @xref{Monitors}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1229,6 +1235,66 @@ A screenshot still runs.  A read-only subagent is not offered
 these tools.  A detached chat is offered them.  Nothing is written
 into the project.
 
+@node Monitors
+@section Monitors
+
+@cindex monitor
+@cindex monitor_stop
+@code{monitor} watches one source until a line matches
+@code{pattern}.  The source is a @code{path} inside the project, a
+@code{command}, or the id of a background @code{shell}.  Pass one
+of those.  None is refused: @samp{monitor source is missing}.
+More than one is refused: @samp{monitor source must be one}.
+
+Nil and a value that is not text are refused: @samp{pattern must
+be a string}.  @code{""} and whitespace are refused:
+@samp{pattern is empty}.  A regex Emacs cannot compile is refused:
+@samp{pattern is not a pattern}.  @code{/} and @code{c:/} are
+patterns, not paths.
+
+A path is resolved inside the project.  A value that is not text
+is refused: @samp{path must be a string}.  @code{""} and
+whitespace are refused: @samp{Path is empty}.  @code{/},
+@code{c:/}, and a path that leaves the project are refused:
+@samp{Path escapes project: }, followed by the path.  A directory,
+including a trailing slash, is refused: @samp{monitor path is a
+directory}.  A missing file is refused: @samp{monitor file is
+missing}.  Lines already in the file do not match.  Later lines
+do.
+
+A command uses the same read-only check as the shell.  A value
+that is not text is refused: @samp{command must be a string}.
+@code{""} and whitespace are refused: @samp{command is empty}.  A
+shell id that is not text is refused: @samp{shell id
+must be a string}.  A negative number is refused: @samp{shell id
+is not an id}.  @code{""} and whitespace are refused: @samp{shell
+id is empty}.  An unknown shell id is refused: @samp{no background
+shell }, followed by the id.  @code{/} and @code{c:/} are ids, not
+paths.
+
+A match sends @samp{Monitor }, the id, @samp{ matched:}, and the
+line.  The session is idle, so that starts a turn.  A session
+that is already in a turn queues the line and keeps going.
+@code{monitor_stop} stops the watch.  A command this monitor
+started is killed.  A background shell that was only watched
+keeps running.  Nil, @code{""}, and whitespace are refused:
+@samp{monitor id is empty}.  A value that is not text is refused:
+@samp{monitor id must be a string}.  A negative number is refused:
+@samp{monitor id is not an id}.  An unknown id is refused:
+@samp{no monitor }, followed by the id.  Stopping a monitor that
+has already stopped is refused: @samp{monitor }, the id, and
+@samp{ is not running}.
+
+A file watch does not ask.  A read-only command does not ask.  A
+command that can write asks in @code{ask} mode and in
+@code{accept-edits}.  @code{always-approve} does not ask.  In plan
+mode that command is refused: @samp{Error: Plan mode is on. A shell
+command that can write is refused}.  A file watch and a read-only
+command still run.  A read-only subagent may watch a file or a
+read-only command.  A detached chat is not offered these tools.
+Nothing is written into the project.  The watch is forgotten when
+Emacs exits.
+
 @node Instructions
 @chapter Instructions
 
@@ -1393,6 +1459,8 @@ A read-only shell command still runs.  @code{shell_kill} still asks.
 A click, typed text, a key, and a browser are refused:
 @samp{Error: Plan mode is on. Computer control is refused}.
 A screenshot still runs.  @xref{Computer use}.
+A file watch and a read-only command still run.  A command that
+can write is refused.  @xref{Monitors}.
 The header line shows @samp{plan}.
 @code{ask_user} can still ask a question.  @xref{Questions}.
 

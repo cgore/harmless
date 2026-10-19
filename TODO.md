@@ -74,7 +74,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 `run_shell` waits up to `harmless-shell-timeout-seconds` (120), keeps one process on the session, and then returns. Each command starts in the session cwd.
 
 - [x] Leave a command running, read its output later, and kill it. A command that hits its timeout moves to the background instead of dying, and the model can raise that command's timeout (Claude Code). `run_shell` takes `timeout` and `background`. `shell_output` reads one. `shell_kill` stops one.
-- [ ] Watch a log, a file, or another stream and wake the session when a line matters (Grok Build monitors, Claude Code `Monitor`).
+- [x] Watch a log, a file, or another stream and wake the session when a line matters (Grok Build monitors, Claude Code `Monitor`).
 - [ ] Schedule a prompt to run later. Claude Code restores an unexpired session schedule on resume. A watchdog that survives a restart and can watch a queue or a context wall is section 4.
 - [x] Remember a `cd` that stays inside the project for later commands (Claude Code). A directory outside the project, the filesystem root, nil, and `""` are not kept. The remembered directory is saved with the session.
 - [x] Notify through Emacs when a background task finishes. A background shell posts a message and a transcript note. The note is not a message in the transcript the model sees.

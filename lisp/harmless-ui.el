@@ -293,6 +293,8 @@ directory, which lives under the Harmless data directory.  Setting
     ("computer_type" "type")
     ("computer_key" "key")
     ("browser_open" "browser")
+    ("monitor" "watch")
+    ("monitor_stop" "stop")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -370,6 +372,15 @@ directory, which lives under the Harmless data directory.  Setting
             ("browser_open"
              (let ((url (harmless-tool-arg args :url)))
                (if (stringp url) url "")))
+            ((or "monitor" "monitor_stop")
+             (let ((pattern (harmless-tool-arg args :pattern)))
+               (if (stringp pattern)
+                   pattern
+                 (let ((id (harmless-tool-arg args :id)))
+                   (cond
+                    ((stringp id) id)
+                    ((integerp id) (number-to-string id))
+                    (t ""))))))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

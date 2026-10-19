@@ -306,7 +306,9 @@ as a read, so it does not ask.  A command Harmless does not recognize
 still asks.  A redirect that writes, a command substitution, and a
 subshell still ask.  ‘shell_kill’ still asks.  In plan mode a read-only
 shell command still runs, and a shell command that can write is refused
-before the question.  *Note Plan mode::.
+before the question.  *Note Plan mode::.  A file watch does not ask.  A
+command that can write asks, and the question shows that command.  *Note
+Monitors::.
 
    The permission mode of a session changes that.
 
@@ -330,7 +332,8 @@ query.  For a fetched page, it is the URL. For an X search, it is the
 query or the post id.  For an MCP call, it is the resource uri or the
 server name.  For a click, it is the point.  For typed text, it is the
 text.  For a key, it is the key.  For a browser, it is the URL. A
-screenshot shows the tool name.
+screenshot shows the tool name.  A file watch does not ask.  A command
+that can write shows the command.
 
 ‘y’
      Allow this call.
@@ -480,6 +483,7 @@ and accounts.  *Note X search::.  It can list and read MCP resources.
 * X search::    Find posts, a thread, and accounts on X.
 * MCP::         Call a configured server and read its resources.
 * Computer use::  See the screen, click, type, and open a browser.
+* Monitors::    Wake when a line in a file or a stream matches.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -696,7 +700,9 @@ to another live session.  *Note Messages::.  It may also search the web.
 *Note Web search::.  It may fetch a page.  *Note Fetch a page::.  It may
 search X. *Note X search::.  It may list and read MCP resources.  *Note
 MCP::.  A read-only child is not offered computer control.  *Note
-Computer use::.  A workspace child uses the parent's permission mode.
+Computer use::.  It may watch a file or a read-only command.  A command
+that can write is refused.  *Note Monitors::.  A workspace child uses
+the parent's permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -1056,7 +1062,7 @@ before it starts: ‘MCP command is not a program’.  Nothing is written
 into the project.
 
 
-File: harmless.info,  Node: Computer use,  Prev: MCP,  Up: Tools
+File: harmless.info,  Node: Computer use,  Next: Monitors,  Prev: MCP,  Up: Tools
 
 10.13 Computer use
 ==================
@@ -1096,6 +1102,58 @@ typed text, a key, and the browser are refused before the question:
 ‘Error: Plan mode is on. Computer control is refused’.  A screenshot
 still runs.  A read-only subagent is not offered these tools.  A
 detached chat is offered them.  Nothing is written into the project.
+
+
+File: harmless.info,  Node: Monitors,  Prev: Computer use,  Up: Tools
+
+10.14 Monitors
+==============
+
+‘monitor’ watches one source until a line matches ‘pattern’.  The source
+is a ‘path’ inside the project, a ‘command’, or the id of a background
+‘shell’.  Pass one of those.  None is refused: ‘monitor source is
+missing’.  More than one is refused: ‘monitor source must be one’.
+
+   Nil and a value that is not text are refused: ‘pattern must be a
+string’.  ‘""’  and whitespace are refused: ‘pattern is empty’.  A regex
+Emacs cannot compile is refused: ‘pattern is not a pattern’.  ‘/’ and
+‘c:/’ are patterns, not paths.
+
+   A path is resolved inside the project.  A value that is not text is
+refused: ‘path must be a string’.  ‘""’  and whitespace are refused:
+‘Path is empty’.  ‘/’, ‘c:/’, and a path that leaves the project are
+refused: ‘Path escapes project: ’, followed by the path.  A directory,
+including a trailing slash, is refused: ‘monitor path is a directory’.
+A missing file is refused: ‘monitor file is missing’.  Lines already in
+the file do not match.  Later lines do.
+
+   A command uses the same read-only check as the shell.  A value that
+is not text is refused: ‘command must be a string’.  ‘""’  and
+whitespace are refused: ‘command is empty’.  A shell id that is not text
+is refused: ‘shell id must be a string’.  A negative number is refused:
+‘shell id is not an id’.  ‘""’  and whitespace are refused: ‘shell id is
+empty’.  An unknown shell id is refused: ‘no background shell ’,
+followed by the id.  ‘/’ and ‘c:/’ are ids, not paths.
+
+   A match sends ‘Monitor ’, the id, ‘ matched:’, and the line.  The
+session is idle, so that starts a turn.  A session that is already in a
+turn queues the line and keeps going.  ‘monitor_stop’ stops the watch.
+A command this monitor started is killed.  A background shell that was
+only watched keeps running.  Nil, ‘""’, and whitespace are refused:
+‘monitor id is empty’.  A value that is not text is refused: ‘monitor id
+must be a string’.  A negative number is refused: ‘monitor id is not an
+id’.  An unknown id is refused: ‘no monitor ’, followed by the id.
+Stopping a monitor that has already stopped is refused: ‘monitor ’, the
+id, and ‘ is not running’.
+
+   A file watch does not ask.  A read-only command does not ask.  A
+command that can write asks in ‘ask’ mode and in ‘accept-edits’.
+‘always-approve’ does not ask.  In plan mode that command is refused:
+‘Error: Plan mode is on. A shell command that can write is refused’.  A
+file watch and a read-only command still run.  A read-only subagent may
+watch a file or a read-only command.  A detached chat is not offered
+these tools.  Nothing is written into the project.  The watch is
+forgotten when Emacs exits.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1239,8 +1297,10 @@ any permission question: ‘Error: Plan mode is on. A shell command that
 can write is refused’.  A read-only shell command still runs.
 ‘shell_kill’ still asks.  A click, typed text, a key, and a browser are
 refused: ‘Error: Plan mode is on. Computer control is refused’.  A
-screenshot still runs.  *Note Computer use::.  The header line shows
-‘plan’.  ‘ask_user’ can still ask a question.  *Note Questions::.
+screenshot still runs.  *Note Computer use::.  A file watch and a
+read-only command still run.  A command that can write is refused.
+*Note Monitors::.  The header line shows ‘plan’.  ‘ask_user’ can still
+ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -1565,33 +1625,34 @@ Node: Sessions4646
 Node: Transcript6143
 Node: Prompt9772
 Node: Permissions11013
-Node: Accounts13087
-Node: Models15332
-Node: Tools16428
-Node: File tools18490
-Node: Search19724
-Node: Shell21365
-Node: Questions24150
-Node: Subagents24920
-Node: Workflows28856
-Node: Worktrees33859
-Node: Messages36987
-Node: Web search38808
-Node: Fetch a page39663
-Node: X search40896
-Node: MCP43293
-Node: Computer use45997
-Node: Instructions47996
-Node: Skills49742
-Node: Memory50891
-Node: Plan mode52156
-Node: Usage54003
-Node: Files55022
-Node: Keys56528
-Node: Trouble57751
-Node: Manual59005
-Node: Command Index59710
-Node: Key Index62623
+Node: Accounts13276
+Node: Models15521
+Node: Tools16617
+Node: File tools18743
+Node: Search19977
+Node: Shell21618
+Node: Questions24403
+Node: Subagents25173
+Node: Workflows29211
+Node: Worktrees34214
+Node: Messages37342
+Node: Web search39163
+Node: Fetch a page40018
+Node: X search41251
+Node: MCP43648
+Node: Computer use46352
+Node: Monitors48368
+Node: Instructions51283
+Node: Skills53029
+Node: Memory54178
+Node: Plan mode55443
+Node: Usage57395
+Node: Files58414
+Node: Keys59920
+Node: Trouble61143
+Node: Manual62397
+Node: Command Index63102
+Node: Key Index66015
 
 End Tag Table
 
