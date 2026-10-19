@@ -2092,6 +2092,14 @@ this command does not open another row.  A blank reason is refused:
 row reason must be a string’.  Any other reason is refused: ‘team row
 reason is not a reason’.
 
+   ‘M-x harmless-team-row-hand’ hands a held row to another seat.  The
+source closes with reason ‘handed_off_to’ and the destination opens with
+the same body.  Both changes are written together.  The destination
+stays open, so acceptance remains that seat's own later claim.  An open
+source is refused: ‘team row is not held’.  A closed source is refused:
+‘team row is closed’.  The source's own seat is refused: ‘team row hand
+is the same seat’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2338,8 +2346,8 @@ replaced with ‘/’.
      One rig: its pods, its seats, its edges, the session occupying each
      seat, the work each seat still holds, the text sent to each seat,
      the rig's chatroom, a pace that walks context into a seat, and a
-     queue row of owned work that can be claimed, noted, and closed.
-     *Note Team::.
+     queue row of owned work that can be claimed, noted, closed, or
+     handed to another seat.  *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2597,6 +2605,7 @@ Command Index
 * harmless-team-row:                     Team.                 (line  6)
 * harmless-team-row-claim:               Team.                 (line  6)
 * harmless-team-row-close:               Team.                 (line  6)
+* harmless-team-row-hand:                Team.                 (line  6)
 * harmless-team-row-note:                Team.                 (line  6)
 * harmless-team-row-read:                Team.                 (line  6)
 * harmless-team-rows:                    Team.                 (line  6)
@@ -2685,15 +2694,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory104653
-Node: Plan mode107243
-Node: Usage110229
-Node: Files111248
-Node: Keys113215
-Node: Trouble114897
-Node: Manual116151
-Node: Command Index116856
-Node: Key Index123273
+Node: Memory105121
+Node: Plan mode107711
+Node: Usage110697
+Node: Files111716
+Node: Keys113707
+Node: Trouble115389
+Node: Manual116643
+Node: Command Index117348
+Node: Key Index123838
 
 End Tag Table
 

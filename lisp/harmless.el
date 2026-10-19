@@ -82,6 +82,7 @@
 ;;   M-x harmless-team-row-claim ; hold an open queue row
 ;;   M-x harmless-team-row-note ; append a note to a row
 ;;   M-x harmless-team-row-close ; close a held row with a reason
+;;   M-x harmless-team-row-hand ; hand a held row to another seat
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

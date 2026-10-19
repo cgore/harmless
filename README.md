@@ -174,6 +174,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-row-claim` | Hold an open queue row |
 | `M-x harmless-team-row-note` | Append a note to an open or held row |
 | `M-x harmless-team-row-close` | Close a held row with a delivery reason |
+| `M-x harmless-team-row-hand` | Hand a held row to another seat in one step |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -413,6 +414,11 @@ held row.  The reason is `handed_off_to`, `blocked_on`,
 history gains `delivered`, and the reason is stored.  Closing
 records delivery.  Acceptance stays the next seat's verdict, and
 the close does not open another row.
+
+`M-x harmless-team-row-hand` hands a held row to another seat.
+The source row closes with `handed_off_to` and the destination
+row opens with the same body, in one write.  The destination
+row stays open.  Handing a row to its own seat is refused.
 
 ## Subagents
 

@@ -2223,6 +2223,7 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-row-claim
 @findex harmless-team-row-note
 @findex harmless-team-row-close
+@findex harmless-team-row-hand
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2388,6 +2389,15 @@ row.  A blank reason is refused: @samp{team row reason is
 empty}.  A reason that is not text is refused: @samp{team row
 reason must be a string}.  Any other reason is refused:
 @samp{team row reason is not a reason}.
+
+@kbd{M-x harmless-team-row-hand} hands a held row to another
+seat.  The source closes with reason @code{handed_off_to} and
+the destination opens with the same body.  Both changes are
+written together.  The destination stays open, so acceptance
+remains that seat's own later claim.  An open source is
+refused: @samp{team row is not held}.  A closed source is
+refused: @samp{team row is closed}.  The source's own seat is
+refused: @samp{team row hand is the same seat}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2668,7 +2678,7 @@ One rig: its pods, its seats, its edges, the session occupying
 each seat, the work each seat still holds, the text sent to
 each seat, the rig's chatroom, a pace that walks context into
 a seat, and a queue row of owned work that can be claimed,
-noted, and closed.
+noted, closed, or handed to another seat.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

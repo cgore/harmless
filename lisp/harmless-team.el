@@ -50,8 +50,9 @@
 ;; A queue row is owned work on the rig.  Replacing the seat
 ;; does not drop it.  A claim holds a row.  A note appends
 ;; history.  Closing records delivery.  Acceptance stays the
-;; next seat's verdict.  This file does not register another
-;; machine.
+;; next seat's verdict.  A hand closes the source row and opens
+;; the destination row in one write.  This file does not
+;; register another machine.
 
 ;;; Code:
 
@@ -2228,6 +2229,23 @@ Internal newlines stay."
                                  :text text))))
   row)
 
+(defun harmless-team--seat-text (text)
+  "Return TEXT trimmed, or signal.
+TEXT must be a seat reference."
+  (cond
+   ((null text) (error "team edge is empty"))
+   ((not (stringp text))
+    (error "team edge must be a string")))
+  (setq text (string-trim text))
+  (cond
+   ((string-empty-p text) (error "team edge is empty"))
+   ((or (string-match-p
+         "\\`[A-Za-z0-9]+\\.[A-Za-z0-9]+\\'" text)
+        (string-match-p
+         "\\`[A-Za-z0-9]+-[A-Za-z0-9]+@.+" text))
+    text)
+   (t (error "team edge is not a seat"))))
+
 (defun harmless-team--row-claim (rig id)
   "Hold open row ID in RIG and return it."
   (setq rig (harmless-team--rig-name rig))
@@ -2313,6 +2331,56 @@ REASON records delivery.  Return the row."
   (let ((row (harmless-team--row-close rig id reason)))
     (message "Closed %s" (plist-get row :id))
     row))
+
+(defun harmless-team--row-hand (rig id seat)
+  "Hand held row ID in RIG to SEAT and return both rows.
+The source closes and the destination opens in one write."
+  (setq id (harmless-team--row-id id))
+  (setq seat (harmless-team--seat-text seat))
+  (setq rig (harmless-team--rig-name rig))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (address (harmless-team--endpoint stored seat))
+         (row (harmless-team--row-stored stored id))
+         (state (plist-get row :state))
+         (opened nil))
+    (cond
+     ((equal state "open") (error "team row is not held"))
+     ((equal state "closed") (error "team row is closed")))
+    (when (harmless-team--same-p address (plist-get row :seat))
+      (error "team row hand is the same seat"))
+    (plist-put row :state "closed")
+    (plist-put row :reason "handed_off_to")
+    (harmless-team--row-append row "delivered")
+    (setq opened
+          (list :id (harmless-team--next-row-id
+                     (plist-get stored :rows))
+                :seat address
+                :body (plist-get row :body)
+                :state "open"
+                :history
+                (list (list :at (harmless-now-iso)
+                            :text "opened"))))
+    (plist-put stored :rows
+               (append (plist-get stored :rows) (list opened)))
+    (harmless-team--write (car loaded) stored)
+    (list :source (harmless-team--public-row row)
+          :destination (harmless-team--public-row opened))))
+
+;;;###autoload
+(defun harmless-team-row-hand (rig id seat)
+  "Hand held queue row ID in RIG to SEAT.
+The source closes and the destination opens together.  Return
+both rows."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")
+         (read-string "Seat: ")))
+  (let ((hand (harmless-team--row-hand rig id seat)))
+    (message "Handed %s to %s"
+             (plist-get (plist-get hand :source) :id)
+             (plist-get (plist-get hand :destination) :id))
+    hand))
 
 (provide 'harmless-team)
 
