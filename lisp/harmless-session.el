@@ -106,7 +106,8 @@ location.  A relative path or the filesystem root is refused."
   tool-batch
   shell-jobs
   shell-seq
-  shell-cwd)
+  shell-cwd
+  steers)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."

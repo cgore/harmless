@@ -269,7 +269,8 @@ The prompt is a small window under the transcript.  Type there and send
 the turn.
 
 ‘C-c C-c’
-     Send the prompt.  ‘C-c <RET>’ does the same.
+     Send the prompt.  ‘C-c <RET>’ does the same.  While a turn is
+     streaming, this queues the prompt instead of aborting the turn.
 
 ‘C-c C-a’
      Abort the in-flight turn or shell.  *Note Trouble::.
@@ -277,8 +278,19 @@ the turn.
 ‘C-c C-k’
      Open the Harmless menu.  *Note Keys::.
 
-   An empty prompt is refused.  While a permission question is showing,
-send is refused until you answer it.  *Note Permissions::.
+   An empty prompt is refused: ‘Prompt is empty’.  Nil, ‘""’, and
+whitespace are the same refusal.  While a permission question is
+showing, send is refused until you answer it.  *Note Permissions::.
+
+   ‘M-x harmless-steer’ reads a follow-up from the minibuffer and queues
+it without aborting the turn.  That includes while a permission question
+is showing.  The same empty-prompt refusal applies.  A value such as
+‘/’, ‘c:/’, or ‘sub/’ is text, and it is queued.
+
+   The follow-up is sent after the current tool batch, before the next
+request to the model.  A reply that used no tools is followed by the
+queued text, and the turn continues.  Several follow-ups keep the order
+they were queued.  Abort drops a queue that has not been sent.
 
 
 File: harmless.info,  Node: Permissions,  Next: Accounts,  Prev: Prompt,  Up: Top
@@ -1013,6 +1025,7 @@ Command Index
 * harmless-set-permission-mode:          Permissions.          (line  6)
 * harmless-set-reasoning-effort:         Models.               (line  6)
 * harmless-setup:                        Installation.         (line  6)
+* harmless-steer:                        Prompt.               (line  6)
 * harmless-switch:                       Sessions.             (line  6)
 * harmless-usage:                        Usage.                (line  6)
 * write_plan:                            Plan mode.            (line  6)
@@ -1054,25 +1067,25 @@ Node: Starting4105
 Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
-Node: Permissions10292
-Node: Accounts11941
-Node: Models14186
-Node: Tools15282
-Node: File tools16477
-Node: Search17711
-Node: Shell19352
-Node: Questions22137
-Node: Instructions22889
-Node: Skills24635
-Node: Memory25784
-Node: Plan mode27049
-Node: Usage28732
-Node: Files29751
-Node: Keys30984
-Node: Trouble32207
-Node: Manual33223
-Node: Command Index33928
-Node: Key Index36622
+Node: Permissions11011
+Node: Accounts12660
+Node: Models14905
+Node: Tools16001
+Node: File tools17196
+Node: Search18430
+Node: Shell20071
+Node: Questions22856
+Node: Instructions23608
+Node: Skills25354
+Node: Memory26503
+Node: Plan mode27768
+Node: Usage29451
+Node: Files30470
+Node: Keys31703
+Node: Trouble32926
+Node: Manual33942
+Node: Command Index34647
+Node: Key Index37414
 
 End Tag Table
 

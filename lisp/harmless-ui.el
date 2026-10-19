@@ -985,7 +985,23 @@ would swallow the following tool block into the streamed prose."
     (when (string-empty-p text)
       (user-error "Prompt is empty"))
     (erase-buffer)
-    (harmless-turn-run session text)))
+    (if (eq (harmless-session-status session) 'streaming)
+        (harmless-turn-steer session text)
+      (harmless-turn-run session text))))
+
+;;;###autoload
+(defun harmless-steer (text)
+  "Queue TEXT on the current session without aborting its turn.
+Nil, \"\", and whitespace are refused.  The minibuffer prompt works
+while a permission question is showing.  The follow-up is sent after
+the current tool batch, or after a reply that used no tools."
+  (interactive "sSteer: ")
+  (let ((session (or harmless--session
+                     (car (harmless-session-for-cwd (harmless-current-cwd))))))
+    (unless session
+      (user-error "No Harmless session"))
+    (when (eq 'queued (harmless-turn-steer session text))
+      (message "Harmless: steering queued"))))
 
 ;;;###autoload
 (defun harmless-abort ()

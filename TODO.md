@@ -26,14 +26,14 @@ The shell is the only way out of the project. A skill that needs any of these is
 
 ## 3. Long sessions
 
-Every turn resends the full transcript. Sending a new prompt aborts a turn that is streaming or waiting on permission.
+Every turn resends the full transcript. Editing an earlier prompt still aborts a turn that is streaming or waiting on permission.
 
 - [x] Compact the transcript. `M-x harmless-compact` summarizes older turns, keeps the recent ones, and saves the shorter transcript. A tool call stays with its results. An empty summary leaves the transcript unchanged.
 - [x] Compact automatically when the context window fills. `harmless-compact-threshold` is a percent of that model's window (default 80). Nil disables it. The same percent applies to every model.
 - [x] Rewind to an earlier turn and drop what follows. `M-x harmless-rewind` keeps that turn and everything before it. A tool call stays with its turn. The dropped turns are not saved.
 - [x] Edit an earlier prompt and rerun from there. `M-x harmless-edit-prompt` replaces that prompt, drops its reply and every later turn, and sends the new prompt. The dropped turns are not saved.
 - [x] Fork a session, keeping history up to this point. `M-x harmless-fork` copies the transcript through that turn into a new session and leaves the original alone. Nothing is sent.
-- [ ] Steer a running turn. A follow-up arrives without aborting the turn.
+- [x] Steer a running turn. A follow-up arrives without aborting the turn. `C-c C-c` while streaming queues the prompt. `M-x harmless-steer` queues from the minibuffer, including while a permission question is showing. `C-c C-c` during that question stays refused. Nil, `""`, and whitespace are refused: `Prompt is empty`. The follow-up is sent after the current tool batch, before the next provider call. Several follow-ups keep their order.
 
 ## 4. A lasting team
 

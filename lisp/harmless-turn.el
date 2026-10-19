@@ -125,8 +125,37 @@ A background shell keeps running."
     (setf (harmless-session-tool-batch session) nil))
   (harmless-turn--clear-permission-prompt session)
   (harmless-session-kill-processes session)
+  (setf (harmless-session-steers session) nil)
   (harmless-session-set-status session 'idle)
   (harmless-emit session '(:error "aborted")))
+
+(defun harmless-turn-steer (session text)
+  "Queue TEXT on SESSION without aborting a running turn.
+When SESSION is not streaming and not waiting on permission, start a
+turn with TEXT.  Nil, \"\", and whitespace signal \"Prompt is empty\".
+Return `queued' or `sent'."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (let ((text (if (stringp text) (string-trim text) "")))
+    (when (string-empty-p text)
+      (error "Prompt is empty"))
+    (if (memq (harmless-session-status session)
+              '(streaming waiting-permission))
+        (progn
+          (setf (harmless-session-steers session)
+                (append (harmless-session-steers session) (list text)))
+          'queued)
+      (harmless-turn-run session text)
+      'sent)))
+
+(defun harmless-turn--take-steers (session)
+  "Append SESSION's queued follow-ups as user messages.
+Return non-nil when there was at least one."
+  (let ((texts (harmless-session-steers session)))
+    (setf (harmless-session-steers session) nil)
+    (dolist (text texts)
+      (harmless-session-append-user session text))
+    texts))
 
 (defun harmless-turn-run (session text)
   "Append user TEXT to SESSION and start the agent loop.
@@ -232,12 +261,15 @@ It is not offered project files, a shell, or plan mode."
   (let ((calls (harmless-turn--tool-calls acc))
         (text (harmless-turn-acc-text acc))
         (reasoning (harmless-turn-acc-reasoning acc)))
-    (if (and (null calls)
-             (string-empty-p (string-trim (or text "")))
-             (string-empty-p (string-trim (or reasoning ""))))
-        (progn
-          (harmless-session-set-status session 'error)
-          (harmless-emit session '(:error "The model returned an empty reply.")))
+    (cond
+     ((and (null calls)
+           (string-empty-p (string-trim (or text "")))
+           (string-empty-p (string-trim (or reasoning ""))))
+      (if (harmless-turn--take-steers session)
+          (harmless-turn--call session)
+        (harmless-session-set-status session 'error)
+        (harmless-emit session '(:error "The model returned an empty reply."))))
+     (t
       (harmless-session-append
        session
        (nconc (list :role :assistant :content text)
@@ -245,10 +277,14 @@ It is not offered project files, a shell, or plan mode."
                    (list :reasoning reasoning))
               (and calls (list :tool-calls calls))))
       (if calls
-          (harmless-turn--run-tools session calls
-                                    (lambda ()
-                                      (harmless-turn--call session)))
-        (harmless-session-set-status session 'idle)))))
+          (harmless-turn--run-tools
+           session calls
+           (lambda ()
+             (harmless-turn--take-steers session)
+             (harmless-turn--call session)))
+        (if (harmless-turn--take-steers session)
+            (harmless-turn--call session)
+          (harmless-session-set-status session 'idle)))))))
 
 (defun harmless-turn--run-tools (session calls k)
   "Start CALLS together on SESSION, then call K when every one has finished.

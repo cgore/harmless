@@ -306,6 +306,7 @@ model, and the effort.  @xref{Models}.
 @chapter Prompt
 
 @findex harmless-prompt-send
+@findex harmless-steer
 @findex harmless-prompt-mode
 @kindex C-c C-c
 @kindex C-c RET
@@ -314,7 +315,8 @@ send the turn.
 
 @table @kbd
 @item C-c C-c
-Send the prompt.  @kbd{C-c @key{RET}} does the same.
+Send the prompt.  @kbd{C-c @key{RET}} does the same.  While a turn is
+streaming, this queues the prompt instead of aborting the turn.
 
 @item C-c C-a
 Abort the in-flight turn or shell.  @xref{Trouble}.
@@ -323,8 +325,19 @@ Abort the in-flight turn or shell.  @xref{Trouble}.
 Open the Harmless menu.  @xref{Keys}.
 @end table
 
-An empty prompt is refused.  While a permission question is showing,
-send is refused until you answer it.  @xref{Permissions}.
+An empty prompt is refused: @samp{Prompt is empty}.  Nil, @code{""},
+and whitespace are the same refusal.  While a permission question is
+showing, send is refused until you answer it.  @xref{Permissions}.
+
+@kbd{M-x harmless-steer} reads a follow-up from the minibuffer and
+queues it without aborting the turn.  That includes while a permission
+question is showing.  The same empty-prompt refusal applies.  A value
+such as @code{/}, @code{c:/}, or @code{sub/} is text, and it is queued.
+
+The follow-up is sent after the current tool batch, before the next
+request to the model.  A reply that used no tools is followed by the
+queued text, and the turn continues.  Several follow-ups keep the
+order they were queued.  Abort drops a queue that has not been sent.
 
 @node Permissions
 @chapter Permissions

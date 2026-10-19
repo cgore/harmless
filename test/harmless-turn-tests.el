@@ -613,4 +613,191 @@
                    (harmless-turn-test--tool-contents session)))
     (should (= calls 2))))
 
+(defun harmless-turn-test--user-texts (session)
+  "Return user message strings recorded on SESSION, in order."
+  (mapcar (lambda (message) (plist-get message :content))
+          (seq-filter (lambda (message) (eq (plist-get message :role) :user))
+                      (harmless-session-messages session))))
+
+(ert-deftest harmless-turn-steer-refuses-an-empty-prompt ()
+  (let* ((dir (make-temp-file "harmless-steer-empty-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-make-fake :name "fake" :host "none" :script #'ignore))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (dolist (text (list nil "" " " "\n" "\t" "  \n"))
+      (let ((err (should-error (harmless-turn-steer session text) :type 'error)))
+        (should (equal "Prompt is empty" (error-message-string err)))))
+    (should-not (harmless-session-steers session))
+    (should (eq 'idle (harmless-session-status session)))
+    (should-not (harmless-session-messages session))
+    (let ((err (should-error (harmless-turn-steer nil "hi") :type 'error)))
+      (should (equal "No Harmless session" (error-message-string err))))))
+
+(ert-deftest harmless-turn-steer-queues-without-aborting ()
+  (let* ((dir (make-temp-file "harmless-steer-queue-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (events nil)
+         (seen nil)
+         (calls 0)
+         (session nil)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (messages callback)
+             (setq calls (1+ calls))
+             (push messages seen)
+             (if (= calls 1)
+                 (progn
+                   (should (eq 'queued (harmless-turn-steer session "one")))
+                   (should (eq 'queued (harmless-turn-steer session "  two  ")))
+                   (funcall callback '(:text "first"))
+                   (funcall callback '(:stop "stop")))
+               (funcall callback '(:text "second"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (harmless-event-functions
+          (cons (lambda (_session event) (push event events))
+                harmless-event-functions)))
+    (setq session (harmless-session-new :cwd dir :provider provider :model "m"))
+    (harmless-turn-run session "go")
+    (should (eq 'idle (harmless-session-status session)))
+    (should (= calls 2))
+    (should-not (harmless-session-steers session))
+    (should-not (cl-find '(:error "aborted") events :test #'equal))
+    (should (equal '("go" "one" "two")
+                   (harmless-turn-test--user-texts session)))
+    (let ((users (cl-loop for message in (car seen)
+                          when (eq (plist-get message :role) :user)
+                          collect (plist-get message :content))))
+      (should (equal '("go" "one" "two") users)))))
+
+(ert-deftest harmless-turn-steer-waits-until-the-tool-batch-finishes ()
+  (let* ((dir (make-temp-file "harmless-steer-tools-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-tools harmless-tools)
+         (release nil)
+         (events nil)
+         (seen nil)
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (messages callback)
+             (setq calls (1+ calls))
+             (push messages seen)
+             (if (= calls 1)
+                 (progn
+                   (funcall callback '(:tool-call "a" "hold" "{}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (funcall callback '(:text "after"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m"))
+         (harmless-event-functions
+          (cons (lambda (_session event) (push event events))
+                harmless-event-functions)))
+    (harmless-register-tool
+     (harmless-tool-create
+      :name "hold"
+      :description "Hold the callback until the test releases it."
+      :class 'read
+      :async t
+      :schema '(:type "object")
+      :fn (lambda (_session _args callback)
+            (push callback release))))
+    (harmless-turn-run session "go")
+    (should (= calls 1))
+    (should (= 1 (length release)))
+    (should (eq 'queued (harmless-turn-steer session "/")))
+    (should (eq 'queued (harmless-turn-steer session "c:/")))
+    (should (eq 'queued (harmless-turn-steer session "sub/")))
+    (should (equal '("/" "c:/" "sub/") (harmless-session-steers session)))
+    (should (eq 'streaming (harmless-session-status session)))
+    (funcall (car release) "held")
+    (should (eq 'idle (harmless-session-status session)))
+    (should (= calls 2))
+    (should-not (harmless-session-steers session))
+    (should-not (cl-find '(:error "aborted") events :test #'equal))
+    (should (equal '("go" "/" "c:/" "sub/")
+                   (harmless-turn-test--user-texts session)))
+    (let ((users (cl-loop for message in (car seen)
+                          when (eq (plist-get message :role) :user)
+                          collect (plist-get message :content))))
+      (should (equal '("go" "/" "c:/" "sub/") users)))
+    (should (equal '("held") (harmless-turn-test--tool-contents session)))))
+
+(ert-deftest harmless-turn-abort-drops-a-steer-queue ()
+  (let* ((dir (make-temp-file "harmless-steer-abort-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-tools harmless-tools)
+         (release nil)
+         (events nil)
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (funcall callback '(:tool-call "a" "hold" "{}"))
+             (funcall callback '(:stop "tool_calls")))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m"))
+         (harmless-event-functions
+          (cons (lambda (_session event) (push event events))
+                harmless-event-functions)))
+    (harmless-register-tool
+     (harmless-tool-create
+      :name "hold"
+      :description "Hold the callback until the test releases it."
+      :class 'read
+      :async t
+      :schema '(:type "object")
+      :fn (lambda (_session _args callback)
+            (push callback release))))
+    (harmless-turn-run session "go")
+    (should (eq 'queued (harmless-turn-steer session "later")))
+    (harmless-turn-abort session)
+    (should-not (harmless-session-steers session))
+    (should (cl-find '(:error "aborted") events :test #'equal))
+    (funcall (car release) "late")
+    (should (= calls 1))
+    (should (equal '("go") (harmless-turn-test--user-texts session)))))
+
+(ert-deftest harmless-turn-run-still-aborts-a-streaming-turn ()
+  (let* ((dir (make-temp-file "harmless-steer-run-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (events nil)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (funcall callback '(:text "fresh-reply"))
+             (funcall callback '(:stop "stop")))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m"))
+         (harmless-event-functions
+          (cons (lambda (_session event) (push event events))
+                harmless-event-functions)))
+    (setf (harmless-session-status session) 'streaming)
+    (should (eq 'queued (harmless-turn-steer session "keep")))
+    (harmless-turn-run session "fresh")
+    (should (cl-find '(:error "aborted") events :test #'equal))
+    (should (equal '("fresh") (harmless-turn-test--user-texts session)))
+    (should-not (member "keep" (harmless-turn-test--user-texts session)))
+    (should (eq 'idle (harmless-session-status session)))))
+
 (provide 'harmless-turn-tests)

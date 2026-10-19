@@ -133,6 +133,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | Click `xAI/grok-4.6 (xhigh)` in the session header | Provider, then model, then effort |
 | `M-x harmless-login` | Sign in (xAI, Anthropic, or OpenAI) |
 | `M-x harmless-logout` | Sign out of a provider |
+| `M-x harmless-steer` | Queue a follow-up without aborting the turn, including during a permission question |
 | `M-x harmless-abort` | Cancel the in-flight turn and any foreground shell. A background shell keeps running |
 | `M-x harmless-compact` | Summarize older turns and keep the recent ones (`k` in the transcript). Also runs before a prompt that would fill the context window. |
 | `M-x harmless-rewind` | Drop turns after the one at point and save the shorter transcript (`w` in the transcript) |
@@ -140,7 +141,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-fork` | Copy the transcript through the turn at point into a new session (`f` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
-In the prompt window: `C-c C-c` sends.  When a tool needs approval: `y` allow,
+In the prompt window: `C-c C-c` sends.  While a turn is streaming, `C-c C-c`
+queues that prompt and the turn keeps running.  While a permission question
+is showing, `C-c C-c` is refused.  When a tool needs approval: `y` allow,
 `n` deny, `!` always allow that class for the rest of the session.
 
 In the transcript, a tool run is a collapsed line.  `TAB` toggles the
