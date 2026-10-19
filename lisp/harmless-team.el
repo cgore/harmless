@@ -43,8 +43,9 @@
 ;; the launch order.  A spec, the built-in starter, or a bundle
 ;; can boot a rig.  Preview does not write.  A seat can adopt a
 ;; session that is already running.  Release clears that binding
-;; and does not stop the session.  This file does not send to a
-;; seat or register another machine.
+;; and does not stop the session.  Send appends text to a seat's
+;; screen and keeps a transcript across occupants.  This file
+;; does not register another machine.
 
 ;;; Code:
 
@@ -290,6 +291,28 @@ SEEN-PODS holds pod names already accepted."
              (setq ok nil)))
          (and ok (null seats)))))
 
+(defun harmless-team--transcript-ok-p (rig)
+  "Return non-nil if RIG's transcript is readable.
+Nil means the rig has no transcript yet."
+  (let ((items (plist-get rig :transcript)))
+    (if (null items)
+        t
+      (let ((ok t))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-plist-p item)
+                     (stringp (plist-get item :seat))
+                     (not (string-empty-p (plist-get item :seat)))
+                     (or (null (plist-get item :runtime))
+                         (member (plist-get item :runtime)
+                                 harmless-team--runtimes))
+                     (stringp (plist-get item :session))
+                     (stringp (plist-get item :text))
+                     (not (string-empty-p (plist-get item :text))))
+                (setq items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -303,7 +326,8 @@ SEEN-PODS holds pod names already accepted."
                      pods (cdr pods))
              (setq ok nil)))
          (and ok (null pods)))
-       (harmless-team--edges-ok-p rig)))
+       (harmless-team--edges-ok-p rig)
+       (harmless-team--transcript-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -1300,6 +1324,327 @@ work stay.  Return the binding that was cleared."
   (let ((released (harmless-team--release rig pod seat)))
     (message "Released %s" (plist-get released :released))
     released))
+
+(declare-function harmless-session-get "harmless-session" (id))
+(declare-function harmless-session-p "harmless-session" (object))
+(declare-function harmless-session-status "harmless-session" (session))
+(declare-function harmless-session-append-user "harmless-session"
+                  (session text))
+
+(defun harmless-team--send-text (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team send is empty"))
+   ((not (stringp text))
+    (error "team send must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team send is empty")
+    text))
+
+(defun harmless-team--screen-block (text)
+  "Signal when TEXT's last line is a prompt or a permission.
+A last line of \">\", or a last line that ends in \">\", is a
+prompt.  \"Allow this tool?\" is a permission question."
+  (let ((line nil))
+    (dolist (one (split-string (or text "") "\n"))
+      (setq one (string-trim one))
+      (unless (string-empty-p one)
+        (setq line one)))
+    (cond
+     ((null line) nil)
+     ((or (equal line ">") (string-suffix-p ">" line))
+      (error "team seat is at a prompt"))
+     ((equal line "Allow this tool?")
+      (error "team seat is at a permission question")))))
+
+(defun harmless-team--read-text (path)
+  "Return PATH as text."
+  (with-temp-buffer
+    (let ((coding-system-for-read 'utf-8-unix))
+      (insert-file-contents path))
+    (buffer-string)))
+
+(defun harmless-team--harmless-block (dir id)
+  "Signal when the Harmless session ID in DIR cannot be typed on.
+A live session is checked first.  The summary on disk is checked
+next.  This does not start a turn."
+  (when (and (fboundp 'harmless-session-get)
+             (fboundp 'harmless-session-p)
+             (fboundp 'harmless-session-status))
+    (let ((live (harmless-session-get id)))
+      (when (and live (harmless-session-p live))
+        (cond
+         ((eq (harmless-session-status live) 'waiting-permission)
+          (error "team seat is at a permission question"))
+         ((eq (harmless-session-status live) 'streaming)
+          (error "team seat is at a prompt"))))))
+  (let ((path (expand-file-name "summary.json" dir)))
+    (unless (file-regular-p path)
+      (error "team session is missing"))
+    (let ((obj (harmless-json-decode-safe
+                (harmless-team--read-text path))))
+      (unless (harmless-plist-p obj)
+        (error "team session is not valid"))
+      (cond
+       ((equal (plist-get obj :status) "waiting-permission")
+        (error "team seat is at a permission question"))
+       ((equal (plist-get obj :status) "streaming")
+        (error "team seat is at a prompt"))))))
+
+(defun harmless-team--screen-file (seat)
+  "Return SEAT's screen file, or nil when it has no file.
+An empty seat signals \"team seat is not occupied\"."
+  (let ((runtime (plist-get seat :runtime))
+        (ref (plist-get seat :session)))
+    (cond
+     ((or (null ref) (and (stringp ref) (string-empty-p ref)))
+      (error "team seat is not occupied"))
+     ((or (null runtime) (equal runtime "harmless"))
+      (expand-file-name
+       "messages.jsonl"
+       (harmless-team--harmless-session ref)))
+     ((and (equal runtime "terminal")
+           (string-match-p "\\`[0-9]+\\'" ref))
+      nil)
+     ((and (stringp ref) (file-directory-p ref))
+      (let ((screen (expand-file-name "screen.txt" ref)))
+        (when (and (file-regular-p screen)
+                   (not (harmless-team--root-text-p screen))
+                   (not (equal (file-truename screen)
+                               (file-truename "/"))))
+          screen)))
+     ((and (stringp ref)
+           (file-regular-p ref)
+           (not (harmless-team--root-text-p ref))
+           (not (equal (file-truename ref) (file-truename "/"))))
+      ref))))
+
+(defun harmless-team--accept-send (seat)
+  "Return SEAT's screen file when a send may type there."
+  (let ((path (harmless-team--screen-file seat)))
+    (unless path
+      (error "team seat has no screen"))
+    (if (or (null (plist-get seat :runtime))
+            (equal (plist-get seat :runtime) "harmless"))
+        (harmless-team--harmless-block
+         (file-name-directory path)
+         (plist-get seat :session))
+      (harmless-team--screen-block (harmless-team--read-text path)))
+    path))
+
+(defun harmless-team--append-screen (path text json)
+  "Append TEXT to PATH and check that it is there.
+JSON non-nil writes one user message.  PATH is not a root."
+  (let ((payload (if json
+                     (concat (harmless-json-text
+                              (list :role :user :content text))
+                             "\n")
+                   (concat text "\n")))
+        (parent (directory-file-name
+                 (file-name-directory path))))
+    (unless (and (file-name-absolute-p path)
+                 (not (harmless-team--root-text-p path))
+                 (not (harmless-team--root-text-p parent))
+                 (not (equal (file-truename parent)
+                             (file-truename "/"))))
+      (error "Refusing to store a team at %s" path))
+    (let ((coding-system-for-write 'utf-8-unix))
+      (write-region payload nil path t 'silent))
+    (unless (string-suffix-p payload (harmless-team--read-text path))
+      (error "team send did not appear"))))
+
+(defun harmless-team--all-seats (rig)
+  "Return RIG's seats in file order."
+  (let ((out nil))
+    (dolist (pod (plist-get rig :pods))
+      (dolist (seat (plist-get pod :seats))
+        (setq out (append out (list seat)))))
+    out))
+
+(defun harmless-team--seat-by-address (rig address)
+  "Return the seat in RIG with ADDRESS, or nil."
+  (let ((found nil))
+    (dolist (seat (harmless-team--all-seats rig))
+      (when (and (not found)
+                 (harmless-team--same-p
+                  (plist-get seat :address) address))
+        (setq found seat)))
+    found))
+
+(defun harmless-team--send-targets (rig target)
+  "Return the seats TARGET names, in file order.
+TARGET is one seat, a comma-separated list, a pod, the rig
+name, or \"*\"."
+  (cond
+   ((null target) (error "team send is empty"))
+   ((not (stringp target))
+    (error "team send must be a string")))
+  (setq target (string-trim target))
+  (cond
+   ((string-empty-p target) (error "team send is empty"))
+   ((equal target "*")
+    (or (harmless-team--all-seats rig)
+        (error "team send is not a target")))
+   ((string-search "," target)
+    (let ((seats nil))
+      (dolist (one (split-string target "," t "[ \t\n\r]+"))
+        (let ((seat (harmless-team--seat-by-address
+                     rig (harmless-team--endpoint rig one))))
+          (unless seat
+            (error "team seat is missing"))
+          (setq seats (append seats (list seat)))))
+      (or seats (error "team send is not a target"))))
+   ((or (string-match-p
+         "\\`[A-Za-z0-9]+\\.[A-Za-z0-9]+\\'" target)
+        (string-match-p
+         "\\`[A-Za-z0-9]+-[A-Za-z0-9]+@.+" target))
+    (let ((seat (harmless-team--seat-by-address
+                 rig (harmless-team--endpoint rig target))))
+      (unless seat
+        (error "team seat is missing"))
+      (list seat)))
+   ((harmless-team--find-named (plist-get rig :pods) target)
+    (or (plist-get (harmless-team--find-named
+                    (plist-get rig :pods) target)
+                   :seats)
+        (error "team send is not a target")))
+   ((harmless-team--same-p target (plist-get rig :name))
+    (or (harmless-team--all-seats rig)
+        (error "team send is not a target")))
+   (t (error "team send is not a target"))))
+
+(defun harmless-team--public-line (item)
+  "Return one transcript ITEM with keys in a fixed order."
+  (list :seat (plist-get item :seat)
+        :runtime (plist-get item :runtime)
+        :session (plist-get item :session)
+        :text (plist-get item :text)))
+
+(defun harmless-team--lines (rig seat)
+  "Return RIG's transcript lines for SEAT's address."
+  (let ((address (plist-get seat :address))
+        (out nil))
+    (dolist (item (plist-get rig :transcript))
+      (when (harmless-team--same-p (plist-get item :seat) address)
+        (setq out (append out (list (harmless-team--public-line item))))))
+    out))
+
+(defun harmless-team--send (rig target text)
+  "Type TEXT onto TARGET in RIG and return the addresses.
+A blocked seat refuses the whole send before any screen
+changes.  This does not start a turn."
+  (setq rig (harmless-team--rig-name rig))
+  (setq text (harmless-team--send-text text))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (seats (harmless-team--send-targets stored target))
+         (plans nil))
+    (dolist (seat seats)
+      (setq plans
+            (append plans
+                    (list (list seat
+                                (harmless-team--accept-send seat))))))
+    (dolist (plan plans)
+      (let ((seat (car plan)))
+        (harmless-team--append-screen
+         (cadr plan) text
+         (or (null (plist-get seat :runtime))
+             (equal (plist-get seat :runtime) "harmless")))))
+    (let ((lines (plist-get stored :transcript)))
+      (dolist (plan plans)
+        (let ((seat (car plan)))
+          (setq lines
+                (append lines
+                        (list (list :seat (plist-get seat :address)
+                                    :runtime (plist-get seat :runtime)
+                                    :session (plist-get seat :session)
+                                    :text text))))))
+      (plist-put stored :transcript lines))
+    (harmless-team--write (car loaded) stored)
+    (mapcar (lambda (plan)
+              (plist-get (car plan) :address))
+            plans)))
+
+(defun harmless-team--capture (rig pod seat)
+  "Return the screen text of SEAT in POD of RIG."
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let ((path (harmless-team--screen-file (cdr found))))
+      (if path
+          (if (and (file-regular-p path)
+                   (not (equal (file-truename path)
+                               (file-truename "/"))))
+              (harmless-team--read-text path)
+            "")
+        (mapconcat (lambda (line) (plist-get line :text))
+                   (harmless-team--lines stored (cdr found))
+                   "\n")))))
+
+(defun harmless-team--transcript (rig pod seat)
+  "Return every recorded line for SEAT, oldest first.
+Lines from an earlier occupant stay."
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (found (harmless-team--find stored pod seat))
+         (address (if found
+                      (plist-get (cdr found) :address)
+                    (harmless-team-address rig pod seat))))
+    (let ((out nil))
+      (dolist (item (plist-get stored :transcript))
+        (when (harmless-team--same-p (plist-get item :seat) address)
+          (setq out (append out
+                            (list (harmless-team--public-line item))))))
+      (when (and (null out) (null found))
+        (error "team seat is missing"))
+      out)))
+
+;;;###autoload
+(defun harmless-team-send (rig target text)
+  "Type TEXT onto TARGET in RIG.
+TARGET is one seat, a comma-separated list of seats, a pod, the
+rig name, or \"*\".  A seat at a prompt or a permission question
+refuses the whole send.  Return the addresses that received it."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Target: ")
+         (read-string "Text: ")))
+  (let ((sent (harmless-team--send rig target text)))
+    (message "Sent to %s" (mapconcat #'identity sent ", "))
+    sent))
+
+;;;###autoload
+(defun harmless-team-capture (rig pod seat)
+  "Return the text on SEAT's screen in POD of RIG."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")))
+  (let ((text (harmless-team--capture rig pod seat)))
+    (message "Captured %s" (plist-get
+                            (harmless-team--lookup rig pod seat)
+                            :address))
+    text))
+
+;;;###autoload
+(defun harmless-team-transcript (rig pod seat)
+  "Return what SEAT has been sent, across every occupant.
+Each line is :seat, :runtime, :session, and :text."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")))
+  (let ((lines (harmless-team--transcript rig pod seat)))
+    (message "%d lines" (length lines))
+    lines))
 
 (provide 'harmless-team)
 

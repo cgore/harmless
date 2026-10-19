@@ -2207,6 +2207,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-remove
 @findex harmless-team-adopt
 @findex harmless-team-release
+@findex harmless-team-send
+@findex harmless-team-capture
+@findex harmless-team-transcript
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2261,6 +2264,40 @@ Replacing the binding does not stop the session that was there.
 @kbd{M-x harmless-team-release} clears the binding.  It does not
 delete the session, the file, or the process.  The name, the
 role, and the inbound work stay.
+
+@kbd{M-x harmless-team-send} types text onto one seat, a
+comma-separated list of seats, a pod, the rig name, or
+@code{*}.  The text is appended to that seat's screen, and the
+send is refused when the text is not there afterward.  It does
+not start a turn.  A Harmless seat, including one filled by
+@kbd{M-x harmless-team-occupy}, gets one user line in
+@file{messages.jsonl}.  A terminal log is the screen and is
+appended.  Claude Code, Codex, and Pi use @file{screen.txt} in
+the session directory.  A live process id is not typed into:
+@samp{team seat has no screen}.  A directory with no
+@file{screen.txt} is refused the same way.
+
+The whole send is refused before any screen changes when a
+seat is empty (@samp{team seat is not occupied}), at a prompt
+(@samp{team seat is at a prompt}), or at a permission question
+(@samp{team seat is at a permission question}).  A prompt is a
+last line @code{>} or a last line that ends in @code{>}.
+@code{Allow this tool?} is a permission question.  A Harmless
+seat uses its status instead of the message file.
+@code{streaming} is a prompt and @code{waiting-permission} is a
+permission question.
+
+@kbd{M-x harmless-team-capture} reads the screen.  A process id
+has no file, so the capture is the transcript.
+@kbd{M-x harmless-team-transcript} reads every text sent to that
+seat, including text sent to an earlier occupant.  Releasing
+the seat, or removing it, does not delete that history.
+
+A blank send is refused: @samp{team send is empty}.  A send
+that is not text is refused: @samp{team send must be a string}.
+A target that names nothing is refused: @samp{team send is not
+a target}.  A missing seat is refused: @samp{team seat is
+missing}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2538,7 +2575,8 @@ One headless task.  @xref{Headless}.
 
 @item teams/@var{rig}.json
 One rig: its pods, its seats, its edges, the session occupying
-each seat, and the work each seat still holds.
+each seat, the work each seat still holds, and the text sent
+to each seat.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

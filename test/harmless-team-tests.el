@@ -1072,3 +1072,593 @@
       (should (equal roots (harmless-team-test-roots)))
       (should (equal session-roots
                      (harmless-team-test-session-roots))))))
+
+(defun harmless-team-test-messages (path)
+  "Return the JSON messages in PATH."
+  (mapcar #'harmless-json-decode
+          (split-string (harmless-team-test-read path) "\n" t)))
+
+(ert-deftest harmless-team-sends-and-keeps-the-transcript ()
+  (let* ((base (make-temp-file "harmless-team-send-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (logf (expand-file-name "server.log" base))
+         (log2 (expand-file-name "server-two.log" base))
+         (one-log (expand-file-name "box-one.log" base))
+         (two-log (expand-file-name "box-two.log" base))
+         (home (expand-file-name "screen-home" base))
+         (screen (expand-file-name "screen.txt" home))
+         (id harmless-team-test-session-b)
+         (hand (expand-file-name (concat "sessions/hand/" id) base))
+         (summary (expand-file-name "summary.json" hand))
+         (messages (expand-file-name "messages.jsonl" hand))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (pid (number-to-string (emacs-pid))))
+    (make-directory elsewhere t)
+    (make-directory home t)
+    (make-directory hand t)
+    (harmless-team-test-write logf "ready\n")
+    (harmless-team-test-write log2 "second\n")
+    (harmless-team-test-write one-log "one\n")
+    (harmless-team-test-write two-log "two\n")
+    (harmless-team-test-write
+     summary (format "{\"id\":\"%s\",\"status\":\"idle\"}" id))
+    (cl-letf (((symbol-function 'start-process)
+               (lambda (&rest _) (error "team send started a process")))
+              ((symbol-function 'make-process)
+               (lambda (&rest _) (error "team send started a process")))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (error "team send started a process")))
+              ((symbol-function 'delete-process)
+               (lambda (&rest _) (error "team send killed a process")))
+              ((symbol-function 'signal-process)
+               (lambda (&rest _) (error "team send killed a process")))
+              ((symbol-function 'w32-shell-execute)
+               (lambda (&rest _) (error "team send started a process")))
+              ((symbol-function 'harmless-turn-run)
+               (lambda (&rest _) (error "team send started a turn"))))
+      (let ((log-bytes (harmless-team-test-bytes logf))
+            (summary-bytes (harmless-team-test-bytes summary)))
+        (dolist (bad (list nil "" "   " "\n"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send "workshop" "*" bad)))
+                         "team send is empty")))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" "*" 42)))
+                       "team send must be a string"))
+        (let ((harmless-directory "/"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send "workshop" "*" nil)))
+                         "team send is empty"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "qa.note" "hi")))
+                         "Refusing to store a team at /")))
+        (let ((harmless-directory "c:"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "qa.note" "hi")))
+                         "Refusing to store a team at c:")))
+        (let ((harmless-directory " c:/ "))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "qa.note" "hi")))
+                         "Refusing to store a team at c:/")))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" "*" "hi")))
+                       "team rig is missing"))
+        (should-not (file-directory-p teams))
+        (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+        (should-not (file-exists-p (expand-file-name "sub" elsewhere)))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes summary) summary-bytes))
+        (should-not (file-exists-p messages)))
+      (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+      (harmless-team-add-seat "workshop" "qa" "note" "notes")
+      (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+      (harmless-team-edge
+       "workshop" "delegates_to" "dev.build" "qa.note")
+      (let ((bytes (harmless-team-test-bytes file)))
+        (dolist (bad (list nil "" "   "))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send "workshop" bad "hi")))
+                         "team send is empty")))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" 42 "hi")))
+                       "team send must be a string"))
+        (dolist (bad (list "nope" "notes" "sub/"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send "workshop" bad "hi")))
+                         "team send is not a target")))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" "," "hi")))
+                       "team send is not a target"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" "dev.gone" "hi")))
+                       "team seat is missing"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send
+                           "workshop" "dev.build" "hi")))
+                       "team seat is not occupied"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-capture
+                           "workshop" "dev" "build")))
+                       "team seat is not occupied"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-transcript
+                           "workshop" "qa" "gone")))
+                       "team seat is missing"))
+        (should-not (harmless-team-transcript "workshop" "qa" "note"))
+        (should (equal (harmless-team-test-bytes file) bytes)))
+      (should (equal (harmless-team-adopt
+                      "workshop" "dev" "build" "harmless" id)
+                     (append (harmless-team-test-seat id work)
+                             (list :runtime "harmless"))))
+      (should (equal (harmless-team-adopt
+                      "workshop" "qa" "note" "terminal" logf)
+                     (list :rig "workshop" :pod "qa" :name "note"
+                           :role "notes"
+                           :address "qa-note@workshop"
+                           :session logf
+                           :work nil
+                           :runtime "terminal")))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (should (equal (harmless-team-capture "workshop" "dev" "build") ""))
+      (should (equal (harmless-team-capture "workshop" "qa" "note")
+                     "ready\n"))
+      (let ((bytes (harmless-team-test-bytes file))
+            (summary-bytes (harmless-team-test-bytes summary)))
+        (delete-file summary)
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send
+                           "workshop" "dev.build" "hidden")))
+                       "team session is missing"))
+        (should (equal (harmless-team-test-bytes file) bytes))
+        (should-not (file-exists-p messages))
+        (harmless-team-test-write
+         summary (format "{\"id\":\"%s\",\"status\":\"idle\"}" id))
+        (should (equal (harmless-team-test-bytes summary) summary-bytes)))
+      (should (equal (harmless-team-send
+                      "workshop" " qa.note " "  hello log  ")
+                     '("qa-note@workshop")))
+      (should (equal (harmless-team-test-read logf) "ready\nhello log\n"))
+      (should (equal (harmless-team-capture "workshop" "qa" "note")
+                     "ready\nhello log\n"))
+      (should (equal (harmless-team-transcript "workshop" "qa" "note")
+                     (list (list :seat "qa-note@workshop"
+                                 :runtime "terminal"
+                                 :session logf
+                                 :text "hello log"))))
+      (should (equal (harmless-team-send
+                      "workshop" "dev.build" "hello session")
+                     '("dev-build@workshop")))
+      (should (file-regular-p messages))
+      (should (file-name-absolute-p messages))
+      (should (harmless-directory-strictly-under-p messages base))
+      (should-not (equal (file-truename messages) (file-truename "/")))
+      (should (equal (mapcar (lambda (msg) (plist-get msg :content))
+                             (harmless-team-test-messages messages))
+                     '("hello session")))
+      (should (equal (mapcar (lambda (msg) (plist-get msg :role))
+                             (harmless-team-test-messages messages))
+                     '("user")))
+      (should (equal (harmless-team-send
+                      "workshop" "dev.build" "look>")
+                     '("dev-build@workshop")))
+      (should (equal (harmless-team-send "workshop" " * " "both")
+                     '("dev-build@workshop" "qa-note@workshop")))
+      (should (equal (harmless-team-test-read logf)
+                     "ready\nhello log\nboth\n"))
+      (should (equal (mapcar (lambda (msg) (plist-get msg :content))
+                             (harmless-team-test-messages messages))
+                     '("hello session" "look>" "both")))
+      (let ((log-bytes (harmless-team-test-bytes logf))
+            (msg-bytes (harmless-team-test-bytes messages))
+            (rig-bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send
+                           "workshop" "qa.note, dev.gone" "skipped")))
+                       "team seat is missing"))
+        (let ((harmless-directory "/"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "*" "root text")))
+                         "Refusing to store a team at /")))
+        (let ((harmless-directory "c:"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "*" "root text")))
+                         "Refusing to store a team at c:")))
+        (let ((harmless-directory " c:/ "))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "*" "root text")))
+                         "Refusing to store a team at c:/")))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes messages) msg-bytes))
+        (should (equal (harmless-team-test-bytes file) rig-bytes)))
+      (harmless-team-test-write logf "ready\n>\n")
+      (let ((log-bytes (harmless-team-test-bytes logf))
+            (msg-bytes (harmless-team-test-bytes messages))
+            (rig-bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" "*" "paused")))
+                       "team seat is at a prompt"))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes messages) msg-bytes))
+        (should (equal (harmless-team-test-bytes file) rig-bytes)))
+      (harmless-team-test-write logf "Allow this tool?\n")
+      (let ((log-bytes (harmless-team-test-bytes logf))
+            (msg-bytes (harmless-team-test-bytes messages))
+            (rig-bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "workshop" "*" "paused")))
+                       "team seat is at a permission question"))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes messages) msg-bytes))
+        (should (equal (harmless-team-test-bytes file) rig-bytes)))
+      (harmless-team-test-write logf "ready\n")
+      (harmless-team-test-write
+       summary
+       (format "{\"id\":\"%s\",\"status\":\"waiting-permission\"}" id))
+      (let ((log-bytes (harmless-team-test-bytes logf))
+            (msg-bytes (harmless-team-test-bytes messages))
+            (summary-bytes (harmless-team-test-bytes summary))
+            (rig-bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send
+                           "workshop" "dev.build" "hidden")))
+                       "team seat is at a permission question"))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes messages) msg-bytes))
+        (should (equal (harmless-team-test-bytes summary) summary-bytes))
+        (should (equal (harmless-team-test-bytes file) rig-bytes)))
+      (harmless-team-test-write
+       summary (format "{\"id\":\"%s\",\"status\":\"streaming\"}" id))
+      (let ((msg-bytes (harmless-team-test-bytes messages))
+            (summary-bytes (harmless-team-test-bytes summary)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send
+                           "workshop" "dev.build" "hidden")))
+                       "team seat is at a prompt"))
+        (should (equal (harmless-team-test-bytes messages) msg-bytes))
+        (should (equal (harmless-team-test-bytes summary) summary-bytes)))
+      (harmless-team-test-write
+       summary (format "{\"id\":\"%s\",\"status\":\"idle\"}" id))
+      (let ((summary-bytes (harmless-team-test-bytes summary)))
+        (should (equal (harmless-team-send
+                        "workshop" "qa.note" "  alpha\nbeta\n  ")
+                       '("qa-note@workshop")))
+        (should (equal (harmless-team-test-bytes summary) summary-bytes)))
+      (should (equal (harmless-team-test-read logf) "ready\nalpha\nbeta\n"))
+      (should (string-search "alpha\\nbeta" (harmless-team-test-read file)))
+      (should (equal (harmless-team-release "workshop" "qa" "note")
+                     (list :released "qa-note@workshop"
+                           :runtime "terminal"
+                           :session logf)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-send "workshop" "qa.note" "later")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-capture "workshop" "qa" "note")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-transcript "workshop" "qa" "note")
+                     (list (list :seat "qa-note@workshop"
+                                 :runtime "terminal"
+                                 :session logf
+                                 :text "hello log")
+                           (list :seat "qa-note@workshop"
+                                 :runtime "terminal"
+                                 :session logf
+                                 :text "both")
+                           (list :seat "qa-note@workshop"
+                                 :runtime "terminal"
+                                 :session logf
+                                 :text "alpha\nbeta"))))
+      (should (equal (harmless-team-adopt
+                      "workshop" "qa" "note" "terminal"
+                      (concat "  " pid "  "))
+                     (list :rig "workshop" :pod "qa" :name "note"
+                           :role "notes"
+                           :address "qa-note@workshop"
+                           :session pid
+                           :work nil
+                           :runtime "terminal")))
+      (let ((log-bytes (harmless-team-test-bytes logf))
+            (rig-bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send
+                           "workshop" "qa.note" "into the pid")))
+                       "team seat has no screen"))
+        (should (equal (harmless-team-capture "workshop" "qa" "note")
+                       "hello log\nboth\nalpha\nbeta"))
+        (should (process-attributes (emacs-pid)))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-test-bytes file) rig-bytes)))
+      (harmless-team-adopt "workshop" "qa" "note" "terminal" logf)
+      (should (equal (harmless-team-send "workshop" " qa " "pod note")
+                     '("qa-note@workshop")))
+      (should-not (string-search "pod note"
+                                 (harmless-team-test-read messages)))
+      (should (string-suffix-p "pod note\n" (harmless-team-test-read logf)))
+      (should (equal (harmless-team-send
+                      "workshop" "dev.build, qa.note" "comma pair")
+                     '("dev-build@workshop" "qa-note@workshop")))
+      (should (equal (harmless-team-send "workshop" "workshop" "whole rig")
+                     '("dev-build@workshop" "qa-note@workshop")))
+      (should (equal (harmless-team-send "workshop" "QA.note" "case seat")
+                     '("qa-note@workshop")))
+      (should (equal (harmless-team-send
+                      "workshop" "dev-build@workshop" "say \"hi\"")
+                     '("dev-build@workshop")))
+      (should (equal (harmless-team-send "workshop" "dev.build," "tail seat")
+                     '("dev-build@workshop")))
+      (let ((log-bytes (harmless-team-test-bytes logf)))
+        (should (equal (harmless-team-release "workshop" "qa" "note")
+                       (list :released "qa-note@workshop"
+                             :runtime "terminal"
+                             :session logf)))
+        (should (equal (harmless-team-adopt
+                        "workshop" "qa" "note" "terminal" log2)
+                       (list :rig "workshop" :pod "qa" :name "note"
+                             :role "notes"
+                             :address "qa-note@workshop"
+                             :session log2
+                             :work nil
+                             :runtime "terminal")))
+        (should (equal (harmless-team-send
+                        "workshop" "qa.note" "moved over")
+                       '("qa-note@workshop")))
+        (should (equal (harmless-team-test-read log2)
+                       "second\nmoved over\n"))
+        (should (equal (harmless-team-test-bytes logf) log-bytes))
+        (should (equal (harmless-team-transcript "workshop" "qa" "note")
+                       (list (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "hello log")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "both")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "alpha\nbeta")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "pod note")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "comma pair")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "whole rig")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session logf
+                                   :text "case seat")
+                             (list :seat "qa-note@workshop"
+                                   :runtime "terminal"
+                                   :session log2
+                                   :text "moved over")))))
+      (should (equal (harmless-team-transcript "workshop" "dev" "build")
+                     (list (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "hello session")
+                           (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "look>")
+                           (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "both")
+                           (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "comma pair")
+                           (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "whole rig")
+                           (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "say \"hi\"")
+                           (list :seat "dev-build@workshop"
+                                 :runtime "harmless"
+                                 :session id
+                                 :text "tail seat"))))
+      (should (equal (harmless-team-release "workshop" "dev" "build")
+                     (list :released "dev-build@workshop"
+                           :runtime "harmless"
+                           :session id)))
+      (should (equal (harmless-team-occupy "workshop" "dev" "build" id)
+                     (harmless-team-test-seat id work)))
+      (should (equal (harmless-team-send
+                      "workshop" "dev.build" "from occupy")
+                     '("dev-build@workshop")))
+      (should (equal (car (last (harmless-team-transcript
+                                 "workshop" "dev" "build")))
+                     (list :seat "dev-build@workshop"
+                           :runtime nil
+                           :session id
+                           :text "from occupy")))
+      (should (equal (plist-get (car (last (harmless-team-test-messages
+                                            messages)))
+                                :content)
+                     "from occupy"))
+      (should (equal (harmless-team-seat "workshop" "dev" "build")
+                     (harmless-team-test-seat id work)))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (let ((note-lines (harmless-team-transcript "workshop" "qa" "note"))
+            (log2-bytes (harmless-team-test-bytes log2)))
+        (should (equal (harmless-team-remove "workshop" "qa" "note")
+                       (list :removed "qa-note@workshop"
+                             :fallback nil
+                             :work nil)))
+        (should (equal (harmless-team-transcript "workshop" "qa" "note")
+                       note-lines))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-capture "workshop" "qa" "note")))
+                       "team seat is missing"))
+        (should (equal (harmless-team-edges "workshop") nil))
+        (should (equal (harmless-team-test-bytes log2) log2-bytes))
+        (should (file-regular-p logf))
+        (should (process-attributes (emacs-pid))))
+      (let* ((obj (harmless-json-decode (harmless-team-test-read file)))
+             (msg-bytes (harmless-team-test-bytes messages))
+             (log2-bytes (harmless-team-test-bytes log2)))
+        (harmless-team-test-write
+         file
+         (harmless-json-text
+          (plist-put obj :transcript
+                     (list (list :seat "dev-build@workshop"
+                                 :runtime "nope"
+                                 :session id
+                                 :text "x")))))
+        (let ((bytes (harmless-team-test-bytes file)))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send
+                             "workshop" "dev.build" "after bad")))
+                         "team rig is not valid"))
+          (should (equal (harmless-team-test-bytes file) bytes))
+          (should (equal (harmless-team-test-bytes messages) msg-bytes))
+          (should (equal (harmless-team-test-bytes log2) log2-bytes))))
+      (harmless-team-add-seat "bare" "ops" "run" "runner")
+      (should (equal (harmless-team-remove "bare" "ops" "run")
+                     (list :removed "ops-run@bare"
+                           :fallback nil
+                           :work nil)))
+      (let ((bytes (harmless-team-test-bytes
+                    (expand-file-name "teams/bare.json" base))))
+        (dolist (target '("*" "bare" "ops"))
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-send "bare" target "x")))
+                         "team send is not a target")))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "bare" "ops.run" "x")))
+                       "team seat is missing"))
+        (should (equal (harmless-team-test-bytes
+                        (expand-file-name "teams/bare.json" base))
+                       bytes)))
+      (harmless-team-add-seat "box" "box" "one" "scribe")
+      (harmless-team-add-seat "box" "qa" "two" "scribe")
+      (harmless-team-adopt "box" "box" "one" "terminal" one-log)
+      (harmless-team-adopt "box" "qa" "two" "terminal" two-log)
+      (should (equal (harmless-team-send "box" "box" "pod wins")
+                     '("box-one@box")))
+      (should (equal (harmless-team-test-read one-log) "one\npod wins\n"))
+      (should (equal (harmless-team-test-read two-log) "two\n"))
+      (should (equal (harmless-team-send "box" "*" "all box")
+                     '("box-one@box" "qa-two@box")))
+      (should (string-suffix-p "all box\n" (harmless-team-test-read two-log)))
+      (harmless-team-add-seat "kit" "ops" "look" "watcher")
+      (should (equal (harmless-team-adopt
+                      "kit" "ops" "look" "claude"
+                      (file-name-as-directory home))
+                     (list :rig "kit" :pod "ops" :name "look"
+                           :role "watcher"
+                           :address "ops-look@kit"
+                           :session home
+                           :work nil
+                           :runtime "claude")))
+      (should (equal (harmless-team-capture "kit" "ops" "look") ""))
+      (let ((bytes (harmless-team-test-bytes
+                    (expand-file-name "teams/kit.json" base))))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "kit" "ops.look" "hi")))
+                       "team seat has no screen"))
+        (should-not (file-exists-p screen))
+        (should (equal (harmless-team-test-bytes
+                        (expand-file-name "teams/kit.json" base))
+                       bytes)))
+      (harmless-team-test-write screen "ok\n")
+      (should (equal (harmless-team-send
+                      "kit" "ops.look" "  hi screen  ")
+                     '("ops-look@kit")))
+      (should (equal (harmless-team-capture "kit" "ops" "look")
+                     "ok\nhi screen\n"))
+      (should (equal (harmless-team-transcript "kit" "ops" "look")
+                     (list (list :seat "ops-look@kit"
+                                 :runtime "claude"
+                                 :session home
+                                 :text "hi screen"))))
+      (harmless-team-test-write screen "ok\n>\n")
+      (let ((bytes (harmless-team-test-bytes screen))
+            (rig (harmless-team-test-bytes
+                  (expand-file-name "teams/kit.json" base))))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "kit" "ops" "paused")))
+                       "team seat is at a prompt"))
+        (should (equal (harmless-team-test-bytes screen) bytes))
+        (should (equal (harmless-team-test-bytes
+                        (expand-file-name "teams/kit.json" base))
+                       rig)))
+      (harmless-team-test-write screen "Allow this tool?\n")
+      (let ((bytes (harmless-team-test-bytes screen)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-send "kit" "ops.look" "paused")))
+                       "team seat is at a permission question"))
+        (should (equal (harmless-team-test-bytes screen) bytes)))
+      (should (file-directory-p home))
+      (should (file-regular-p screen))
+      (should (file-regular-p logf))
+      (should (file-regular-p log2))
+      (should (file-regular-p summary))
+      (should (file-name-absolute-p file))
+      (should (harmless-directory-strictly-under-p file base))
+      (should-not (equal (file-truename file) (file-truename "/")))
+      (should (file-name-absolute-p messages))
+      (should (harmless-directory-strictly-under-p messages base))
+      (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+      (should (equal roots (harmless-team-test-roots)))
+      (should (equal session-roots
+                     (harmless-team-test-session-roots))))))

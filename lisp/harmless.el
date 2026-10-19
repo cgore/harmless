@@ -67,6 +67,9 @@
 ;;   M-x harmless-team-remove  ; drop a seat, moving work first
 ;;   M-x harmless-team-adopt   ; bind a session that is already running
 ;;   M-x harmless-team-release ; clear that binding without stopping it
+;;   M-x harmless-team-send    ; type text onto a seat, a pod, or the rig
+;;   M-x harmless-team-capture ; read the text on a seat's screen
+;;   M-x harmless-team-transcript ; read text sent across occupants
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

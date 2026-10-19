@@ -72,6 +72,9 @@
   (should (fboundp 'harmless-team-remove))
   (should (fboundp 'harmless-team-adopt))
   (should (fboundp 'harmless-team-release))
+  (should (fboundp 'harmless-team-send))
+  (should (fboundp 'harmless-team-capture))
+  (should (fboundp 'harmless-team-transcript))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
