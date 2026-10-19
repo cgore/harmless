@@ -526,8 +526,12 @@ File: harmless.info,  Node: Shell,  Next: Questions,  Prev: Search,  Up: Tools
 ==========
 
 ‘run_shell’ runs one command in the project root through your shell.
-Each command starts there.  A ‘cd’ in one command does not change the
-next command.
+The next command starts in the same directory when a ‘cd’ stayed inside
+the project.  Nil and ‘""’ mean the project root.  A ‘cd’ that leaves
+the project is not kept.  Harmless reports ‘The shell left the project.
+The next command starts in ’, followed by the directory it kept.  The
+filesystem root is not kept.  The remembered directory is saved with the
+session.
 
    ‘timeout’ is how many seconds to wait.  When it is omitted,
 ‘harmless-shell-timeout-seconds’ (120) is used.  A negative number,
@@ -1038,18 +1042,18 @@ Node: Tools14880
 Node: File tools16075
 Node: Search17309
 Node: Shell18950
-Node: Questions21058
-Node: Instructions21810
-Node: Skills23556
-Node: Memory24705
-Node: Plan mode25970
-Node: Usage27383
-Node: Files28402
-Node: Keys29635
-Node: Trouble30858
-Node: Manual31874
-Node: Command Index32579
-Node: Key Index35273
+Node: Questions21352
+Node: Instructions22104
+Node: Skills23850
+Node: Memory24999
+Node: Plan mode26264
+Node: Usage27677
+Node: Files28696
+Node: Keys29929
+Node: Trouble31152
+Node: Manual32168
+Node: Command Index32873
+Node: Key Index35567
 
 End Tag Table
 

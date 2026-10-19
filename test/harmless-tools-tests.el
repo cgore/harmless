@@ -827,4 +827,116 @@
       (when (buffer-live-p buf)
         (kill-buffer buf)))))
 
+(ert-deftest harmless-shell-kind-and-cwd-marker ()
+  (should (eq 'cmd (harmless-shell-kind "C:/Windows/System32/cmd.exe")))
+  (should (eq 'cmd (harmless-shell-kind "cmdproxy.exe")))
+  (should (eq 'powershell (harmless-shell-kind "powershell.exe")))
+  (should (eq 'powershell (harmless-shell-kind "pwsh")))
+  (should (eq 'posix (harmless-shell-kind "/bin/bash")))
+  (should (eq 'posix (harmless-shell-kind "sh")))
+  (should (eq (harmless-shell-kind) (harmless-shell-kind shell-file-name)))
+  (let ((split (harmless-shell--split-cwd
+                "__HARMLESS_CWD__fake\nreal\n__HARMLESS_CWD__c:/ok \r\n")))
+    (should (equal "c:/ok" (cdr split)))
+    (should (string-search "fake" (car split)))
+    (should (string-search "real" (car split)))
+    (should-not (string-search "c:/ok" (car split))))
+  (let ((split (harmless-shell--split-cwd "")))
+    (should (equal "" (car split)))
+    (should-not (cdr split)))
+  (let ((cmd (harmless-shell--wrap 'cmd "c:/proj" "echo hi"))
+        (ps (harmless-shell--wrap 'powershell "c:/proj" "echo hi"))
+        (sh (harmless-shell--wrap 'posix "c:/proj" "echo hi")))
+    (should (string-search "__HARMLESS_CWD__" cmd))
+    (should (string-search "cd /d" cmd))
+    (should (string-search "echo hi" cmd))
+    (should (string-search "Set-Location" ps))
+    (should (string-search "__HARMLESS_CWD__" ps))
+    (should (string-search "printf" sh))
+    (should (string-search "__HARMLESS_CWD__" sh))
+    (should (equal (list "cmd.exe" "/v:on" "/c" "echo hi")
+                   (let ((shell-file-name "cmd.exe"))
+                     (harmless-shell--argv 'cmd "echo hi"))))
+    (should (equal (list "bash" "-c" "echo hi")
+                   (let ((shell-file-name "bash")
+                         (shell-command-switch "-c"))
+                     (harmless-shell--argv 'posix "echo hi"))))))
+
+(ert-deftest harmless-shell-remembers-a-cd-inside-the-project ()
+  (let* ((dir (make-temp-file "harmless-cd-" t))
+         (sub (expand-file-name "sub" dir))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (provider (harmless-make-openai-compat
+                    "local" :host "127.0.0.1:9" :protocol "http"
+                    :key "none" :models '("m")))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m"))
+         (root (directory-file-name (file-truename dir))))
+    (make-directory sub)
+    (unwind-protect
+        (progn
+          (should-not (harmless-session-shell-cwd session))
+          (dolist (bad (list nil "" "sub" "/" "c:/"
+                             (expand-file-name "gone" dir)))
+            (setf (harmless-session-shell-cwd session) bad)
+            (let ((out (harmless-shell-test--call session '(:command "echo hi"))))
+              (should (string-match-p "hi" out))
+              (should-not (string-search "__HARMLESS_CWD__" out)))
+            (should-not (harmless-session-shell-cwd session)))
+          (let ((moved (harmless-shell-test--call
+                        session '(:command "cd sub/"))))
+            (should-not (string-search "__HARMLESS_CWD__" moved))
+            (should (harmless-same-directory-p
+                     sub (harmless-session-shell-cwd session))))
+          (let ((again (harmless-shell-test--call session '(:command "cd"))))
+            (should (string-match-p "sub" again))
+            (should-not (string-search "__HARMLESS_CWD__" again)))
+          (let ((back (harmless-shell-test--call session '(:command "cd .."))))
+            (should-not (string-search "left the project" back))
+            (should-not (harmless-session-shell-cwd session)))
+          (let ((left (harmless-shell-test--call session '(:command "cd .."))))
+            (should (string-search
+                     (format "The shell left the project. The next command starts in %s."
+                             root)
+                     left))
+            (should-not (harmless-session-shell-cwd session)))
+          (let ((still (harmless-shell-test--call session '(:command "cd"))))
+            (should (string-search (file-name-nondirectory root) still))
+            (should-not (harmless-session-shell-cwd session)))
+          (harmless-shell-test--call session '(:command "cd sub"))
+          (harmless-session-save session)
+          (let ((summary (expand-file-name
+                          "summary.json"
+                          (harmless-session-directory session))))
+            (should (file-name-absolute-p summary))
+            (should-not (harmless-filesystem-root-p (file-name-directory summary)))
+            (should (string-prefix-p
+                     (file-name-as-directory harmless-directory) summary))
+            (with-temp-buffer
+              (insert-file-contents summary)
+              (should (string-search "sub" (buffer-string)))))
+          (remhash (harmless-session-id session) harmless--sessions)
+          (let ((loaded (harmless-session-resume (harmless-session-id session))))
+            (should (harmless-same-directory-p
+                     sub (harmless-session-shell-cwd loaded)))
+            (let* ((file (expand-file-name
+                          "summary.json" (harmless-session-directory loaded)))
+                   (plist (harmless-json-decode
+                           (with-temp-buffer
+                             (insert-file-contents file)
+                             (buffer-string)))))
+              (setq plist (plist-put plist :shell-cwd "/"))
+              (with-temp-file file
+                (insert (harmless-json-text plist) "\n")))
+            (remhash (harmless-session-id loaded) harmless--sessions)
+            (let ((reloaded (harmless-session-resume
+                             (harmless-session-id loaded))))
+              (should (equal "/" (harmless-session-shell-cwd reloaded)))
+              (let ((out (harmless-shell-test--call reloaded '(:command "cd"))))
+                (should (string-search (file-name-nondirectory root) out))
+                (should-not (string-search "__HARMLESS_CWD__" out)))
+              (should-not (harmless-session-shell-cwd reloaded)))))
+      (harmless-shell-test-stop session))))
+
 (provide 'harmless-tools-tests)

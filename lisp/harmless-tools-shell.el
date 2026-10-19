@@ -48,6 +48,7 @@
 (require 'harmless-util)
 (require 'harmless-session)
 (require 'harmless-tools)
+(require 'harmless-tools-fs)
 
 (defcustom harmless-shell-output-max-bytes 20000
   "Maximum bytes of shell output returned to the model.
@@ -76,6 +77,115 @@ The process is not killed.  The model can pass a larger `timeout'."
   timer
   delivered
   background)
+
+(defconst harmless-shell-cwd-marker "__HARMLESS_CWD__"
+  "Line prefix a shell prints so Harmless can see its directory.")
+
+(defun harmless-shell-kind (&optional file)
+  "Return the shell family for FILE, or `shell-file-name'."
+  (let ((name (downcase (file-name-nondirectory
+                         (or file shell-file-name "")))))
+    (cond
+     ((string-match-p "pwsh\\|powershell" name) 'powershell)
+     ((string-match-p "cmd" name) 'cmd)
+     (t 'posix))))
+
+(defun harmless-shell-directory (session)
+  "Return the directory SESSION's next command starts in.
+A remembered directory is used only when it is an existing directory
+inside the project.  Nil, \"\", a relative path, the filesystem root,
+and a missing directory all mean the project root."
+  (let ((root (harmless-session-require-project session))
+        (cwd (harmless-session-shell-cwd session)))
+    (if (and (stringp cwd)
+             (not (string-empty-p cwd))
+             (file-name-absolute-p cwd)
+             (not (harmless-filesystem-root-p cwd))
+             (file-directory-p cwd)
+             (harmless-tools-fs-inside-p root cwd))
+        (directory-file-name (file-truename cwd))
+      (directory-file-name (file-truename root)))))
+
+(defun harmless-shell--wrap (kind directory command)
+  "Return COMMAND as run by KIND, starting in DIRECTORY.
+The shell prints `harmless-shell-cwd-marker' and its directory last."
+  (let ((dir (shell-quote-argument directory))
+        (marker harmless-shell-cwd-marker))
+    (pcase kind
+      ('cmd
+       (format "cd /d %s && (%s) & set __EC=!ERRORLEVEL! & echo %s!CD! & exit /b !__EC!"
+               dir command marker))
+      ('powershell
+       (format "Set-Location -LiteralPath %s; %s; if ($?) { $__ec = 0 } else { $__ec = 1 }; Write-Output ('%s' + (Get-Location).Path); exit $__ec"
+               dir command marker))
+      (_
+       (format "cd -- %s && { %s\n}; __harmless_ec=$?; printf '\\n%s%%s\\n' \"$PWD\"; exit $__harmless_ec"
+               dir command marker)))))
+
+(defun harmless-shell--argv (kind command)
+  "Return the process argv that runs COMMAND for shell KIND."
+  (if (eq kind 'cmd)
+      (list shell-file-name "/v:on" "/c" command)
+    (list shell-file-name (or shell-command-switch "-c") command)))
+
+(defun harmless-shell--split-cwd (text)
+  "Return (OUTPUT . DIR) with the last cwd marker removed from TEXT.
+DIR is nil when the marker is absent."
+  (let ((case-fold-search nil)
+        (start 0)
+        (last nil)
+        (re (concat "^" (regexp-quote harmless-shell-cwd-marker) "\\(.*\\)$")))
+    (while (string-match re text start)
+      (setq last (list (match-beginning 0)
+                       (match-end 0)
+                       (string-trim (match-string 1 text)))
+            start (match-end 0)))
+    (if (null last)
+        (cons text nil)
+      (cons (concat (substring text 0 (nth 0 last))
+                    (substring text (nth 1 last)))
+            (nth 2 last)))))
+
+(defun harmless-shell--accept-cwd (session reported)
+  "Remember REPORTED when it stays inside SESSION's project.
+Return a sentence when REPORTED leaves the project, or nil."
+  (let ((root (directory-file-name
+               (file-truename (harmless-session-require-project session))))
+        (kept (or (harmless-session-shell-cwd session) nil)))
+    (cond
+     ((or (not (stringp reported))
+          (string-empty-p reported)
+          (not (file-name-absolute-p reported))
+          (not (file-directory-p reported)))
+      nil)
+     ((or (harmless-filesystem-root-p reported)
+          (not (harmless-tools-fs-inside-p root reported)))
+      (format "The shell left the project. The next command starts in %s."
+              (if (and (stringp kept) (file-directory-p kept))
+                  (directory-file-name kept)
+                root)))
+     ((harmless-same-directory-p reported root)
+      (setf (harmless-session-shell-cwd session) nil)
+      nil)
+     (t
+      (setf (harmless-session-shell-cwd session)
+            (directory-file-name (file-truename reported)))
+      nil))))
+
+(defun harmless-shell--settle-cwd (session job)
+  "Strip JOB's cwd marker and remember a directory inside the project.
+Store the text the model should see."
+  (let* ((split (harmless-shell--split-cwd (harmless-shell--text job)))
+         (note (harmless-shell--accept-cwd session (cdr split)))
+         (text (car split)))
+    (when (and note (not (string-empty-p note)))
+      (setq text (concat text
+                         (if (or (string-empty-p text)
+                                 (string-suffix-p "\n" text))
+                             ""
+                           "\n")
+                         note "\n")))
+    (setf (harmless-shell-job-output job) text)))
 
 (defun harmless-tools-shell-kill (proc)
   "SIGTERM PROC, then SIGKILL shortly after if it is still alive."
@@ -169,8 +279,7 @@ is not a positive number is refused."
     (or (harmless-shell-job-output job) "")))
 
 (defun harmless-shell--close-buffer (job)
-  "Keep JOB's output text and drop its process buffer."
-  (setf (harmless-shell-job-output job) (harmless-shell--text job))
+  "Drop JOB's process buffer.  The caller stores the output text first."
   (let ((proc (harmless-shell-job-proc job))
         (buf (harmless-shell-job-buffer job)))
     (when (processp proc)
@@ -249,6 +358,7 @@ is not a positive number is refused."
       (cancel-timer (harmless-shell-job-timer job))
       (setf (harmless-shell-job-timer job) nil))
     (harmless-session-untrack-process session proc))
+  (harmless-shell--settle-cwd session job)
   (harmless-shell--close-buffer job)
   (harmless-shell--deliver-waiters job))
 
@@ -287,13 +397,17 @@ are refused."
           (let* ((background (harmless-json-true-p
                               (harmless-tool-arg args :background)))
                  (buf (generate-new-buffer " *harmless-shell*"))
+                 (kind (harmless-shell-kind))
                  (proc (let ((default-directory cwd))
                          (make-process
                           :name "harmless-shell"
                           :buffer buf
-                          :command (list shell-file-name
-                                         (or shell-command-switch "-c")
-                                         command)
+                          :command (harmless-shell--argv
+                                    kind
+                                    (harmless-shell--wrap
+                                     kind
+                                     (harmless-shell-directory session)
+                                     command))
                           :coding '(utf-8-unix . utf-8-unix)
                           :connection-type 'pipe
                           :sentinel #'ignore)))
@@ -394,7 +508,7 @@ An unknown id, an empty id, and a shell that is not running are refused."
   (harmless-register-tool
    (harmless-tool-create
     :name "run_shell"
-    :description "Run a shell command in the project root. Each command starts there. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill."
+    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill."
     :class 'shell
     :async t
     :schema '(:type "object"

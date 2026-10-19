@@ -105,7 +105,8 @@ location.  A relative path or the filesystem root is refused."
   processes
   tool-batch
   shell-jobs
-  shell-seq)
+  shell-seq
+  shell-cwd)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -382,7 +383,8 @@ A summary is not a user turn.  The roles :user, user, and \"user\" are."
         :created-at (harmless-session-created-at session)
         :updated-at (harmless-session-updated-at session)
         :title-locked (and (harmless-session-title-locked session) t)
-        :plan-mode (and (harmless-session-plan-mode session) t)))
+        :plan-mode (and (harmless-session-plan-mode session) t)
+        :shell-cwd (harmless-session-shell-cwd session)))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -485,7 +487,11 @@ Signal when that path would be /NAME or outside the sessions root."
                      :directory dir
                      :title-locked (plist-get summary :title-locked)
                      :plan-mode (harmless-json-true-p
-                                 (plist-get summary :plan-mode)))))
+                                 (plist-get summary :plan-mode))
+                     :shell-cwd (let ((cwd (plist-get summary :shell-cwd)))
+                                  (and (stringp cwd)
+                                       (not (string-empty-p cwd))
+                                       cwd)))))
       (harmless-session-register session)
       session)))
 

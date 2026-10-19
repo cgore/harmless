@@ -586,8 +586,12 @@ cap as @code{read_file}.
 @vindex harmless-shell-timeout-seconds
 @vindex harmless-shell-output-max-bytes
 @code{run_shell} runs one command in the project root through your
-shell.  Each command starts there.  A @code{cd} in one command does
-not change the next command.
+shell.  The next command starts in the same directory when a
+@code{cd} stayed inside the project.  Nil and @code{""} mean the
+project root.  A @code{cd} that leaves the project is not kept.
+Harmless reports @samp{The shell left the project. The next command starts in },
+followed by the directory it kept.  The filesystem root is not kept.
+The remembered directory is saved with the session.
 
 @code{timeout} is how many seconds to wait.  When it is omitted,
 @code{harmless-shell-timeout-seconds} (120) is used.  A negative
