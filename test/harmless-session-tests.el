@@ -626,7 +626,8 @@
                        "memory_write_topic"
                        "run_workflow"
                        "send_message"
-                       "spawn_agent")
+                       "spawn_agent"
+                       "web_search")
                      (sort names #'string<)))
       (should-not (member "read_file" names))
       (should-not (member "run_shell" names)))

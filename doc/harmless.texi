@@ -348,8 +348,9 @@ order they were queued.  Abort drops a queue that has not been sent.
 @kindex y @r{(permission)}
 @kindex n @r{(permission)}
 @kindex ! @r{(permission)}
-Each tool belongs to a class: @code{read}, @code{edit}, or
-@code{shell}.  A read never asks.  An edit asks.  A shell asks.
+Each tool belongs to a class: @code{read}, @code{edit},
+@code{shell}, or @code{network}.  A read never asks.  An edit asks.
+A shell asks.  A network call asks.
 
 A @code{run_shell} command that Harmless can see is read-only is
 treated as a read, so it does not ask.  A command Harmless does not
@@ -363,13 +364,13 @@ The permission mode of a session changes that.
 
 @table @code
 @item ask
-The default.  Edits and shell commands ask.
+The default.  Edits, shell commands, and network calls ask.
 
 @item accept-edits
-Edits proceed.  Shell commands still ask.
+Edits proceed.  Shell commands and network calls still ask.
 
 @item always-approve
-Edits and shell commands proceed.
+Edits, shell commands, and network calls proceed.
 @end table
 
 @kbd{M-x harmless-set-permission-mode} sets the mode for the current
@@ -378,7 +379,8 @@ session.  The menu key is @kbd{p}.  New sessions take the value of
 
 When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
-For a shell command, it is the command.
+For a shell command, it is the command.  For a web search, it is the
+query.
 
 @table @kbd
 @item y
@@ -526,6 +528,7 @@ It can list live sessions and send one a finding.
 * Workflows::   One script, many child sessions, one result.
 * Worktrees::   Isolated checkouts of the same repository.
 * Messages::    A finding sent to another live session.
+* Web search::  Look up a query on the web.
 @end menu
 
 @node File tools
@@ -755,6 +758,7 @@ write.  A tool that can write is refused before the permission
 question: @samp{This subagent is read-only. A tool that can write is
 refused}.  A blank shell command is not that refusal.  A read-only
 child may send a finding to another live session.  @xref{Messages}.
+It may also search the web.  @xref{Web search}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1001,6 +1005,27 @@ and it is not kept for a session that later replaces this one.
 The tool asks in @code{ask} mode.  @code{accept-edits} allows it.
 Plan mode does not refuse it.  A read-only subagent may send one.  A
 detached chat may list sessions and send a finding.
+
+@node Web search
+@section Web search
+
+@cindex web_search
+@cindex network
+@code{web_search} looks up @code{query} on the web.  The query is
+sent to DuckDuckGo over https.  Nothing is written into the project.
+Nil is refused: @samp{query must be a string}.  @code{""} and
+whitespace are refused: @samp{query is empty}.  A value such as
+@code{/} or @code{c:/} is text to search for, not a path.
+
+Each hit is a title, a URL, and a snippet.  No hits returns
+@samp{No results}.  At most eight hits are returned.  The same URL
+is listed once.
+
+The tool's class is @code{network}.  It asks in @code{ask} mode and
+in @code{accept-edits}.  @code{always-approve} does not ask.  Plan
+mode does not refuse it.  A read-only subagent may search.  A
+detached chat may search.  A failed request is
+@samp{web search failed}.
 
 @node Instructions
 @chapter Instructions

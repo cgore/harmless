@@ -245,6 +245,13 @@ transcript immediately.  A session that is in a turn receives it at
 the next safe point.  The finding does not start a turn.  Closing
 Emacs before a queued finding is written drops it.
 
+## Web search
+
+`web_search` sends a query to DuckDuckGo over https and returns a
+title, a URL, and a snippet for each hit.  The class is `network`, so
+accepting edits still asks before a search.  The result is not written
+into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

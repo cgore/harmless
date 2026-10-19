@@ -281,6 +281,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("exit_worktree" "leave")
     ("list_sessions" "sessions")
     ("send_message" "message")
+    ("web_search" "search")
     (_ (or name "?"))))
 
 (defun harmless-ui--tool-groupable-p (name)
@@ -319,6 +320,7 @@ directory, which lives under the Harmless data directory.  Setting
              (or (harmless-tool-arg args :name) ""))
             ("send_message" (or (harmless-tool-arg args :session) ""))
             ("list_sessions" "")
+            ("web_search" (or (harmless-tool-arg args :query) ""))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

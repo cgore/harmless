@@ -18,7 +18,7 @@ The model cannot start work that runs beside the current turn.
 
 The shell is the only way out of the project. A skill that needs any of these is only a `SKILL.md` the model can read.
 
-- [ ] Web search.
+- [x] Web search.
 - [ ] Fetch a page.
 - [ ] X search (Grok Build): posts, threads, and users.
 - [ ] MCP client, so configured servers show up next to the built-in tools. Load a tool's schema when it is about to be called, and read MCP resources, not only call tools (Claude Code).

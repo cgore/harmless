@@ -298,8 +298,8 @@ File: harmless.info,  Node: Permissions,  Next: Accounts,  Prev: Prompt,  Up: To
 7 Permissions
 *************
 
-Each tool belongs to a class: ‘read’, ‘edit’, or ‘shell’.  A read never
-asks.  An edit asks.  A shell asks.
+Each tool belongs to a class: ‘read’, ‘edit’, ‘shell’, or ‘network’.  A
+read never asks.  An edit asks.  A shell asks.  A network call asks.
 
    A ‘run_shell’ command that Harmless can see is read-only is treated
 as a read, so it does not ask.  A command Harmless does not recognize
@@ -311,13 +311,13 @@ before the question.  *Note Plan mode::.
    The permission mode of a session changes that.
 
 ‘ask’
-     The default.  Edits and shell commands ask.
+     The default.  Edits, shell commands, and network calls ask.
 
 ‘accept-edits’
-     Edits proceed.  Shell commands still ask.
+     Edits proceed.  Shell commands and network calls still ask.
 
 ‘always-approve’
-     Edits and shell commands proceed.
+     Edits, shell commands, and network calls proceed.
 
    ‘M-x harmless-set-permission-mode’ sets the mode for the current
 session.  The menu key is ‘p’.  New sessions take the value of
@@ -325,7 +325,8 @@ session.  The menu key is ‘p’.  New sessions take the value of
 
    When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
-For a shell command, it is the command.
+For a shell command, it is the command.  For a web search, it is the
+query.
 
 ‘y’
      Allow this call.
@@ -466,6 +467,7 @@ Messages::.
 * Workflows::   One script, many child sessions, one result.
 * Worktrees::   Isolated checkouts of the same repository.
 * Messages::    A finding sent to another live session.
+* Web search::  Look up a query on the web.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -678,8 +680,9 @@ available agents for the parent.  A subagent does not receive that list.
 write.  A tool that can write is refused before the permission question:
 ‘This subagent is read-only. A tool that can write is refused’.  A blank
 shell command is not that refusal.  A read-only child may send a finding
-to another live session.  *Note Messages::.  A workspace child uses the
-parent's permission mode.
+to another live session.  *Note Messages::.  It may also search the web.
+*Note Web search::.  A workspace child uses the parent's permission
+mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -862,7 +865,7 @@ the session is in.  It does not create another one, and it can leave.
 Aborting a turn does not delete a checkout.
 
 
-File: harmless.info,  Node: Messages,  Prev: Worktrees,  Up: Tools
+File: harmless.info,  Node: Messages,  Next: Web search,  Prev: Worktrees,  Up: Tools
 
 10.8 Messages
 =============
@@ -895,6 +898,27 @@ later replaces this one.
    The tool asks in ‘ask’ mode.  ‘accept-edits’ allows it.  Plan mode
 does not refuse it.  A read-only subagent may send one.  A detached chat
 may list sessions and send a finding.
+
+
+File: harmless.info,  Node: Web search,  Prev: Messages,  Up: Tools
+
+10.9 Web search
+===============
+
+‘web_search’ looks up ‘query’ on the web.  The query is sent to
+DuckDuckGo over https.  Nothing is written into the project.  Nil is
+refused: ‘query must be a string’.  ‘""’  and whitespace are refused:
+‘query is empty’.  A value such as ‘/’ or ‘c:/’ is text to search for,
+not a path.
+
+   Each hit is a title, a URL, and a snippet.  No hits returns ‘No
+results’.  At most eight hits are returned.  The same URL is listed
+once.
+
+   The tool's class is ‘network’.  It asks in ‘ask’ mode and in
+‘accept-edits’.  ‘always-approve’ does not ask.  Plan mode does not
+refuse it.  A read-only subagent may search.  A detached chat may
+search.  A failed request is ‘web search failed’.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1359,28 +1383,29 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts12660
-Node: Models14905
-Node: Tools16001
-Node: File tools17498
-Node: Search18732
-Node: Shell20373
-Node: Questions23158
-Node: Subagents23928
-Node: Workflows27608
-Node: Worktrees32611
-Node: Messages35739
-Node: Instructions37541
-Node: Skills39287
-Node: Memory40436
-Node: Plan mode41701
-Node: Usage43384
-Node: Files44403
-Node: Keys45820
-Node: Trouble47043
-Node: Manual48297
-Node: Command Index49002
-Node: Key Index51915
+Node: Accounts12783
+Node: Models15028
+Node: Tools16124
+Node: File tools17665
+Node: Search18899
+Node: Shell20540
+Node: Questions23325
+Node: Subagents24095
+Node: Workflows27824
+Node: Worktrees32827
+Node: Messages35955
+Node: Web search37776
+Node: Instructions38610
+Node: Skills40356
+Node: Memory41505
+Node: Plan mode42770
+Node: Usage44453
+Node: Files45472
+Node: Keys46889
+Node: Trouble48112
+Node: Manual49366
+Node: Command Index50071
+Node: Key Index52984
 
 End Tag Table
 
