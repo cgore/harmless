@@ -380,7 +380,8 @@ session.  The menu key is @kbd{p}.  New sessions take the value of
 When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
-query.  For a fetched page, it is the URL.
+query.  For a fetched page, it is the URL.  For an X search, it
+is the query or the post id.
 
 @table @kbd
 @item y
@@ -520,6 +521,8 @@ It can list live sessions and send one a finding.
 @xref{Messages}.
 It can search the web and fetch a page.  @xref{Web search}.
 @xref{Fetch a page}.
+It can search X for posts, a thread, and accounts.
+@xref{X search}.
 
 @menu
 * File tools::  Read, list, write, replace, and patch.
@@ -532,6 +535,7 @@ It can search the web and fetch a page.  @xref{Web search}.
 * Messages::    A finding sent to another live session.
 * Web search::  Look up a query on the web.
 * Fetch a page::  Read one http or https page.
+* X search::    Find posts, a thread, and accounts on X.
 @end menu
 
 @node File tools
@@ -763,6 +767,7 @@ refused}.  A blank shell command is not that refusal.  A read-only
 child may send a finding to another live session.  @xref{Messages}.
 It may also search the web.  @xref{Web search}.
 It may fetch a page.  @xref{Fetch a page}.
+It may search X.  @xref{X search}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1057,6 +1062,58 @@ in @code{accept-edits}.  @code{always-approve} does not ask.  Plan
 mode does not refuse it.  A read-only subagent may fetch a page.  A
 detached chat may fetch a page.  A failed request is
 @samp{web request failed}.
+
+@node X search
+@section X search
+
+@cindex x_keyword_search
+@cindex x_thread_fetch
+@cindex x_user_search
+@code{x_keyword_search} finds recent posts on X.  The search covers
+the last 7 days.  @code{query} is the text, including search
+operators.  @code{/} and @code{c:/} are text, not paths.
+@code{mode} is @code{Top} or @code{Latest}.  Latest is the default.
+Top asks X for relevancy.  Latest asks for the newest posts.
+@code{from_date} and @code{to_date} are @code{YYYY-MM-DD}.
+@code{to_date} is the day after the last day you want.  A date
+that is not that shape is refused: @samp{date must be YYYY-MM-DD}.
+A start after the end is refused:
+@samp{from_date is after to_date}.
+
+Nil is refused: @samp{query must be a string}.  @code{""} and
+whitespace are refused: @samp{query is empty}.  An unknown mode is
+refused: @samp{mode must be Top or Latest}.  A limit that is not a
+whole number is refused: @samp{limit must be a positive integer}.
+A limit outside 1 to 10 is refused:
+@samp{limit must be from 1 to 10}.  The default limit is 8.
+
+Each post is a handle, a name, a time, a URL, and the text.  No
+posts returns @samp{No posts}.
+
+@code{x_thread_fetch} reads @code{post_id} and the posts around it.
+Nil, @code{""}, and whitespace are refused: @samp{post id is
+empty}.  A value that is not text is refused: @samp{post id must
+be a string}.  Anything that is not a decimal id, including
+@code{/} and @code{c:/}, is refused: @samp{post id is not an id}.
+The result is at most 8 posts, oldest first, and it includes the
+requested post.  No posts returns @samp{No posts}.
+
+@code{x_user_search} finds accounts by name, handle, or bio.  The
+query and limit refusals match post search.  Each account is a
+name, a handle, a URL, and a bio.  No accounts returns
+@samp{No users}.
+
+The bearer token is @code{harmless-x-bearer}, or the environment
+variable @code{X_BEARER_TOKEN}, or an auth-source entry for host
+@code{api.x.com} and user @code{apikey}.  A missing token is
+refused before a request: @samp{X is not signed in}.
+
+The tools' class is @code{network}.  They ask in @code{ask} mode
+and in @code{accept-edits}.  @code{always-approve} does not ask.
+Plan mode does not refuse them.  A read-only subagent may search
+X.  A detached chat may search X.  A response that is not JSON is
+@samp{X search failed}.  A request that does not succeed is
+@samp{web request failed}.  Nothing is written into the project.
 
 @node Instructions
 @chapter Instructions

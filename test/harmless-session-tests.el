@@ -628,7 +628,10 @@
                        "send_message"
                        "spawn_agent"
                        "web_fetch"
-                       "web_search")
+                       "web_search"
+                       "x_keyword_search"
+                       "x_thread_fetch"
+                       "x_user_search")
                      (sort names #'string<)))
       (should-not (member "read_file" names))
       (should-not (member "run_shell" names)))

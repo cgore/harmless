@@ -197,9 +197,9 @@ summarized before the provider sees TEXT."
   "Return the tools offered to SESSION.
 A detached chat can use global memory, ask the user a question,
 start a subagent, run a workflow, message another live session,
-or search and fetch pages on the web.  It is not offered project
-files, a shell, or plan mode.  A subagent is not offered
-`spawn_agent' or `run_workflow'."
+or search the web, fetch a page, and look up X.  It is not
+offered project files, a shell, or plan mode.  A subagent is
+not offered `spawn_agent' or `run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
@@ -212,7 +212,10 @@ files, a shell, or plan mode.  A subagent is not offered
                             "spawn_agent"
                             "run_workflow"
                             "web_fetch"
-                            "web_search")))
+                            "web_search"
+                            "x_keyword_search"
+                            "x_thread_fetch"
+                            "x_user_search")))
              (seq-filter (lambda (tool)
                            (member (harmless-tool-name tool) allowed))
                          (harmless-tools-enabled))))))
@@ -379,6 +382,7 @@ A tool's `classify' function may narrow one shell command to `read'."
     ('shell (or (harmless-tool-arg args :command) (harmless-tool-name tool)))
     ('network (or (harmless-tool-arg args :query)
                   (harmless-tool-arg args :url)
+                  (harmless-tool-arg args :post_id)
                   (harmless-tool-name tool)))
     (_ (harmless-tool-name tool))))
 

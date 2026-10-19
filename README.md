@@ -258,6 +258,15 @@ into the project.
 is reduced to text.  The class is `network`, so accepting edits still
 asks.  The page is not written into the project.
 
+## X search
+
+`x_keyword_search` finds recent posts.  `x_thread_fetch` reads one
+post and its conversation.  `x_user_search` finds accounts.  The
+class is `network`, so accepting edits still asks.  The bearer
+token is `harmless-x-bearer`, `X_BEARER_TOKEN`, or an auth-source
+entry for `api.x.com`.  A missing token is refused before a
+request.  Nothing is written into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

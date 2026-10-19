@@ -283,6 +283,9 @@ directory, which lives under the Harmless data directory.  Setting
     ("send_message" "message")
     ("web_search" "search")
     ("web_fetch" "fetch")
+    ("x_keyword_search" "posts")
+    ("x_thread_fetch" "thread")
+    ("x_user_search" "users")
     (_ (or name "?"))))
 
 (defun harmless-ui--tool-groupable-p (name)
@@ -324,6 +327,12 @@ directory, which lives under the Harmless data directory.  Setting
             ("web_search" (or (harmless-tool-arg args :query) ""))
             ("web_fetch" (let ((url (harmless-tool-arg args :url)))
                            (if (stringp url) url "")))
+            ((or "x_keyword_search" "x_user_search")
+             (let ((query (harmless-tool-arg args :query)))
+               (if (stringp query) query "")))
+            ("x_thread_fetch"
+             (let ((id (harmless-tool-arg args :post_id)))
+               (if (stringp id) id "")))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

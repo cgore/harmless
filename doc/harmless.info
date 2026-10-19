@@ -326,7 +326,8 @@ session.  The menu key is ‘p’.  New sessions take the value of
    When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
-query.  For a fetched page, it is the URL.
+query.  For a fetched page, it is the URL. For an X search, it is the
+query or the post id.
 
 ‘y’
      Allow this call.
@@ -456,7 +457,8 @@ state there.
 ‘memory_write_topic’, and ‘ask_user’.  *Note Memory::.  *Note
 Questions::.  It can list live sessions and send one a finding.  *Note
 Messages::.  It can search the web and fetch a page.  *Note Web
-search::.  *Note Fetch a page::.
+search::.  *Note Fetch a page::.  It can search X for posts, a thread,
+and accounts.  *Note X search::.
 
 * Menu:
 
@@ -470,6 +472,7 @@ search::.  *Note Fetch a page::.
 * Messages::    A finding sent to another live session.
 * Web search::  Look up a query on the web.
 * Fetch a page::  Read one http or https page.
+* X search::    Find posts, a thread, and accounts on X.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -683,8 +686,9 @@ write.  A tool that can write is refused before the permission question:
 ‘This subagent is read-only. A tool that can write is refused’.  A blank
 shell command is not that refusal.  A read-only child may send a finding
 to another live session.  *Note Messages::.  It may also search the web.
-*Note Web search::.  It may fetch a page.  *Note Fetch a page::.  A
-workspace child uses the parent's permission mode.
+*Note Web search::.  It may fetch a page.  *Note Fetch a page::.  It may
+search X. *Note X search::.  A workspace child uses the parent's
+permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -923,7 +927,7 @@ refuse it.  A read-only subagent may search.  A detached chat may
 search.  A failed request is ‘web search failed’.
 
 
-File: harmless.info,  Node: Fetch a page,  Prev: Web search,  Up: Tools
+File: harmless.info,  Node: Fetch a page,  Next: X search,  Prev: Web search,  Up: Tools
 
 10.10 Fetch a page
 ==================
@@ -947,6 +951,53 @@ longer than 100000 characters is cut and ends with ‘[truncated]’.
 ‘accept-edits’.  ‘always-approve’ does not ask.  Plan mode does not
 refuse it.  A read-only subagent may fetch a page.  A detached chat may
 fetch a page.  A failed request is ‘web request failed’.
+
+
+File: harmless.info,  Node: X search,  Prev: Fetch a page,  Up: Tools
+
+10.11 X search
+==============
+
+‘x_keyword_search’ finds recent posts on X. The search covers the last 7
+days.  ‘query’ is the text, including search operators.  ‘/’ and ‘c:/’
+are text, not paths.  ‘mode’ is ‘Top’ or ‘Latest’.  Latest is the
+default.  Top asks X for relevancy.  Latest asks for the newest posts.
+‘from_date’ and ‘to_date’ are ‘YYYY-MM-DD’.  ‘to_date’ is the day after
+the last day you want.  A date that is not that shape is refused: ‘date
+must be YYYY-MM-DD’.  A start after the end is refused: ‘from_date is
+after to_date’.
+
+   Nil is refused: ‘query must be a string’.  ‘""’  and whitespace are
+refused: ‘query is empty’.  An unknown mode is refused: ‘mode must be
+Top or Latest’.  A limit that is not a whole number is refused: ‘limit
+must be a positive integer’.  A limit outside 1 to 10 is refused: ‘limit
+must be from 1 to 10’.  The default limit is 8.
+
+   Each post is a handle, a name, a time, a URL, and the text.  No posts
+returns ‘No posts’.
+
+   ‘x_thread_fetch’ reads ‘post_id’ and the posts around it.  Nil, ‘""’,
+and whitespace are refused: ‘post id is empty’.  A value that is not
+text is refused: ‘post id must be a string’.  Anything that is not a
+decimal id, including ‘/’ and ‘c:/’, is refused: ‘post id is not an id’.
+The result is at most 8 posts, oldest first, and it includes the
+requested post.  No posts returns ‘No posts’.
+
+   ‘x_user_search’ finds accounts by name, handle, or bio.  The query
+and limit refusals match post search.  Each account is a name, a handle,
+a URL, and a bio.  No accounts returns ‘No users’.
+
+   The bearer token is ‘harmless-x-bearer’, or the environment variable
+‘X_BEARER_TOKEN’, or an auth-source entry for host ‘api.x.com’ and user
+‘apikey’.  A missing token is refused before a request: ‘X is not signed
+in’.
+
+   The tools' class is ‘network’.  They ask in ‘ask’ mode and in
+‘accept-edits’.  ‘always-approve’ does not ask.  Plan mode does not
+refuse them.  A read-only subagent may search X. A detached chat may
+search X. A response that is not JSON is ‘X search failed’.  A request
+that does not succeed is ‘web request failed’.  Nothing is written into
+the project.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1411,30 +1462,31 @@ Node: Sessions4644
 Node: Transcript6141
 Node: Prompt9770
 Node: Permissions11011
-Node: Accounts12819
-Node: Models15064
-Node: Tools16160
-Node: File tools17833
-Node: Search19067
-Node: Shell20708
-Node: Questions23493
-Node: Subagents24263
-Node: Workflows28037
-Node: Worktrees33040
-Node: Messages36168
-Node: Web search37989
-Node: Fetch a page38844
-Node: Instructions40060
-Node: Skills41806
-Node: Memory42955
-Node: Plan mode44220
-Node: Usage45903
-Node: Files46922
-Node: Keys48339
-Node: Trouble49562
-Node: Manual50816
-Node: Command Index51521
-Node: Key Index54434
+Node: Accounts12868
+Node: Models15113
+Node: Tools16209
+Node: File tools18010
+Node: Search19244
+Node: Shell20885
+Node: Questions23670
+Node: Subagents24440
+Node: Workflows28250
+Node: Worktrees33253
+Node: Messages36381
+Node: Web search38202
+Node: Fetch a page39057
+Node: X search40290
+Node: Instructions42675
+Node: Skills44421
+Node: Memory45570
+Node: Plan mode46835
+Node: Usage48518
+Node: Files49537
+Node: Keys50954
+Node: Trouble52177
+Node: Manual53431
+Node: Command Index54136
+Node: Key Index57049
 
 End Tag Table
 

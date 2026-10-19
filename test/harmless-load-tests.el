@@ -24,7 +24,10 @@
   (should (harmless-tool-by-name "list_sessions"))
   (should (harmless-tool-by-name "send_message"))
   (should (harmless-tool-by-name "web_search"))
-  (should (harmless-tool-by-name "web_fetch")))
+  (should (harmless-tool-by-name "web_fetch"))
+  (should (harmless-tool-by-name "x_keyword_search"))
+  (should (harmless-tool-by-name "x_thread_fetch"))
+  (should (harmless-tool-by-name "x_user_search")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

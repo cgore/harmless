@@ -20,7 +20,7 @@ The shell is the only way out of the project. A skill that needs any of these is
 
 - [x] Web search.
 - [x] Fetch a page.
-- [ ] X search (Grok Build): posts, threads, and users.
+- [x] X search (Grok Build): posts, threads, and users.
 - [ ] MCP client, so configured servers show up next to the built-in tools. Load a tool's schema when it is about to be called, and read MCP resources, not only call tools (Claude Code).
 - [ ] Computer use and browser control (Claude Code, Codex). See the screen, click, and type, including a browser the user can watch.
 
