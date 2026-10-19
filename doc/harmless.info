@@ -1,4 +1,4 @@
-This is harmless.info, produced by .\makeinfo version 7.3 from
+This is harmless.info, produced by makeinfo version 7.3 from
 harmless.texi.
 
 Copyright © 2026 Christopher Mark Gore.
@@ -308,7 +308,8 @@ subshell still ask.  ‘shell_kill’ still asks.  In plan mode a read-only
 shell command still runs, and a shell command that can write is refused
 before the question.  *Note Plan mode::.  A file watch does not ask.  A
 command that can write asks, and the question shows that command.  *Note
-Monitors::.
+Monitors::.  Scheduling a prompt asks, and the question shows that
+prompt.  Accepting edits does not ask.  *Note Schedules::.
 
    The permission mode of a session changes that.
 
@@ -333,7 +334,8 @@ query or the post id.  For an MCP call, it is the resource uri or the
 server name.  For a click, it is the point.  For typed text, it is the
 text.  For a key, it is the key.  For a browser, it is the URL. A
 screenshot shows the tool name.  A file watch does not ask.  A command
-that can write shows the command.
+that can write shows the command.  A scheduled prompt shows the prompt.
+Cancelling one shows the id.
 
 ‘y’
      Allow this call.
@@ -466,7 +468,7 @@ Messages::.  It can search the web and fetch a page.  *Note Web
 search::.  *Note Fetch a page::.  It can search X for posts, a thread,
 and accounts.  *Note X search::.  It can list and read MCP resources.
 *Note MCP::.  It can see the screen, click, type, and open a browser.
-*Note Computer use::.
+*Note Computer use::.  It can schedule a prompt.  *Note Schedules::.
 
 * Menu:
 
@@ -484,6 +486,7 @@ and accounts.  *Note X search::.  It can list and read MCP resources.
 * MCP::         Call a configured server and read its resources.
 * Computer use::  See the screen, click, type, and open a browser.
 * Monitors::    Wake when a line in a file or a stream matches.
+* Schedules::   Send one prompt at a later time.
 
 
 File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
@@ -701,8 +704,9 @@ to another live session.  *Note Messages::.  It may also search the web.
 search X. *Note X search::.  It may list and read MCP resources.  *Note
 MCP::.  A read-only child is not offered computer control.  *Note
 Computer use::.  It may watch a file or a read-only command.  A command
-that can write is refused.  *Note Monitors::.  A workspace child uses
-the parent's permission mode.
+that can write is refused.  *Note Monitors::.  A read-only child is not
+offered a scheduled prompt.  A workspace child may schedule one.  *Note
+Schedules::.  A workspace child uses the parent's permission mode.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -1104,7 +1108,7 @@ still runs.  A read-only subagent is not offered these tools.  A
 detached chat is offered them.  Nothing is written into the project.
 
 
-File: harmless.info,  Node: Monitors,  Prev: Computer use,  Up: Tools
+File: harmless.info,  Node: Monitors,  Next: Schedules,  Prev: Computer use,  Up: Tools
 
 10.14 Monitors
 ==============
@@ -1154,6 +1158,52 @@ file watch and a read-only command still run.  A read-only subagent may
 watch a file or a read-only command.  A detached chat is not offered
 these tools.  Nothing is written into the project.  The watch is
 forgotten when Emacs exits.
+
+
+File: harmless.info,  Node: Schedules,  Prev: Monitors,  Up: Tools
+
+10.15 Schedules
+===============
+
+‘schedule’ sends ‘prompt’ once, at a later time.  Pass ‘delay’ in
+seconds, or ‘at’ as a UTC time such as ‘2099-01-01T00:00:00Z’.  Pass one
+of those.  None is refused: ‘schedule time is missing’.  More than one
+is refused: ‘schedule time must be one’.
+
+   Nil and a value that is not text are refused: ‘prompt must be a
+string’.  ‘""’  and whitespace are refused: ‘prompt is empty’.  ‘/’,
+‘c:/’, ‘log.txt’, and ‘sub/’ are prompt text, not paths.  They are not
+resolved, and they do not create a file or a directory.
+
+   A delay that is not a positive number is refused: ‘delay must be a
+positive number’.  Zero and a negative number are refused the same way.
+A time that is not text is refused: ‘at must be a string’.  ‘""’  and
+whitespace are refused: ‘at is empty’.  A value Emacs cannot parse,
+including ‘/’ and ‘c:/’, is refused: ‘at is not a time’.  A time that
+has already passed is refused: ‘schedule time has passed’.
+
+   The prompt and the absolute time are saved with the session.  When
+that session is loaded, a schedule that is still in the future is armed
+again.  A schedule that has expired is removed and is not sent.  This is
+one prompt, once.  It does not repeat, and it does not watch a queue or
+a context wall.
+
+   When the time arrives, the prompt is sent.  The session is idle, so
+that starts a turn.  A session that is already in a turn queues the
+prompt and keeps going.  ‘schedule_cancel’ removes a waiting prompt.
+The prompt is not sent.  Nil, ‘""’, and whitespace are refused:
+‘schedule id is empty’.  A value that is not text is refused: ‘schedule
+id must be a string’.  A negative number is refused: ‘schedule id is not
+an id’.  An unknown id is refused: ‘no schedule ’, followed by the id.
+‘/’ and ‘c:/’ are ids, not paths.
+
+   The class is ‘edit’.  The tools ask in ‘ask’ mode, and the question
+shows the prompt, or the id when cancelling.  ‘accept-edits’ and
+‘always-approve’ do not ask.  Plan mode does not refuse scheduling.  The
+turn that runs later still obeys plan mode.  A read-only subagent is not
+offered these tools.  A workspace subagent may schedule.  A detached
+chat is offered them.  Nothing is written into the project.  Forking a
+session does not copy its schedules.
 
 
 File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
@@ -1299,8 +1349,9 @@ can write is refused’.  A read-only shell command still runs.
 refused: ‘Error: Plan mode is on. Computer control is refused’.  A
 screenshot still runs.  *Note Computer use::.  A file watch and a
 read-only command still run.  A command that can write is refused.
-*Note Monitors::.  The header line shows ‘plan’.  ‘ask_user’ can still
-ask a question.  *Note Questions::.
+*Note Monitors::.  Scheduling a prompt still runs.  The later turn obeys
+plan mode.  *Note Schedules::.  The header line shows ‘plan’.
+‘ask_user’ can still ask a question.  *Note Questions::.
 
    ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
 replace the whole file.  An empty plan is refused.
@@ -1375,7 +1426,8 @@ replaced with ‘/’.
      OAuth tokens for each connection.  Mode 0600.
 
 ‘sessions/PROJECT/ID/summary.json’
-     The session's model, status, totals, and plan flag.
+     The session's model, status, totals, plan flag, and schedules that
+     are still waiting.
 
 ‘sessions/PROJECT/ID/messages.jsonl’
      The transcript, one JSON object per line.  A finding from another
@@ -1617,42 +1669,43 @@ Key Index
 
 
 Tag Table:
-Node: Top373
-Node: Introduction1772
-Node: Installation2503
-Node: Starting4107
-Node: Sessions4646
-Node: Transcript6143
-Node: Prompt9772
-Node: Permissions11013
-Node: Accounts13276
-Node: Models15521
-Node: Tools16617
-Node: File tools18743
-Node: Search19977
-Node: Shell21618
-Node: Questions24403
-Node: Subagents25173
-Node: Workflows29211
-Node: Worktrees34214
-Node: Messages37342
-Node: Web search39163
-Node: Fetch a page40018
-Node: X search41251
-Node: MCP43648
-Node: Computer use46352
-Node: Monitors48368
-Node: Instructions51283
-Node: Skills53029
-Node: Memory54178
-Node: Plan mode55443
-Node: Usage57395
-Node: Files58414
-Node: Keys59920
-Node: Trouble61143
-Node: Manual62397
-Node: Command Index63102
-Node: Key Index66015
+Node: Top371
+Node: Introduction1770
+Node: Installation2501
+Node: Starting4105
+Node: Sessions4644
+Node: Transcript6141
+Node: Prompt9770
+Node: Permissions11011
+Node: Accounts13455
+Node: Models15700
+Node: Tools16796
+Node: File tools19018
+Node: Search20252
+Node: Shell21893
+Node: Questions24678
+Node: Subagents25448
+Node: Workflows29597
+Node: Worktrees34600
+Node: Messages37728
+Node: Web search39549
+Node: Fetch a page40404
+Node: X search41637
+Node: MCP44034
+Node: Computer use46738
+Node: Monitors48754
+Node: Schedules51687
+Node: Instructions54139
+Node: Skills55885
+Node: Memory57034
+Node: Plan mode58299
+Node: Usage60336
+Node: Files61355
+Node: Keys62900
+Node: Trouble64123
+Node: Manual65377
+Node: Command Index66082
+Node: Key Index68995
 
 End Tag Table
 

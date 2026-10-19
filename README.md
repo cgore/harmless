@@ -297,6 +297,16 @@ session.  A file watch does not ask.  A command that can write
 still asks, and plan mode refuses it.  `monitor_stop` stops the
 watch.  Nothing is written into the project.
 
+## Schedules
+
+`schedule` sends a prompt once, after a delay or at a UTC time.
+The prompt and the time are saved with the session.  Loading the
+session arms a schedule that is still in the future and drops one
+that has expired without sending it.  `schedule_cancel` removes a
+waiting prompt.  The class is `edit`, so accepting edits does not
+ask.  Plan mode does not refuse it.  A read-only subagent cannot
+use it.  Nothing is written into the project.
+
 ## Memory
 
 Memory is Markdown under `harmless-directory`, in `memory/`.  Global

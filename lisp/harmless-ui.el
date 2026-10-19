@@ -295,6 +295,8 @@ directory, which lives under the Harmless data directory.  Setting
     ("browser_open" "browser")
     ("monitor" "watch")
     ("monitor_stop" "stop")
+    ("schedule" "schedule")
+    ("schedule_cancel" "cancel")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -376,6 +378,15 @@ directory, which lives under the Harmless data directory.  Setting
              (let ((pattern (harmless-tool-arg args :pattern)))
                (if (stringp pattern)
                    pattern
+                 (let ((id (harmless-tool-arg args :id)))
+                   (cond
+                    ((stringp id) id)
+                    ((integerp id) (number-to-string id))
+                    (t ""))))))
+            ((or "schedule" "schedule_cancel")
+             (let ((prompt (harmless-tool-arg args :prompt)))
+               (if (stringp prompt)
+                   prompt
                  (let ((id (harmless-tool-arg args :id)))
                    (cond
                     ((stringp id) id)

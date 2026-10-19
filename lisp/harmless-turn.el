@@ -201,10 +201,11 @@ summarized before the provider sees TEXT."
   "Return the tools offered to SESSION.
 A detached chat can use global memory, ask the user a question,
 start a subagent, run a workflow, message another live session,
-search the web, fetch a page, look up X, read MCP resources, and
-see the screen, click, type, and open a browser.  It is not
-offered project files, a project shell, or plan mode.  A
-subagent is not offered `spawn_agent' or `run_workflow'."
+search the web, fetch a page, look up X, read MCP resources,
+see the screen, click, type, open a browser, and schedule a
+prompt.  It is not offered project files, a project shell, or
+plan mode.  A subagent is not offered `spawn_agent' or
+`run_workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
@@ -221,6 +222,8 @@ subagent is not offered `spawn_agent' or `run_workflow'."
                             "send_message"
                             "spawn_agent"
                             "run_workflow"
+                            "schedule"
+                            "schedule_cancel"
                             "web_fetch"
                             "web_search"
                             "x_keyword_search"
@@ -391,27 +394,40 @@ A tool's `classify' function may narrow one shell command to `read'."
 
 (defun harmless-turn--item-for (tool args)
   "Short description of TOOL with ARGS for a permission prompt."
-  (pcase (harmless-tool-class tool)
-    ('edit (or (harmless-tool-arg args :path) (harmless-tool-name tool)))
-    ('shell (or (harmless-tool-arg args :command)
-                (let ((text (harmless-tool-arg args :text)))
-                  (and (stringp text) text))
-                (let ((url (harmless-tool-arg args :url)))
-                  (and (stringp url) url))
-                (let ((key (harmless-tool-arg args :key)))
-                  (and (stringp key) key))
-                (let ((x (harmless-tool-arg args :x))
-                      (y (harmless-tool-arg args :y)))
-                  (and (integerp x) (integerp y)
-                       (format "%d,%d" x y)))
-                (harmless-tool-name tool)))
-    ('network (or (harmless-tool-arg args :query)
-                  (harmless-tool-arg args :url)
-                  (harmless-tool-arg args :post_id)
-                  (harmless-tool-arg args :uri)
-                  (harmless-tool-arg args :server)
-                  (harmless-tool-name tool)))
-    (_ (harmless-tool-name tool))))
+  (let ((name (harmless-tool-name tool)))
+    (cond
+     ((string= name "schedule")
+      (let ((prompt (harmless-tool-arg args :prompt)))
+        (if (stringp prompt) prompt name)))
+     ((string= name "schedule_cancel")
+      (let ((id (harmless-tool-arg args :id)))
+        (cond
+         ((stringp id) id)
+         ((integerp id) (number-to-string id))
+         (t name))))
+     (t
+      (pcase (harmless-tool-class tool)
+        ('edit (or (harmless-tool-arg args :path)
+                   (harmless-tool-name tool)))
+        ('shell (or (harmless-tool-arg args :command)
+                    (let ((text (harmless-tool-arg args :text)))
+                      (and (stringp text) text))
+                    (let ((url (harmless-tool-arg args :url)))
+                      (and (stringp url) url))
+                    (let ((key (harmless-tool-arg args :key)))
+                      (and (stringp key) key))
+                    (let ((x (harmless-tool-arg args :x))
+                          (y (harmless-tool-arg args :y)))
+                      (and (integerp x) (integerp y)
+                           (format "%d,%d" x y)))
+                    (harmless-tool-name tool)))
+        ('network (or (harmless-tool-arg args :query)
+                      (harmless-tool-arg args :url)
+                      (harmless-tool-arg args :post_id)
+                      (harmless-tool-arg args :uri)
+                      (harmless-tool-arg args :server)
+                      (harmless-tool-name tool)))
+        (_ (harmless-tool-name tool)))))))
 
 (defun harmless-turn--invoke (tool session args callback)
   "Invoke TOOL and call CALLBACK with the string result.

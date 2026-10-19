@@ -41,7 +41,9 @@
 ;; subagent to the session that started it.  `agent' is the in-memory
 ;; subagent run; the saved fields are its sandbox, tool list, and prompt.
 ;; `findings' is a queue of findings from other live sessions.  It is not
-;; saved.  A flushed finding is an ordinary transcript line.
+;; saved.  A flushed finding is an ordinary transcript line.  `schedules'
+;; is a list of one-shot prompts still waiting.  Each item is :id,
+;; :prompt, and :at.  A timer is not stored on the item.
 
 ;;; Code:
 
@@ -56,6 +58,8 @@
 (declare-function harmless-tools-shell-kill "harmless-tools-shell" (proc))
 (declare-function harmless-agent-settle "harmless-agent" (session))
 (declare-function harmless-message-flush "harmless-message" (session))
+(declare-function harmless-schedule-restore "harmless-schedule"
+                  (session summary))
 
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
@@ -115,7 +119,8 @@ location.  A relative path or the filesystem root is refused."
   steers
   agent
   worktree
-  findings)
+  findings
+  schedules)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -441,6 +446,33 @@ The callback and the turn counter stay in memory."
                            (not (string-empty-p original))
                            original)))))
 
+(defun harmless-session--schedules-from-summary (session summary)
+  "Copy schedules from SUMMARY onto SESSION without arming them.
+Used when the schedule feature is not loaded, so a saved prompt is
+not dropped.  Timers are not stored."
+  (let ((raw (plist-get summary :schedules))
+        items)
+    (when (listp raw)
+      (dolist (item raw)
+        (when (harmless-plist-p item)
+          (push (list :id (plist-get item :id)
+                      :prompt (plist-get item :prompt)
+                      :at (plist-get item :at))
+                items))))
+    (setf (harmless-session-schedules session) (nreverse items))))
+
+(defun harmless-session--schedules-summary (session)
+  "Return a :schedules entry, or nil when SESSION has none.
+Timers are not included."
+  (let ((items (harmless-session-schedules session)))
+    (when items
+      (list :schedules
+            (mapcar (lambda (item)
+                      (list :id (plist-get item :id)
+                            :prompt (plist-get item :prompt)
+                            :at (plist-get item :at)))
+                    items)))))
+
 (defun harmless-session-summary-plist (session)
   "Return a plist suitable for summary.json."
   (append
@@ -465,7 +497,8 @@ The callback and the turn counter stay in memory."
          :plan-mode (and (harmless-session-plan-mode session) t)
          :shell-cwd (harmless-session-shell-cwd session))
    (harmless-session--agent-summary session)
-   (harmless-session--worktree-summary session)))
+   (harmless-session--worktree-summary session)
+   (harmless-session--schedules-summary session)))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -577,6 +610,9 @@ Signal when that path would be /NAME or outside the sessions root."
                      :worktree (harmless-session--worktree-from-summary
                                 summary))))
       (harmless-session-register session)
+      (if (fboundp 'harmless-schedule-restore)
+          (harmless-schedule-restore session summary)
+        (harmless-session--schedules-from-summary session summary))
       session)))
 
 (defun harmless-session-list-on-disk ()

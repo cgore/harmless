@@ -36,7 +36,9 @@
   (should (harmless-tool-by-name "computer_key"))
   (should (harmless-tool-by-name "browser_open"))
   (should (harmless-tool-by-name "monitor"))
-  (should (harmless-tool-by-name "monitor_stop")))
+  (should (harmless-tool-by-name "monitor_stop"))
+  (should (harmless-tool-by-name "schedule"))
+  (should (harmless-tool-by-name "schedule_cancel")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)

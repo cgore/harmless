@@ -361,6 +361,8 @@ shell command that can write is refused before the question.
 @xref{Plan mode}.
 A file watch does not ask.  A command that can write asks, and the
 question shows that command.  @xref{Monitors}.
+Scheduling a prompt asks, and the question shows that prompt.
+Accepting edits does not ask.  @xref{Schedules}.
 
 The permission mode of a session changes that.
 
@@ -388,6 +390,7 @@ uri or the server name.  For a click, it is the point.  For typed
 text, it is the text.  For a key, it is the key.  For a browser,
 it is the URL.  A screenshot shows the tool name.  A file
 watch does not ask.  A command that can write shows the command.
+A scheduled prompt shows the prompt.  Cancelling one shows the id.
 
 @table @kbd
 @item y
@@ -532,6 +535,7 @@ It can search X for posts, a thread, and accounts.
 It can list and read MCP resources.  @xref{MCP}.
 It can see the screen, click, type, and open a browser.
 @xref{Computer use}.
+It can schedule a prompt.  @xref{Schedules}.
 
 @menu
 * File tools::  Read, list, write, replace, and patch.
@@ -548,6 +552,7 @@ It can see the screen, click, type, and open a browser.
 * MCP::         Call a configured server and read its resources.
 * Computer use::  See the screen, click, type, and open a browser.
 * Monitors::    Wake when a line in a file or a stream matches.
+* Schedules::   Send one prompt at a later time.
 @end menu
 
 @node File tools
@@ -785,6 +790,8 @@ A read-only child is not offered computer control.
 @xref{Computer use}.
 It may watch a file or a read-only command.  A command that can
 write is refused.  @xref{Monitors}.
+A read-only child is not offered a scheduled prompt.  A workspace
+child may schedule one.  @xref{Schedules}.
 A workspace child uses the parent's permission mode.
 
 In plan mode, a subagent that can write is refused before the
@@ -1295,6 +1302,57 @@ read-only command.  A detached chat is not offered these tools.
 Nothing is written into the project.  The watch is forgotten when
 Emacs exits.
 
+@node Schedules
+@section Schedules
+
+@cindex schedule
+@cindex schedule_cancel
+@code{schedule} sends @code{prompt} once, at a later time.  Pass
+@code{delay} in seconds, or @code{at} as a UTC time such as
+@code{2099-01-01T00:00:00Z}.  Pass one of those.  None is refused:
+@samp{schedule time is missing}.  More than one is refused:
+@samp{schedule time must be one}.
+
+Nil and a value that is not text are refused: @samp{prompt must
+be a string}.  @code{""} and whitespace are refused:
+@samp{prompt is empty}.  @code{/}, @code{c:/}, @code{log.txt}, and
+@code{sub/} are prompt text, not paths.  They are not resolved,
+and they do not create a file or a directory.
+
+A delay that is not a positive number is refused: @samp{delay
+must be a positive number}.  Zero and a negative number are
+refused the same way.  A time that is not text is refused:
+@samp{at must be a string}.  @code{""} and whitespace are refused:
+@samp{at is empty}.  A value Emacs cannot parse, including
+@code{/} and @code{c:/}, is refused: @samp{at is not a time}.  A
+time that has already passed is refused: @samp{schedule time has
+passed}.
+
+The prompt and the absolute time are saved with the session.
+When that session is loaded, a schedule that is still in the
+future is armed again.  A schedule that has expired is removed
+and is not sent.  This is one prompt, once.  It does not repeat,
+and it does not watch a queue or a context wall.
+
+When the time arrives, the prompt is sent.  The session is idle,
+so that starts a turn.  A session that is already in a turn
+queues the prompt and keeps going.  @code{schedule_cancel}
+removes a waiting prompt.  The prompt is not sent.  Nil,
+@code{""}, and whitespace are refused: @samp{schedule id is
+empty}.  A value that is not text is refused: @samp{schedule id
+must be a string}.  A negative number is refused: @samp{schedule
+id is not an id}.  An unknown id is refused: @samp{no schedule },
+followed by the id.  @code{/} and @code{c:/} are ids, not paths.
+
+The class is @code{edit}.  The tools ask in @code{ask} mode, and
+the question shows the prompt, or the id when cancelling.
+@code{accept-edits} and @code{always-approve} do not ask.  Plan
+mode does not refuse scheduling.  The turn that runs later still
+obeys plan mode.  A read-only subagent is not offered these
+tools.  A workspace subagent may schedule.  A detached chat is
+offered them.  Nothing is written into the project.  Forking a
+session does not copy its schedules.
+
 @node Instructions
 @chapter Instructions
 
@@ -1461,6 +1519,8 @@ A click, typed text, a key, and a browser are refused:
 A screenshot still runs.  @xref{Computer use}.
 A file watch and a read-only command still run.  A command that
 can write is refused.  @xref{Monitors}.
+Scheduling a prompt still runs.  The later turn obeys plan mode.
+@xref{Schedules}.
 The header line shows @samp{plan}.
 @code{ask_user} can still ask a question.  @xref{Questions}.
 
@@ -1542,7 +1602,8 @@ Optional configuration, loaded once.
 OAuth tokens for each connection.  Mode 0600.
 
 @item sessions/@var{project}/@var{id}/summary.json
-The session's model, status, totals, and plan flag.
+The session's model, status, totals, plan flag, and schedules
+that are still waiting.
 
 @item sessions/@var{project}/@var{id}/messages.jsonl
 The transcript, one JSON object per line.  A finding from another

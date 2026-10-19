@@ -632,6 +632,8 @@
                        "memory_remember"
                        "memory_write_topic"
                        "run_workflow"
+                       "schedule"
+                       "schedule_cancel"
                        "send_message"
                        "spawn_agent"
                        "web_fetch"
