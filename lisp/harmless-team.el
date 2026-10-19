@@ -47,7 +47,8 @@
 ;; screen and keeps a transcript across occupants.  The rig has
 ;; a chatroom: history, topics, and a wait for the next line.
 ;; A pace walks context into one seat, one piece at a time.
-;; This file does not register another machine.
+;; A queue row is owned work on the rig.  Replacing the seat
+;; does not drop it.  This file does not register another machine.
 
 ;;; Code:
 
@@ -367,6 +368,52 @@ Nil means the rig has no pace yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--row-id-p (id)
+  "Return non-nil if ID is a row id."
+  (and (stringp id) (string-match-p "\\`[1-9][0-9]*\\'" id)))
+
+(defun harmless-team--rows-ok-p (rig)
+  "Return non-nil if RIG's queue rows are readable.
+Nil means the rig has no row yet."
+  (let ((items (plist-get rig :rows)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (seen nil))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-plist-p item)
+                     (harmless-team--row-id-p (plist-get item :id))
+                     (not (member (plist-get item :id) seen))
+                     (stringp (plist-get item :seat))
+                     (not (string-empty-p (plist-get item :seat)))
+                     (stringp (plist-get item :body))
+                     (not (string-empty-p (plist-get item :body)))
+                     (equal (plist-get item :state) "open")
+                     (harmless-team--row-history-p
+                      (plist-get item :history)))
+                (setq seen (cons (plist-get item :id) seen)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
+(defun harmless-team--row-history-p (items)
+  "Return non-nil if ITEMS is a row's history.
+Nil is an empty history."
+  (if (null items)
+      t
+    (let ((ok t))
+      (while (and ok (consp items))
+        (let ((item (car items)))
+          (if (and (harmless-plist-p item)
+                   (stringp (plist-get item :at))
+                   (not (string-empty-p (plist-get item :at)))
+                   (stringp (plist-get item :text))
+                   (not (string-empty-p (plist-get item :text))))
+              (setq items (cdr items))
+            (setq ok nil))))
+      (and ok (null items)))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -383,7 +430,8 @@ Nil means the rig has no pace yet."
        (harmless-team--edges-ok-p rig)
        (harmless-team--transcript-ok-p rig)
        (harmless-team--room-ok-p rig)
-       (harmless-team--paces-ok-p rig)))
+       (harmless-team--paces-ok-p rig)
+       (harmless-team--rows-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -1984,6 +2032,136 @@ One call sends one piece.  Return the pace."
   (let ((pace (harmless-team--pace-step rig name)))
     (message "Stepped %s" (plist-get pace :name))
     pace))
+
+(defun harmless-team--row-body (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay."
+  (cond
+   ((null text) (error "team row body is empty"))
+   ((not (stringp text))
+    (error "team row body must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team row body is empty")
+    text))
+
+(defun harmless-team--row-id (id)
+  "Return ID trimmed, or signal."
+  (cond
+   ((null id) (error "team row is empty"))
+   ((not (stringp id)) (error "team row must be a string")))
+  (setq id (string-trim id))
+  (cond
+   ((string-empty-p id) (error "team row is empty"))
+   ((not (harmless-team--row-id-p id))
+    (error "team row is not an id"))
+   (t id)))
+
+(defun harmless-team--public-history (item)
+  "Return one history ITEM with keys in a fixed order."
+  (list :at (plist-get item :at)
+        :text (plist-get item :text)))
+
+(defun harmless-team--public-row (item)
+  "Return one queue row with keys in a fixed order."
+  (list :id (plist-get item :id)
+        :seat (plist-get item :seat)
+        :body (plist-get item :body)
+        :state (plist-get item :state)
+        :history (mapcar #'harmless-team--public-history
+                         (plist-get item :history))))
+
+(defun harmless-team--next-row-id (rows)
+  "Return the next row id after ROWS."
+  (let ((n 0))
+    (dolist (row rows)
+      (let ((id (string-to-number (or (plist-get row :id) "0"))))
+        (when (> id n)
+          (setq n id))))
+    (number-to-string (1+ n))))
+
+(defun harmless-team--row-open (rig seat body)
+  "Open a queue row for SEAT in RIG and return it.
+The row stays on the rig.  Replacing the seat does not drop it."
+  (setq rig (harmless-team--rig-name rig))
+  (setq body (harmless-team--row-body body))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (address (harmless-team--endpoint stored seat))
+         (row (list :id (harmless-team--next-row-id
+                         (plist-get stored :rows))
+                    :seat address
+                    :body body
+                    :state "open"
+                    :history (list (list :at (harmless-now-iso)
+                                         :text "opened")))))
+    (plist-put stored :rows
+               (append (plist-get stored :rows) (list row)))
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-row row)))
+
+(defun harmless-team--rows (rig &optional seat)
+  "Return RIG's queue rows, oldest first.
+SEAT limits the rows.  Nil returns every row."
+  (setq rig (harmless-team--rig-name rig))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (address (when seat
+                    (harmless-team--endpoint stored seat)))
+         (out nil))
+    (dolist (row (plist-get stored :rows))
+      (when (or (null address)
+                (harmless-team--same-p
+                 (plist-get row :seat) address))
+        (setq out (append out (list (harmless-team--public-row row))))))
+    out))
+
+(defun harmless-team--row-read (rig id)
+  "Return the queue row ID in RIG."
+  (setq rig (harmless-team--rig-name rig))
+  (setq id (harmless-team--row-id id))
+  (let ((found nil))
+    (dolist (row (harmless-team--rows rig))
+      (when (and (not found) (equal (plist-get row :id) id))
+        (setq found row)))
+    (unless found
+      (error "team row is missing"))
+    found))
+
+;;;###autoload
+(defun harmless-team-row (rig seat body)
+  "Open a queue row aimed at SEAT in RIG.
+BODY is the work.  The state is open.  Return the row."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Seat: ")
+         (read-string "Body: ")))
+  (let ((row (harmless-team--row-open rig seat body)))
+    (message "Opened %s" (plist-get row :id))
+    row))
+
+;;;###autoload
+(defun harmless-team-rows (rig &optional seat)
+  "Return RIG's queue rows, oldest first.
+SEAT limits the rows.  Nil returns every row."
+  (interactive
+   (list (read-string "Rig: ")
+         (let ((answer (read-string "Seat: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))))
+  (let ((rows (harmless-team--rows rig seat)))
+    (message "%d rows" (length rows))
+    rows))
+
+;;;###autoload
+(defun harmless-team-row-read (rig id)
+  "Return queue row ID in RIG."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")))
+  (let ((row (harmless-team--row-read rig id)))
+    (message "Row %s" (plist-get row :id))
+    row))
 
 (provide 'harmless-team)
 

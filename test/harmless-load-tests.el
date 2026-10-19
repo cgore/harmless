@@ -82,6 +82,9 @@
   (should (fboundp 'harmless-team-pace-add))
   (should (fboundp 'harmless-team-pace-show))
   (should (fboundp 'harmless-team-pace-step))
+  (should (fboundp 'harmless-team-row))
+  (should (fboundp 'harmless-team-rows))
+  (should (fboundp 'harmless-team-row-read))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

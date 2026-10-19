@@ -2217,6 +2217,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-pace-add
 @findex harmless-team-pace-show
 @findex harmless-team-pace-step
+@findex harmless-team-row
+@findex harmless-team-rows
+@findex harmless-team-row-read
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2343,6 +2346,24 @@ name}.  Piece text uses the empty and must-be-a-string
 sentences, with @code{text} in place of @code{pace}.  The same
 name again is refused: @samp{team pace already exists}.  A
 missing pace is refused: @samp{team pace is missing}.
+
+@kbd{M-x harmless-team-row} opens one unit of owned work aimed
+at one seat.  The seat is @code{pod.member} or the address.
+The body is the work.  The state is @code{open}.  The history
+starts with one line, @code{opened}.  The row is kept in the
+rig file, so it stays when the seat's session is replaced,
+released, or removed.  @kbd{M-x harmless-team-rows} reads the
+rows, oldest first.  With no seat, it reads every row.
+@kbd{M-x harmless-team-row-read} reads one row by its id.
+Reading by id does not need the destination seat to still
+exist.
+
+A blank body is refused: @samp{team row body is empty}.  A
+body that is not text is refused: @samp{team row body must be
+a string}.  A blank id is refused: @samp{team row is empty}.
+An id that is not text is refused: @samp{team row must be a
+string}.  Any other id is refused: @samp{team row is not an
+id}.  A missing row is refused: @samp{team row is missing}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2621,8 +2642,8 @@ One headless task.  @xref{Headless}.
 @item teams/@var{rig}.json
 One rig: its pods, its seats, its edges, the session occupying
 each seat, the work each seat still holds, the text sent to
-each seat, the rig's chatroom, and a pace that walks context
-into a seat.
+each seat, the rig's chatroom, a pace that walks context into
+a seat, and a queue row of owned work.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

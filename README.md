@@ -168,6 +168,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-pace-add` | Append one piece to that sequence |
 | `M-x harmless-team-pace-show` | Read the sequence without sending |
 | `M-x harmless-team-pace-step` | Send the next piece, and only that piece |
+| `M-x harmless-team-row` | Open one unit of owned work aimed at one seat |
+| `M-x harmless-team-rows` | Read those rows, or one seat's rows |
+| `M-x harmless-team-row-read` | Read one row by its id |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -391,6 +394,13 @@ stops the wait.  The room does not start a turn.
 then moves forward.  One call sends one piece.  A seat at a prompt or
 a permission question refuses the step, and the sequence stays put.
 A finished sequence refuses another step.
+
+`M-x harmless-team-row` opens one unit of owned work aimed at one
+seat.  The state is `open`.  The history starts with `opened`.
+The row stays in the rig file when that seat's session is
+replaced, released, or removed.  `M-x harmless-team-rows` reads
+the rows, or one seat's rows.  `M-x harmless-team-row-read` reads
+one row by its id.
 
 ## Subagents
 

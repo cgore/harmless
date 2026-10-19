@@ -76,6 +76,9 @@
 ;;   M-x harmless-team-pace    ; start a paced sequence for one seat
 ;;   M-x harmless-team-pace-add ; append one piece to that sequence
 ;;   M-x harmless-team-pace-step ; send the next piece, and only that
+;;   M-x harmless-team-row     ; open owned work aimed at one seat
+;;   M-x harmless-team-rows    ; read those rows, or one seat's rows
+;;   M-x harmless-team-row-read ; read one row by its id
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
