@@ -56,6 +56,7 @@
 (declare-function harmless-new "harmless")
 (declare-function harmless-pick-model "harmless")
 (declare-function harmless-info "harmless")
+(declare-function harmless-add-directory "harmless-tools-fs" (directory))
 (declare-function harmless-message-user-p "harmless-session" (msg))
 
 (defface harmless-user-face
@@ -102,6 +103,7 @@
     (define-key map (kbd "g") #'harmless-dashboard)
     (define-key map (kbd "n") #'harmless-new)
     (define-key map (kbd "m") #'harmless-menu)
+    (define-key map (kbd "+") #'harmless-add-directory)
     (define-key map (kbd "M") #'harmless-pick-model)
     (define-key map (kbd "i") #'harmless-ui-goto-prompt)
     (define-key map (kbd "RET") #'harmless-ui-goto-prompt)

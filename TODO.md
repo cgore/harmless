@@ -91,7 +91,7 @@ The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `a
 - [x] Auto-review. A reviewer model or a classifier decides an escalation (Codex auto-review, Claude Code auto mode, Grok Build auto-review).
 - [x] Hooks that can block a tool call, or replace the result the model sees. Claude Code also runs a hook as an HTTP request, an MCP call, a prompt, or a subagent.
 - [ ] An OS sandbox for the shell (Landlock on Linux). Codex defaults to workspace-write and asks before the network. Grok Build's sandbox is off unless asked.
-- [ ] Extra directories, outside the project root, that this session may read or edit (Claude Code `--add-dir`).
+- [x] Extra directories, outside the project root, that this session may read or edit (Claude Code `--add-dir`).
 
 ## 7. Planning and tracking
 

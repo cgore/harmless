@@ -63,6 +63,7 @@
 (declare-function harmless-rewind "harmless-rewind" (&optional keep))
 (declare-function harmless-edit-prompt "harmless-edit" (&optional turn text))
 (declare-function harmless-fork "harmless-fork" (&optional turn))
+(declare-function harmless-add-directory "harmless-tools-fs" (directory))
 
 ;;;###autoload
 (transient-define-prefix harmless-menu ()
@@ -84,7 +85,8 @@
    ["Options"
     ("m" "Model" harmless-pick-model)
     ("e" "Effort" harmless-set-reasoning-effort)
-    ("p" "Permissions" harmless-set-permission-mode)]
+    ("p" "Permissions" harmless-set-permission-mode)
+    ("+" "Add directory" harmless-add-directory)]
    ["Account"
     ("l" "Log in" harmless-login)
     ("o" "Log out" harmless-logout)]

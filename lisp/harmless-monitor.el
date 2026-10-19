@@ -462,7 +462,7 @@ A background shell that was only watched keeps running."
               :properties (:pattern (:type "string"
                                      :description "Regular expression")
                            :path (:type "string"
-                                  :description "File inside the project")
+                                  :description "File in the project or an added directory")
                            :command (:type "string"
                                      :description "Command whose output is watched")
                            :shell (:type "string"

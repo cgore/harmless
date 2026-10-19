@@ -139,6 +139,7 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-rewind` | Drop turns after the one at point and save the shorter transcript (`w` in the transcript) |
 | `M-x harmless-edit-prompt` | Replace the prompt at point, drop what follows, and send the new text (`E` in the transcript) |
 | `M-x harmless-fork` | Copy the transcript through the turn at point into a new session (`f` in the transcript) |
+| `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
 In the prompt window: `C-c C-c` sends.  While a turn is streaming, `C-c C-c`
@@ -292,8 +293,8 @@ into the project.
 
 ## Monitors
 
-`monitor` watches a file in the project, a command, or a
-background shell.  A line that matches `pattern` wakes the
+`monitor` watches a file in the project or an added directory, a
+command, or a background shell.  A line that matches `pattern` wakes the
 session.  A file watch does not ask.  A command that can write
 still asks, and plan mode refuses it.  `monitor_stop` stops the
 watch.  Nothing is written into the project.
@@ -346,6 +347,12 @@ does not override plan mode, a deny rule, or the
 dangerous-command list, and it does not skip the question.  A
 hook is a function, a command, an HTTP request, an MCP call, a
 prompt, or a subagent.  The list is not saved on the session.
+`M-x harmless-add-directory` lets the session read and edit a
+directory outside the project.  Nil, `""`, a relative path, `/`,
+and `c:/` are refused and are not expanded.  The list is saved
+with the session.  A path outside the project and outside every
+added directory is still refused.  The shell's remembered
+directory stays inside the project.
 
 ## Plan mode
 

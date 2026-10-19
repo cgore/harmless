@@ -159,6 +159,8 @@ and signals.  SESSION is not modified."
                 (copy-tree (harmless-session-worktree session)))
           (setf (harmless-session-rules child)
                 (copy-tree (harmless-session-rules session)))
+          (setf (harmless-session-extra-dirs child)
+                (copy-sequence (harmless-session-extra-dirs session)))
           (harmless-session-save child)
           child)
       (error

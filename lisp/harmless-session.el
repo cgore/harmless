@@ -148,7 +148,8 @@ Nil, \"\", and an unknown name are `ask'.  `auto' is kept."
   worktree
   findings
   schedules
-  rules)
+  rules
+  extra-dirs)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -533,7 +534,9 @@ Timers are not included."
          :shell-cwd (harmless-session-shell-cwd session))
    (harmless-session--agent-summary session)
    (harmless-session--worktree-summary session)
-   (harmless-session--schedules-summary session)))
+   (harmless-session--schedules-summary session)
+   (when (fboundp 'harmless-extra-summary)
+     (harmless-extra-summary session))))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -650,6 +653,8 @@ Signal when that path would be /NAME or outside the sessions root."
         (harmless-session--schedules-from-summary session summary))
       (when (fboundp 'harmless-perm-install-configured-rules)
         (harmless-perm-install-configured-rules session))
+      (when (fboundp 'harmless-extra-restore)
+        (harmless-extra-restore session (plist-get summary :extra-dirs)))
       session)))
 
 (defun harmless-session-list-on-disk ()

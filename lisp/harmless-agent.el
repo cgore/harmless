@@ -596,6 +596,8 @@ A worktree in ARGS is an isolated checkout.  The parent stays put."
                 :max max
                 :error nil
                 :task prompt))
+    (setf (harmless-session-extra-dirs child)
+          (copy-sequence (harmless-session-extra-dirs session)))
     (harmless-session-save child)
     child))
 

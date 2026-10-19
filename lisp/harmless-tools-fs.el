@@ -37,8 +37,9 @@
 ;;; Commentary:
 ;;
 ;; read_file, write_file, replace, apply_patch, list_dir, grep, glob.
-;; Paths must stay inside the session cwd.  apply_patch writes nothing
-;; when any hunk fails.  grep uses ripgrep, then ag, then an Elisp scan.
+;; Paths must stay inside the session cwd or a directory added with
+;; `harmless-add-directory'.  apply_patch writes nothing when any hunk
+;; fails.  grep uses ripgrep, then ag, then an Elisp scan.
 
 ;;; Code:
 
@@ -48,6 +49,9 @@
 (require 'harmless-util)
 (require 'harmless-session)
 (require 'harmless-tools)
+
+(defvar harmless--session)
+(declare-function harmless--context-session "harmless")
 
 (defcustom harmless-read-file-max-bytes 100000
   "Maximum number of bytes `read_file' returns to the model."
@@ -62,13 +66,150 @@
         (string-prefix-p root (file-name-as-directory path))
         (string= (directory-file-name root) path))))
 
+(defun harmless-extra-root-text-p (text)
+  "Return non-nil if TEXT is \"/\" or a drive root.
+TEXT is not expanded.  A relative path and \"~\" are not roots."
+  (and (stringp text)
+       (or (equal text "/")
+           (string-match-p "\\`[A-Za-z]:[/\\]?\\'" text)
+           (and (file-name-absolute-p text)
+                (not (string-prefix-p "~" text))
+                (harmless-filesystem-root-p text)))))
+
+(defun harmless-extra-normalize (session directory)
+  "Return DIRECTORY as a directory SESSION may read and edit.
+Nil, \"\", and whitespace signal \"extra directory is empty\".
+A non-string signals \"extra directory must be a string\".
+A relative path, including \"~\", signals \"extra directory must
+be absolute\" and is not expanded.  \"/\", \"c:/\", and a drive
+root signal \"extra directory is the filesystem root\".  A missing
+path signals \"extra directory is missing\".  A file signals
+\"extra directory is not a directory\".  The project, and a
+directory inside it, signal \"extra directory is inside the
+project\".  DIRECTORY is not created."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (cond
+   ((null directory) (error "extra directory is empty"))
+   ((not (stringp directory))
+    (error "extra directory must be a string")))
+  (setq directory (string-trim directory))
+  (cond
+   ((string-empty-p directory) (error "extra directory is empty"))
+   ((harmless-extra-root-text-p directory)
+    (error "extra directory is the filesystem root"))
+   ((or (not (file-name-absolute-p directory))
+        (string-prefix-p "~" directory))
+    (error "extra directory must be absolute")))
+  (let* ((cwd (harmless-session-require-project session))
+         (full (file-name-as-directory
+                (file-truename (directory-file-name directory)))))
+    (cond
+     ((or (harmless-filesystem-root-p full)
+          (harmless-extra-root-text-p full))
+      (error "extra directory is the filesystem root"))
+     ((not (file-exists-p (directory-file-name full)))
+      (error "extra directory is missing"))
+     ((not (file-directory-p full))
+      (error "extra directory is not a directory"))
+     ((harmless-tools-fs-inside-p cwd full)
+      (error "extra directory is inside the project"))
+     (t full))))
+
+(defun harmless-extra--usable (session)
+  "Return SESSION extra directories that are safe to search.
+A filesystem root and a drive root are left out."
+  (let (out)
+    (dolist (root (harmless-session-extra-dirs session))
+      (when (and (stringp root)
+                 (not (string-empty-p root))
+                 (file-name-absolute-p root)
+                 (not (string-prefix-p "~" root))
+                 (not (harmless-extra-root-text-p root))
+                 (not (harmless-filesystem-root-p root))
+                 (file-directory-p root))
+        (push root out)))
+    (nreverse out)))
+
+(defun harmless-extra-add (session directory)
+  "Add DIRECTORY to SESSION, save, and return the stored list.
+The same directory is stored once.  A trailing slash does not
+make a second entry."
+  (let ((norm (harmless-extra-normalize session directory))
+        (dirs (copy-sequence (harmless-session-extra-dirs session))))
+    (unless (member norm dirs)
+      (setq dirs (append dirs (list norm)))
+      (setf (harmless-session-extra-dirs session) dirs)
+      (harmless-session-save session))
+    (harmless-session-extra-dirs session)))
+
+(defun harmless-extra-restore (session raw)
+  "Install valid directories from RAW onto SESSION.
+\"/\", a drive root, a relative path, nil, and \"\" are dropped
+and are not expanded.  A missing directory is dropped.  Nothing
+is created."
+  (let (kept)
+    (when (listp raw)
+      (dolist (dir raw)
+        (let ((norm (condition-case nil
+                        (harmless-extra-normalize session dir)
+                      (error nil))))
+          (when (and norm (not (member norm kept)))
+            (push norm kept)))))
+    (setf (harmless-session-extra-dirs session) (nreverse kept))))
+
+(defun harmless-extra-summary (session)
+  "Return a :extra-dirs entry, or nil when SESSION has none."
+  (let ((dirs (harmless-session-extra-dirs session)))
+    (when dirs
+      (list :extra-dirs (copy-sequence dirs)))))
+
+(defun harmless-extra--session ()
+  "Return the session `harmless-add-directory' should change."
+  (cond
+   ((and (boundp 'harmless--session)
+         (harmless-session-p harmless--session))
+    harmless--session)
+   ((and (fboundp 'harmless--context-session)
+         (harmless-session-p (harmless--context-session)))
+    (harmless--context-session))
+   (t (error "No Harmless session"))))
+
+;;;###autoload
+(defun harmless-add-directory (directory)
+  "Let the current session read and edit DIRECTORY.
+DIRECTORY must be absolute and outside the project.  See
+`harmless-extra-normalize' for the refusals.  The list is saved
+with the session."
+  (interactive
+   (progn
+     (harmless-extra--session)
+     (list (read-directory-name "Extra directory: " nil nil t))))
+  (let ((dirs (harmless-extra-add (harmless-extra--session) directory)))
+    (message "Added %s" (car (last dirs)))))
+
+(defun harmless-tools-fs-allowed-p (session path)
+  "Return non-nil if PATH is in SESSION's project or an extra directory."
+  (let ((cwd (harmless-session-require-project session)))
+    (or (harmless-tools-fs-inside-p cwd path)
+        (cl-some (lambda (root)
+                   (harmless-tools-fs-inside-p root path))
+                 (harmless-extra--usable session)))))
+
+(defun harmless-tools-fs--display-path (file root)
+  "Return FILE relative to ROOT, or FILE when it is outside ROOT."
+  (if (harmless-tools-fs-inside-p root file)
+      (file-relative-name file (directory-file-name root))
+    file))
+
 (defun harmless-tools-fs-resolve (session path)
-  "Resolve PATH against SESSION cwd, or signal if it escapes the project."
+  "Resolve PATH against SESSION, or signal if it escapes.
+PATH may stay inside the project or an extra directory."
   (unless (and path (not (string-empty-p path)))
     (error "Path is empty"))
   (let* ((cwd (harmless-session-require-project session))
          (full (expand-file-name path cwd)))
-    (unless (harmless-tools-fs-inside-p cwd full)
+    (unless (harmless-tools-fs-allowed-p session full)
       (error "Path escapes project: %s" path))
     full))
 
@@ -282,30 +423,44 @@ see earlier replacements.  Nothing is written if any hunk fails."
                (directory-files path nil directory-files-no-dot-files-regexp)
                "\n")))
 
+(defun harmless-tools-fs--glob-one (root cwd pattern)
+  "Return files under ROOT whose names match PATTERN.
+A name inside CWD is relative to CWD.  Any other name is absolute."
+  (let (out)
+    (dolist (f (directory-files-recursively root ".*" t))
+      (when (and (not (file-directory-p f))
+                 (harmless-tools-fs-inside-p root f)
+                 (string-match-p
+                  (wildcard-to-regexp (file-name-nondirectory pattern))
+                  (file-name-nondirectory f))
+                 (or (not (string-search "/" pattern))
+                     (and (harmless-tools-fs-inside-p cwd f)
+                          (string-match-p
+                           (wildcard-to-regexp pattern)
+                           (file-relative-name f cwd)))))
+        (push (if (harmless-tools-fs-inside-p cwd f)
+                  (file-relative-name f cwd)
+                f)
+              out)))
+    (nreverse out)))
+
 (defun harmless-tools-fs--glob (session args)
-  "glob implementation."
+  "glob implementation.
+The project and each extra directory are searched."
   (let* ((cwd (harmless-session-require-project session))
          (pattern (or (harmless-tool-arg args :pattern)
                       (harmless-tool-arg args :glob)
-                      "*")))
+                      "*"))
+         (roots (cons cwd (harmless-extra--usable session))))
     (when (harmless-filesystem-root-p cwd)
       (error "Refusing to search the filesystem root"))
-    (let ((files (directory-files-recursively cwd ".*" t)))
-      (mapconcat (lambda (f)
-                   (file-relative-name f cwd))
-                 (seq-filter
-                  (lambda (f)
-                    (and (harmless-tools-fs-inside-p cwd f)
-                         (not (file-directory-p f))
-                         (string-match-p
-                          (wildcard-to-regexp (file-name-nondirectory pattern))
-                          (file-name-nondirectory f))
-                         (or (not (string-search "/" pattern))
-                             (string-match-p
-                              (wildcard-to-regexp pattern)
-                              (file-relative-name f cwd)))))
-                  files)
-                 "\n"))))
+    (mapconcat #'identity
+               (apply #'append
+                      (mapcar (lambda (root)
+                                (harmless-tools-fs--glob-one
+                                 root cwd pattern))
+                              roots))
+               "\n")))
 
 (defvar harmless-tools-fs--file-type-cache (make-hash-table :test 'equal)
   "File type names keyed by search program, \"rg\" or \"ag\".")
@@ -581,9 +736,10 @@ and context lines are path-line-text."
                   out))))
       (nreverse out))))
 
-(defun harmless-tools-fs--grep-file (file cwd pattern context)
-  "Return formatted grep lines for FILE, or nil when it has no match."
-  (let ((rel (file-relative-name file (directory-file-name cwd)))
+(defun harmless-tools-fs--grep-file (file display pattern context)
+  "Return formatted grep lines for FILE, or nil when it has no match.
+DISPLAY is the path printed for FILE."
+  (let ((rel display)
         (lines nil)
         (matches nil)
         (n 0))
@@ -603,16 +759,21 @@ and context lines are path-line-text."
       (harmless-tools-fs--grep-format
        rel (nreverse lines) (nreverse matches) context))))
 
-(defun harmless-tools-fs--grep-elisp (root scan pattern glob context)
-  "Search SCAN, which is inside ROOT, with an Elisp line scan.
-Result paths are relative to ROOT."
+(defun harmless-tools-fs--grep-elisp (session root scan pattern glob context)
+  "Search SCAN for PATTERN with an Elisp line scan.
+SCAN is inside SESSION's project or an extra directory.  A path
+inside ROOT is printed relative to ROOT.  A path outside ROOT is
+absolute."
   (let (parts)
     (dolist (file (directory-files-recursively scan ".*" nil))
       (when (and (file-regular-p file)
-                 (harmless-tools-fs-inside-p root file)
+                 (harmless-tools-fs-allowed-p session file)
                  (harmless-tools-fs-grep-glob-p
                   glob (file-relative-name file (directory-file-name root))))
-        (let ((lines (harmless-tools-fs--grep-file file root pattern context)))
+        (let ((lines (harmless-tools-fs--grep-file
+                      file
+                      (harmless-tools-fs--display-path file root)
+                      pattern context)))
           (when lines
             (setq parts (append parts
                                 (when (and parts (> context 0))
@@ -625,7 +786,8 @@ Result paths are relative to ROOT."
 ENGINE selects ripgrep, ag, or the Elisp scan.  With no engine, use
 the first installed program, and otherwise scan in Elisp.  Ripgrep
 and ag skip ignored files and .git, and they read hidden files.
-MULTILINE is ripgrep only."
+MULTILINE is ripgrep only.  With no PATH, the project and each
+extra directory are searched."
   (let* ((cwd (harmless-session-require-project session))
          (pattern (harmless-tools-fs-grep-pattern args))
          (glob (harmless-tool-arg args :glob))
@@ -635,7 +797,8 @@ MULTILINE is ripgrep only."
                    (harmless-tool-arg args :context)))
          (type (harmless-tool-arg args :type))
          (multiline (harmless-json-true-p
-                     (harmless-tool-arg args :multiline))))
+                     (harmless-tool-arg args :multiline)))
+         (raw-path (harmless-tool-arg args :path)))
     (when (harmless-filesystem-root-p cwd)
       (error "Refusing to search the filesystem root"))
     (when (and multiline (equal engine "ag"))
@@ -645,34 +808,50 @@ MULTILINE is ripgrep only."
     (when (and multiline (equal engine "elisp"))
       (error "multiline search requires ripgrep"))
     (let* ((program (harmless-tools-fs-grep-require-program engine))
-           (place (progn
-                    (harmless-tools-fs-grep-check-type engine type)
-                    (harmless-tools-fs-grep-directory
-                     session cwd (harmless-tool-arg args :path))))
-           (text (if (null program)
-                     (harmless-tools-fs--grep-elisp
-                      cwd (car place) pattern glob context)
-                   (harmless-tools-fs-grep-normalize
-                    (harmless-tools-fs--search-external
-                     program
-                     (if (equal engine "ag")
-                         (harmless-tools-fs-ag-args
-                          pattern (cdr place) context type)
-                       (harmless-tools-fs-rg-args
-                        pattern (cdr place) context type multiline))
-                     cwd)
-                    glob))))
-      (harmless-tools-fs-grep-finish text))))
+           (places (progn
+                     (harmless-tools-fs-grep-check-type engine type)
+                     (if raw-path
+                         (list (harmless-tools-fs-grep-directory
+                                session cwd raw-path))
+                       (mapcar
+                        (lambda (directory)
+                          (cons directory
+                                (if (harmless-same-directory-p
+                                     directory cwd)
+                                    "."
+                                  (file-relative-name
+                                   (directory-file-name directory)
+                                   (directory-file-name cwd)))))
+                        (cons cwd (harmless-extra--usable session))))))
+           (parts nil))
+      (dolist (place places)
+        (let ((text (if (null program)
+                        (harmless-tools-fs--grep-elisp
+                         session cwd (car place) pattern glob context)
+                      (harmless-tools-fs-grep-normalize
+                       (harmless-tools-fs--search-external
+                        program
+                        (if (equal engine "ag")
+                            (harmless-tools-fs-ag-args
+                             pattern (cdr place) context type)
+                          (harmless-tools-fs-rg-args
+                           pattern (cdr place) context type multiline))
+                        cwd)
+                       glob))))
+          (unless (string-empty-p text)
+            (push text parts))))
+      (harmless-tools-fs-grep-finish
+       (mapconcat #'identity (nreverse parts) "\n")))))
 
 (defun harmless-tools-fs-register ()
   "Register filesystem tools."
   (harmless-register-tool
    (harmless-tool-create
     :name "read_file"
-    :description "Read a file in the project. Path is relative to the project root. Optional 1-based offset and limit select lines."
+    :description "Read a file in the project or an added directory. Path is relative to the project root, or absolute inside an added directory. Optional 1-based offset and limit select lines."
     :class 'read
     :schema '(:type "object"
-              :properties (:path (:type "string" :description "Path relative to the project root")
+              :properties (:path (:type "string" :description "Path relative to the project root, or absolute inside an added directory")
                            :offset (:type "integer" :description "1-based starting line")
                            :limit (:type "integer" :description "Maximum number of lines"))
               :required ["path"])
@@ -718,7 +897,7 @@ MULTILINE is ripgrep only."
   (harmless-register-tool
    (harmless-tool-create
     :name "list_dir"
-    :description "List files and subdirectories in PATH (relative to the project root)."
+    :description "List files and subdirectories in PATH. PATH is relative to the project root, or an added directory."
     :class 'read
     :schema '(:type "object"
               :properties (:path (:type "string"))
@@ -727,7 +906,7 @@ MULTILINE is ripgrep only."
   (harmless-register-tool
    (harmless-tool-create
     :name "glob"
-    :description "Find files under the project root matching a glob PATTERN (basename or relative path)."
+    :description "Find files under the project root or an added directory matching a glob PATTERN (basename or relative path)."
     :class 'read
     :schema '(:type "object"
               :properties (:pattern (:type "string"))
@@ -736,14 +915,14 @@ MULTILINE is ripgrep only."
   (harmless-register-tool
    (harmless-tool-create
     :name "grep"
-    :description "Search project files for a regular expression PATTERN. ENGINE is rg, ag, or elisp. With no engine, use ripgrep, then ag, then an Elisp scan. rg and ag skip ignored files and .git, and they search hidden files. The Elisp scan reads every file. CONTEXT is the number of context lines. TYPE is a file type name from that engine. MULTILINE matches across lines and requires ripgrep. GLOB limits basenames. PATH is a directory inside the project."
+    :description "Search files for a regular expression PATTERN. ENGINE is rg, ag, or elisp. With no engine, use ripgrep, then ag, then an Elisp scan. rg and ag skip ignored files and .git, and they search hidden files. The Elisp scan reads every file. CONTEXT is the number of context lines. TYPE is a file type name from that engine. MULTILINE matches across lines and requires ripgrep. GLOB limits basenames. PATH is a directory inside the project or an added directory. With no PATH, the project and each added directory are searched."
     :class 'read
     :schema '(:type "object"
               :properties (:pattern (:type "string")
                            :glob (:type "string"
                                   :description "Basename glob, such as *.el")
                            :path (:type "string"
-                                  :description "Directory relative to the project root")
+                                  :description "Directory in the project or an added directory")
                            :engine (:type "string"
                                     :description "rg, ag, or elisp")
                            :context (:type "integer"
