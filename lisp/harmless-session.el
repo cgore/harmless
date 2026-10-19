@@ -50,6 +50,8 @@
 (require 'harmless-log)
 (require 'harmless-provider)
 
+(declare-function harmless-tools-shell-kill "harmless-tools-shell" (proc))
+
 (defcustom harmless-directory (locate-user-emacs-file "harmless/")
   "Root directory for Harmless config and sessions.
 Defaults to `harmless/' under `user-emacs-directory' (for example
@@ -99,12 +101,47 @@ location.  A relative path or the filesystem root is refused."
   buffer
   prompt-buffer
   title-locked
-  plan-mode)
+  plan-mode
+  processes
+  tool-batch)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
   (dolist (fn harmless-event-functions)
     (funcall fn session event)))
+
+(defun harmless-session-track-process (session proc)
+  "Remember PROC as an in-flight process for SESSION."
+  (when (processp proc)
+    (setf (harmless-session-processes session)
+          (cons proc (delq proc (harmless-session-processes session))))
+    (setf (harmless-session-process session) proc))
+  proc)
+
+(defun harmless-session-untrack-process (session proc)
+  "Forget PROC as an in-flight process for SESSION."
+  (setf (harmless-session-processes session)
+        (delq proc (harmless-session-processes session)))
+  (when (eq (harmless-session-process session) proc)
+    (setf (harmless-session-process session)
+          (car (harmless-session-processes session))))
+  nil)
+
+(defun harmless-session-kill-processes (session)
+  "Stop SESSION's in-flight HTTP request and foreground shells."
+  (let ((procs (copy-sequence (harmless-session-processes session))))
+    (when (and (processp (harmless-session-process session))
+               (not (memq (harmless-session-process session) procs)))
+      (push (harmless-session-process session) procs))
+    (dolist (proc procs)
+      (when (process-live-p proc)
+        (if (string-prefix-p "harmless-shell" (or (process-name proc) ""))
+            (progn
+              (require 'harmless-tools-shell)
+              (harmless-tools-shell-kill proc))
+          (harmless-provider-abort (harmless-session-provider session) proc))))
+    (setf (harmless-session-processes session) nil
+          (harmless-session-process session) nil)))
 
 (defun harmless-session-effective-reasoning-effort (session)
   "Return SESSION's reasoning effort, falling back to the default."

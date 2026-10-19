@@ -420,6 +420,12 @@ The model does not change your files by printing a diff.  It calls
 tools.  You see each call in the transcript.  Permission rules are in
 *note Permissions::.
 
+   Tool calls in one reply run together.  Harmless asks for permission
+one call at a time.  An allowed call starts before the next question, so
+several shell commands overlap.  Results are added to the transcript in
+the order the model requested them.  Abort cancels the calls that are
+still running.
+
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root.  A path that escapes the project is
 refused.  An empty path is refused.  The filesystem root is not a
@@ -1002,21 +1008,21 @@ Node: Permissions10292
 Node: Accounts11539
 Node: Models13784
 Node: Tools14880
-Node: File tools15773
-Node: Search17007
-Node: Shell18648
-Node: Questions19309
-Node: Instructions20061
-Node: Skills21807
-Node: Memory22956
-Node: Plan mode24221
-Node: Usage25634
-Node: Files26653
-Node: Keys27886
-Node: Trouble29109
-Node: Manual30096
-Node: Command Index30801
-Node: Key Index33495
+Node: File tools16075
+Node: Search17309
+Node: Shell18950
+Node: Questions19611
+Node: Instructions20363
+Node: Skills22109
+Node: Memory23258
+Node: Plan mode24523
+Node: Usage25936
+Node: Files26955
+Node: Keys28188
+Node: Trouble29411
+Node: Manual30398
+Node: Command Index31103
+Node: Key Index33797
 
 End Tag Table
 

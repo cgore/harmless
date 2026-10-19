@@ -7,6 +7,7 @@
 (require 'harmless-session)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
+(require 'harmless-tools-shell)
 (require 'harmless-perm)
 (require 'harmless-turn)
 
@@ -175,5 +176,276 @@
                            (harmless-session-messages session))))
     (should (cl-find '(:error "The model returned an empty reply.")
                      events :test #'equal))))
+
+(defun harmless-turn-test--wait (session)
+  "Wait until SESSION is idle or the wait gives up."
+  (let ((n 0))
+    (while (and (not (eq (harmless-session-status session) 'idle))
+                (< n 50))
+      (setq n (1+ n))
+      (accept-process-output nil 0.1))))
+
+(ert-deftest harmless-turn-runs-tools-together ()
+  (let* ((dir (make-temp-file "harmless-parallel-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-tools harmless-tools)
+         (harmless-perm-ask-function
+          (lambda (&rest _) (error "Read tools must not ask for permission")))
+         (started nil)
+         (release nil)
+         (seen nil)
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (messages callback)
+             (setq calls (1+ calls))
+             (if (= calls 1)
+                 (progn
+                   (funcall callback
+                            '(:tool-call "a" "hold"
+                              "{\"label\":\"a\"}"))
+                   (funcall callback
+                            '(:tool-call "b" "hold"
+                              "{\"label\":\"b\"}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (setq seen messages)
+               (funcall callback '(:text "both"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (harmless-register-tool
+     (harmless-tool-create
+      :name "hold"
+      :description "Hold the callback until the test releases it."
+      :class 'read
+      :async t
+      :schema '(:type "object"
+                :properties (:label (:type "string"))
+                :required ["label"])
+      :fn (lambda (_session args callback)
+            (let ((label (harmless-tool-arg args :label)))
+              (push label started)
+              (push (cons label callback) release)))))
+    (harmless-turn-run session "run both")
+    (should (= calls 1))
+    (should (equal '("b" "a") started))
+    (should (= 2 (length release)))
+    (should (equal '(:user :assistant)
+                   (mapcar (lambda (m) (plist-get m :role))
+                           (harmless-session-messages session))))
+    (funcall (cdr (assoc "b" release)) "bee")
+    (should (= calls 1))
+    (should (equal '(:user :assistant)
+                   (mapcar (lambda (m) (plist-get m :role))
+                           (harmless-session-messages session))))
+    (funcall (cdr (assoc "a" release)) "ay")
+    (should (= calls 2))
+    (should (eq 'idle (harmless-session-status session)))
+    (should (equal '(:user :assistant :tool :tool :assistant)
+                   (mapcar (lambda (m) (plist-get m :role))
+                           (harmless-session-messages session))))
+    (let ((tools (seq-filter (lambda (m) (eq (plist-get m :role) :tool))
+                             (harmless-session-messages session))))
+      (should (equal '("ay" "bee")
+                     (mapcar (lambda (m) (plist-get m :content)) tools)))
+      (should (equal '("a" "b")
+                     (mapcar (lambda (m) (plist-get m :id)) tools))))
+    (let ((sent (seq-filter (lambda (m) (eq (plist-get m :role) :tool))
+                            seen)))
+      (should (equal '("ay" "bee")
+                     (mapcar (lambda (m) (plist-get m :content)) sent))))))
+
+(ert-deftest harmless-turn-asks-for-the-next-tool-before-the-first-finishes ()
+  (let* ((dir (make-temp-file "harmless-pipeline-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-tools harmless-tools)
+         (asks nil)
+         (harmless-perm-ask-function
+          (lambda (_session _class item callback)
+            (push (cons item callback) asks)))
+         (started nil)
+         (release nil)
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (if (= calls 1)
+                 (progn
+                   (funcall callback
+                            '(:tool-call "1" "hold"
+                              "{\"path\":\"one\"}"))
+                   (funcall callback
+                            '(:tool-call "2" "hold"
+                              "{\"path\":\"two\"}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (funcall callback '(:text "ok"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (harmless-register-tool
+     (harmless-tool-create
+      :name "hold"
+      :description "Hold the callback until the test releases it."
+      :class 'edit
+      :async t
+      :schema '(:type "object"
+                :properties (:path (:type "string"))
+                :required ["path"])
+      :fn (lambda (_session args callback)
+            (push (harmless-tool-arg args :path) started)
+            (push callback release))))
+    (harmless-turn-run session "edit both")
+    (should (= calls 1))
+    (should (equal '("one") (mapcar #'car asks)))
+    (should (null started))
+    (funcall (cdr (car asks)) 'allow)
+    (should (equal '("one") started))
+    (should (equal '("two" "one") (mapcar #'car asks)))
+    (should (= 1 (length release)))
+    (funcall (cdr (car asks)) 'allow)
+    (should (equal '("two" "one") started))
+    (should (= calls 1))
+    (funcall (nth 1 release) "first-done")
+    (funcall (nth 0 release) "second-done")
+    (should (= calls 2))
+    (let ((tools (seq-filter (lambda (m) (eq (plist-get m :role) :tool))
+                             (harmless-session-messages session))))
+      (should (equal '("first-done" "second-done")
+                     (mapcar (lambda (m) (plist-get m :content)) tools))))))
+
+(ert-deftest harmless-turn-abort-skips-late-tool-results ()
+  (let* ((dir (make-temp-file "harmless-abort-batch-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-tools harmless-tools)
+         (release nil)
+         (calls 0)
+         (events nil)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (funcall callback '(:tool-call "a" "hold" "{\"label\":\"a\"}"))
+             (funcall callback '(:tool-call "b" "hold" "{\"label\":\"b\"}"))
+             (funcall callback '(:stop "tool_calls")))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (harmless-register-tool
+     (harmless-tool-create
+      :name "hold"
+      :description "Hold the callback until the test releases it."
+      :class 'read
+      :async t
+      :schema '(:type "object")
+      :fn (lambda (_session _args callback)
+            (push callback release))))
+    (let ((harmless-event-functions
+           (cons (lambda (_s event) (push event events))
+                 harmless-event-functions)))
+      (harmless-turn-run session "go")
+      (should (= 2 (length release)))
+      (harmless-turn-abort session)
+      (dolist (callback release)
+        (funcall callback "late"))
+      (should (= calls 1))
+      (should (eq 'idle (harmless-session-status session)))
+      (should (equal '(:user :assistant)
+                     (mapcar (lambda (m) (plist-get m :role))
+                             (harmless-session-messages session))))
+      (should (cl-find '(:error "aborted") events :test #'equal)))))
+
+(ert-deftest harmless-turn-unknown-tool-does-not-block-the-rest ()
+  (let* ((dir (make-temp-file "harmless-unknown-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-tools harmless-tools)
+         (release nil)
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (if (= calls 1)
+                 (progn
+                   (funcall callback
+                            '(:tool-call "a" "hold" "{\"label\":\"a\"}"))
+                   (funcall callback
+                            '(:tool-call "z" "missing" "{}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (funcall callback '(:text "ok"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (harmless-register-tool
+     (harmless-tool-create
+      :name "hold"
+      :description "Hold the callback until the test releases it."
+      :class 'read
+      :async t
+      :schema '(:type "object")
+      :fn (lambda (_session _args callback)
+            (push callback release))))
+    (harmless-turn-run session "go")
+    (should (= 1 (length release)))
+    (should (= calls 1))
+    (funcall (car release) "held")
+    (should (= calls 2))
+    (let ((tools (seq-filter (lambda (m) (eq (plist-get m :role) :tool))
+                             (harmless-session-messages session))))
+      (should (equal '("held" "Error: unknown tool missing")
+                     (mapcar (lambda (m) (plist-get m :content)) tools))))))
+
+(ert-deftest harmless-turn-runs-two-shells ()
+  (let* ((dir (make-temp-file "harmless-two-shells-" t))
+         (harmless-directory (expand-file-name ".harmless" dir))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (harmless-perm-ask-function
+          (lambda (_s _c _i cb) (funcall cb 'allow)))
+         (calls 0)
+         (provider
+          (harmless-make-fake
+           :name "fake"
+           :host "none"
+           :script
+           (lambda (_messages callback)
+             (setq calls (1+ calls))
+             (if (= calls 1)
+                 (progn
+                   (funcall callback
+                            '(:tool-call "1" "run_shell"
+                              "{\"command\":\"echo one\"}"))
+                   (funcall callback
+                            '(:tool-call "2" "run_shell"
+                              "{\"command\":\"echo two\"}"))
+                   (funcall callback '(:stop "tool_calls")))
+               (funcall callback '(:text "done"))
+               (funcall callback '(:stop "stop"))))))
+         (harmless-providers (list provider))
+         (session (harmless-session-new :cwd dir :provider provider :model "m")))
+    (harmless-turn-run session "echo")
+    (harmless-turn-test--wait session)
+    (should (= calls 2))
+    (should (eq 'idle (harmless-session-status session)))
+    (let ((tools (seq-filter (lambda (m) (eq (plist-get m :role) :tool))
+                             (harmless-session-messages session))))
+      (should (= 2 (length tools)))
+      (should (string-match-p "one" (plist-get (nth 0 tools) :content)))
+      (should (string-match-p "two" (plist-get (nth 1 tools) :content)))
+      (should (string-match-p "exit 0" (plist-get (nth 0 tools) :content))))))
 
 (provide 'harmless-turn-tests)

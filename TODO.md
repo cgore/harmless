@@ -8,7 +8,7 @@ Harmless already has the core loop: sessions, streaming turns, `read_file`, `wri
 
 The model cannot start work that runs beside the current turn.
 
-- [ ] Run tool calls from one turn in parallel. Today `harmless-turn--run-tools` runs them one after another.
+- [x] Run tool calls from one turn in parallel. Permission is still one question at a time. An allowed call starts before the next question. Results are recorded in the order the model requested them.
 - [ ] Subagents. A child session with its own context, started by the model, that reports a summary back. A definition file can give that child its own prompt, tools, model, and sandbox (Claude Code `.claude/agents/`, Codex custom agents).
 - [ ] Workflows. One job that runs many child sessions and returns one result: a fixed script (Grok Build), or a script the model writes for this task (Claude Code dynamic workflows, Codex subagent workflows).
 - [ ] Git worktrees, so parallel sessions edit isolated checkouts of the same repository (Claude Code `EnterWorktree`, Codex, Grok Build subagent worktrees).

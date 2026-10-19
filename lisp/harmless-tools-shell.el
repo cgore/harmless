@@ -76,21 +76,34 @@ The UI can still show the full buffer contents."
     (let* ((buf (generate-new-buffer " *harmless-shell*"))
            (cwd (harmless-session-require-project session))
            (timed-out nil)
+           (finished nil)
            (timer nil)
            (proc nil))
+      ;; The sentinel is installed after the process is tracked.  A fast
+      ;; command can exit inside `make-process', and the sentinel would
+      ;; otherwise run before the process is on the session.
       (setq proc
             (let ((default-directory cwd))
-            (make-process
-             :name "harmless-shell"
-             :buffer buf
-             :command (list shell-file-name
-                            (or shell-command-switch "-c")
-                            command)
-             :coding '(utf-8-unix . utf-8-unix)
-             :connection-type 'pipe
-             :sentinel
+              (make-process
+               :name "harmless-shell"
+               :buffer buf
+               :command (list shell-file-name
+                              (or shell-command-switch "-c")
+                              command)
+               :coding '(utf-8-unix . utf-8-unix)
+               :connection-type 'pipe
+               :sentinel #'ignore)))
+      (harmless-session-track-process session proc)
+      (setq timer
+            (run-at-time
+             harmless-shell-timeout-seconds nil
+             (lambda ()
+               (setq timed-out t)
+               (harmless-tools-shell-kill proc))))
+      (let ((sentinel
              (lambda (p _change)
-               (unless (process-live-p p)
+               (unless (or finished (process-live-p p))
+                 (setq finished t)
                  (when timer (cancel-timer timer))
                  (let* ((raw (if (buffer-live-p buf)
                                  (with-current-buffer buf (buffer-string))
@@ -107,19 +120,15 @@ The UI can still show the full buffer contents."
                                      full)))
                    (when (buffer-live-p buf)
                      (kill-buffer buf))
-                   (when (eq (harmless-session-process session) p)
-                     (setf (harmless-session-process session) nil))
+                   (harmless-session-untrack-process session p)
                    (funcall callback
                             (if timed-out
                                 (concat "Error: timed out\n" for-model)
-                              for-model))))))))
-      (setf (harmless-session-process session) proc)
-      (setq timer
-            (run-at-time
-             harmless-shell-timeout-seconds nil
-             (lambda ()
-               (setq timed-out t)
-               (harmless-tools-shell-kill proc))))
+                              for-model)))))))
+        (set-process-sentinel proc sentinel)
+        ;; `ignore' may already have consumed the exit.  Deliver it once.
+        (unless (process-live-p proc)
+          (funcall sentinel proc "exited")))
       proc))))
 
 (defun harmless-tools-shell-register ()
@@ -129,6 +138,7 @@ The UI can still show the full buffer contents."
     :name "run_shell"
     :description "Run a shell command in the project root. Output is truncated for the model."
     :class 'shell
+    :async t
     :schema '(:type "object"
               :properties (:command (:type "string" :description "Shell command"))
               :required ["command"])

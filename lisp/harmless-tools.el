@@ -51,7 +51,8 @@
   description
   schema
   fn
-  class)
+  class
+  async)
 
 (defvar harmless-tools nil
   "List of registered `harmless-tool' objects.")

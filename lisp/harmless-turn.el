@@ -38,6 +38,8 @@
 ;;
 ;; One user message starts a turn: call the provider, stream events, run
 ;; tools with permission, call the provider again until a text stop.
+;; Tool calls from one reply start together.  Permission is one question
+;; at a time, and an allowed call starts before the next question.
 
 ;;; Code:
 
@@ -55,7 +57,7 @@
 (require 'harmless-perm)
 (require 'harmless-usage)
 
-(declare-function harmless-tools-shell-kill "harmless-tools-shell")
+(defvar harmless--perm-callback)
 
 (cl-defstruct (harmless-turn-acc
                (:constructor harmless-turn-acc-create)
@@ -82,18 +84,45 @@
 (declare-function harmless-compact--validate-threshold "harmless-compact" ())
 (declare-function harmless-compact-before-turn "harmless-compact" (session then))
 
+(cl-defstruct (harmless-turn-batch
+               (:constructor harmless-turn-batch-create)
+               (:copier nil))
+  session
+  calls
+  results
+  ready
+  (left 0)
+  (next 0)
+  (flushed 0)
+  (launching nil)
+  (waiting-perm nil)
+  (aborted nil)
+  (finishing nil)
+  continuation)
+
+(defun harmless-turn--clear-permission-prompt (session)
+  "Drop a pending permission question for SESSION."
+  (let ((buf (harmless-session-prompt-buffer session)))
+    (when (and (bufferp buf)
+               (buffer-live-p buf)
+               (boundp 'harmless--perm-callback))
+      (with-current-buffer buf
+        (when harmless--perm-callback
+          (setq harmless--perm-callback nil)
+          (let ((inhibit-read-only t))
+            (setq buffer-read-only nil)
+            (erase-buffer)))))))
+
 (defun harmless-turn-abort (session)
-  "Cancel SESSION's in-flight HTTP or shell process."
+  "Cancel SESSION's in-flight HTTP request, shells, and tool batch."
   (when (fboundp 'harmless-compact-cancel)
     (harmless-compact-cancel session))
-  (when-let* ((proc (harmless-session-process session)))
-    (when (process-live-p proc)
-      (if (string-prefix-p "harmless-shell" (process-name proc))
-          (progn
-            (require 'harmless-tools-shell)
-            (harmless-tools-shell-kill proc))
-        (harmless-provider-abort (harmless-session-provider session) proc))))
-  (setf (harmless-session-process session) nil)
+  (let ((batch (harmless-session-tool-batch session)))
+    (when batch
+      (setf (harmless-turn-batch-aborted batch) t))
+    (setf (harmless-session-tool-batch session) nil))
+  (harmless-turn--clear-permission-prompt session)
+  (harmless-session-kill-processes session)
   (harmless-session-set-status session 'idle)
   (harmless-emit session '(:error "aborted")))
 
@@ -220,13 +249,20 @@ It is not offered project files, a shell, or plan mode."
         (harmless-session-set-status session 'idle)))))
 
 (defun harmless-turn--run-tools (session calls k)
-  "Run CALLS sequentially on SESSION, then call K."
+  "Start CALLS together on SESSION, then call K when every one has finished.
+Results are appended in CALLS order.  Permission is still one question
+at a time: an allowed call starts before the next question."
   (if (null calls)
       (funcall k)
-    (harmless-turn--run-one
-     session (car calls)
-     (lambda ()
-       (harmless-turn--run-tools session (cdr calls) k)))))
+    (let ((batch (harmless-turn-batch-create
+                  :session session
+                  :calls calls
+                  :results (make-vector (length calls) nil)
+                  :ready (make-vector (length calls) nil)
+                  :left (length calls)
+                  :continuation k)))
+      (setf (harmless-session-tool-batch session) batch)
+      (harmless-turn--launch batch))))
 
 (defun harmless-turn--item-for (tool args)
   "Short description of TOOL with ARGS for a permission prompt."
@@ -236,45 +272,120 @@ It is not offered project files, a shell, or plan mode."
     (_ (harmless-tool-name tool))))
 
 (defun harmless-turn--invoke (tool session args callback)
-  "Invoke TOOL and call CALLBACK with the string result."
-  (if (eq (harmless-tool-class tool) 'shell)
-      (funcall (harmless-tool-fn tool) session args callback)
+  "Invoke TOOL and call CALLBACK with the string result.
+An async tool receives CALLBACK.  A tool that signals still calls
+CALLBACK with an Error string."
+  (if (harmless-tool-async tool)
+      (condition-case err
+          (funcall (harmless-tool-fn tool) session args callback)
+        (error (funcall callback
+                        (format "Error: %s" (error-message-string err)))))
     (funcall callback (harmless-tool-call tool session args))))
 
-(defun harmless-turn--run-one (session call k)
-  "Run one CALL plist on SESSION, then K."
-  (let* ((id (plist-get call :id))
-         (name (plist-get call :name))
-         (raw (plist-get call :args))
-         (args (harmless-tool-parse-args raw))
-         (tool (harmless-tool-by-name name)))
-    (if (not tool)
-        (progn
-          (harmless-session-append
-           session (list :role :tool :id id :name name
-                         :content (format "Error: unknown tool %s" name)))
-          (funcall k))
-    (harmless-perm-confirm
-     session
-     (harmless-tool-class tool)
-     (harmless-turn--item-for tool args)
-     (lambda (decision)
-       (if (eq decision 'deny)
-           (progn
-             (harmless-session-append
-              session
-              (list :role :tool :id id :name name
-                    :content "Error: user denied this tool call"))
-             (funcall k))
-         (harmless-session-set-status session 'streaming)
-         (harmless-turn--invoke
-          tool session args
-          (lambda (result)
-            (harmless-session-append
-             session
-             (list :role :tool :id id :name name :content result))
-            (harmless-emit session (list :tool-result id name result))
-            (funcall k)))))))))
+(defun harmless-turn--tool-message (call content)
+  "Return the tool-result message for CALL and CONTENT."
+  (list :role :tool
+        :id (plist-get call :id)
+        :name (plist-get call :name)
+        :content content))
+
+(defun harmless-turn--flush (batch)
+  "Append BATCH results that are ready, in call order."
+  (let ((session (harmless-turn-batch-session batch))
+        (n (length (harmless-turn-batch-calls batch))))
+    (while (and (< (harmless-turn-batch-flushed batch) n)
+                (aref (harmless-turn-batch-ready batch)
+                      (harmless-turn-batch-flushed batch)))
+      (let* ((i (harmless-turn-batch-flushed batch))
+             (message (aref (harmless-turn-batch-results batch) i)))
+        (harmless-session-append session message)
+        (harmless-emit session (list :tool-result
+                                     (plist-get message :id)
+                                     (plist-get message :name)
+                                     (plist-get message :content)))
+        (setf (harmless-turn-batch-flushed batch) (1+ i))))))
+
+(defun harmless-turn--maybe-finish (batch)
+  "Call BATCH's continuation once every call has been recorded."
+  (let ((session (harmless-turn-batch-session batch)))
+    (when (and (not (harmless-turn-batch-launching batch))
+               (not (harmless-turn-batch-waiting-perm batch))
+               (not (harmless-turn-batch-aborted batch))
+               (not (harmless-turn-batch-finishing batch))
+               (<= (harmless-turn-batch-left batch) 0)
+               (eq (harmless-session-tool-batch session) batch))
+      (setf (harmless-turn-batch-finishing batch) t)
+      (setf (harmless-session-tool-batch session) nil)
+      (funcall (harmless-turn-batch-continuation batch)))))
+
+(defun harmless-turn--finish-call (batch index message)
+  "Record MESSAGE as call INDEX in BATCH."
+  (when (and batch
+             (not (harmless-turn-batch-aborted batch))
+             (not (aref (harmless-turn-batch-ready batch) index)))
+    (aset (harmless-turn-batch-results batch) index message)
+    (aset (harmless-turn-batch-ready batch) index t)
+    (setf (harmless-turn-batch-left batch)
+          (1- (harmless-turn-batch-left batch)))
+    (harmless-turn--flush batch)
+    (harmless-turn--maybe-finish batch)))
+
+(defun harmless-turn--launch (batch)
+  "Start every not-yet-started call in BATCH.
+Stops at the first permission question.  A synchronous confirmer runs
+inside this loop, so it must not start the loop again."
+  (unless (harmless-turn-batch-aborted batch)
+    (setf (harmless-turn-batch-launching batch) t)
+    (unwind-protect
+        (let ((calls (harmless-turn-batch-calls batch)))
+          (while (and (< (harmless-turn-batch-next batch) (length calls))
+                      (not (harmless-turn-batch-aborted batch))
+                      (not (harmless-turn-batch-waiting-perm batch)))
+            (harmless-turn--start-one batch (harmless-turn-batch-next batch))
+            (setf (harmless-turn-batch-next batch)
+                  (1+ (harmless-turn-batch-next batch)))))
+      (setf (harmless-turn-batch-launching batch) nil))
+    (harmless-turn--maybe-finish batch)))
+
+(defun harmless-turn--start-one (batch index)
+  "Start call INDEX in BATCH."
+  (let* ((session (harmless-turn-batch-session batch))
+         (call (nth index (harmless-turn-batch-calls batch)))
+         (args (harmless-tool-parse-args (plist-get call :args)))
+         (tool (harmless-tool-by-name (plist-get call :name))))
+    (cond
+     ((harmless-turn-batch-aborted batch) nil)
+     ((not tool)
+      (harmless-turn--finish-call
+       batch index
+       (harmless-turn--tool-message
+        call (format "Error: unknown tool %s" (plist-get call :name)))))
+     (t
+      (setf (harmless-turn-batch-waiting-perm batch) t)
+      (harmless-perm-confirm
+       session
+       (harmless-tool-class tool)
+       (harmless-turn--item-for tool args)
+       (lambda (decision)
+         (setf (harmless-turn-batch-waiting-perm batch) nil)
+         (cond
+          ((harmless-turn-batch-aborted batch) nil)
+          ((eq decision 'deny)
+           (harmless-turn--finish-call
+            batch index
+            (harmless-turn--tool-message
+             call "Error: user denied this tool call")))
+          (t
+           (harmless-session-set-status session 'streaming)
+           (harmless-turn--invoke
+            tool session args
+            (lambda (result)
+              (harmless-turn--finish-call
+               batch index
+               (harmless-turn--tool-message call result))))))
+         (unless (or (harmless-turn-batch-launching batch)
+                     (harmless-turn-batch-aborted batch))
+           (harmless-turn--launch batch))))))))
 
 (provide 'harmless-turn)
 
