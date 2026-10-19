@@ -2159,6 +2159,23 @@ recorded percent of the known context window.  A blank kind is refused:
 watchdog must be a string’.  Any other kind is refused: ‘team watchdog
 is not a kind’.
 
+   ‘M-x harmless-team-snapshot’ stores a named copy of the rig in its
+own file.  ‘M-x harmless-team-snapshot-check’ reads that copy and
+reports each seat: ‘resumed’, ‘rebuilt’, ‘fresh’, ‘waiting’, or
+‘failed’.  The check does not write.  A fresh start is a list of seats,
+or one seat, and the report labels it ‘fresh’.  ‘M-x
+harmless-team-snapshot-restore’ writes that copy back only when no seat
+failed.  A failed seat is refused: ‘team snapshot cannot restore’.  The
+rig file is left unchanged.  A blank name is refused: ‘team snapshot is
+empty’.  A name that is not text is refused: ‘team snapshot must be a
+string’.  Any other name is refused: ‘team snapshot is not a name’.  A
+snapshot that already exists is refused: ‘team snapshot already exists’.
+A missing snapshot is refused: ‘team snapshot is missing’.  A fresh
+value that is not a list is refused: ‘team snapshot fresh must be a
+list’.  A seat that is not in the snapshot is refused: ‘team seat is
+missing’.  A snapshot file that cannot be read is refused: ‘team
+snapshot is not valid’.
+
    A blank runtime is refused: ‘team runtime is empty’.  A runtime that
 is not text is refused: ‘team runtime must be a string’.  Any other
 runtime is refused: ‘team runtime is not a runtime’.  A blank session is
@@ -2410,6 +2427,13 @@ replaced with ‘/’.
      that nobody owns yet.  It also holds a declared workflow.  Closing
      its current step opens the next step.  It also holds watchdog jobs
      that remain after Emacs restarts.  *Note Team::.
+
+‘teams/snapshots/RIG/NAME.json’
+     A named snapshot of that rig.  The report says, per seat, whether
+     it resumed, was rebuilt, started fresh, is waiting on a decision,
+     or failed.  A fresh start is a choice.  Checking the snapshot does
+     not write.  Restoring writes the rig back only when no seat failed.
+     *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2678,6 +2702,9 @@ Command Index
 * harmless-team-rows:                    Team.                 (line  6)
 * harmless-team-seat:                    Team.                 (line  6)
 * harmless-team-send:                    Team.                 (line  6)
+* harmless-team-snapshot:                Team.                 (line  6)
+* harmless-team-snapshot-check:          Team.                 (line  6)
+* harmless-team-snapshot-restore:        Team.                 (line  6)
 * harmless-team-transcript:              Team.                 (line  6)
 * harmless-team-watchdog:                Team.                 (line  6)
 * harmless-team-watchdog-check:          Team.                 (line  6)
@@ -2766,15 +2793,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory108850
-Node: Plan mode111440
-Node: Usage114426
-Node: Files115445
-Node: Keys117667
-Node: Trouble119349
-Node: Manual120603
-Node: Command Index121308
-Node: Key Index128528
+Node: Memory109972
+Node: Plan mode112562
+Node: Usage115548
+Node: Files116567
+Node: Keys119132
+Node: Trouble120814
+Node: Manual122068
+Node: Command Index122773
+Node: Key Index130212
 
 End Tag Table
 

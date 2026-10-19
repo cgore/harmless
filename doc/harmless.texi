@@ -2234,6 +2234,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-watchdog
 @findex harmless-team-watchdogs
 @findex harmless-team-watchdog-check
+@findex harmless-team-snapshot
+@findex harmless-team-snapshot-check
+@findex harmless-team-snapshot-restore
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2478,6 +2481,26 @@ blank kind is refused: @samp{team watchdog is empty}.  A kind
 that is not text is refused: @samp{team watchdog must be a
 string}.  Any other kind is refused: @samp{team watchdog is
 not a kind}.
+
+@kbd{M-x harmless-team-snapshot} stores a named copy of the rig
+in its own file.  @kbd{M-x harmless-team-snapshot-check} reads
+that copy and reports each seat: @code{resumed}, @code{rebuilt},
+@code{fresh}, @code{waiting}, or @code{failed}.  The check does
+not write.  A fresh start is a list of seats, or one seat, and
+the report labels it @code{fresh}.
+@kbd{M-x harmless-team-snapshot-restore} writes that copy back
+only when no seat failed.  A failed seat is refused:
+@samp{team snapshot cannot restore}.  The rig file is left
+unchanged.  A blank name is refused: @samp{team snapshot is
+empty}.  A name that is not text is refused: @samp{team snapshot
+must be a string}.  Any other name is refused: @samp{team
+snapshot is not a name}.  A snapshot that already exists is
+refused: @samp{team snapshot already exists}.  A missing
+snapshot is refused: @samp{team snapshot is missing}.  A fresh
+value that is not a list is refused: @samp{team snapshot fresh
+must be a list}.  A seat that is not in the snapshot is
+refused: @samp{team seat is missing}.  A snapshot file that
+cannot be read is refused: @samp{team snapshot is not valid}.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2763,6 +2786,14 @@ The same file holds intake that nobody owns yet.  It also
 holds a declared workflow.  Closing its current step opens
 the next step.  It also holds watchdog jobs that remain after
 Emacs restarts.
+@xref{Team}.
+
+@item teams/snapshots/@var{rig}/@var{name}.json
+A named snapshot of that rig.  The report says, per seat,
+whether it resumed, was rebuilt, started fresh, is waiting on
+a decision, or failed.  A fresh start is a choice.  Checking
+the snapshot does not write.  Restoring writes the rig back
+only when no seat failed.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/

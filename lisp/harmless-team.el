@@ -60,8 +60,12 @@
 ;; write.  The owner decides that the step is done.  A watchdog
 ;; is a reminder, a pool of artifacts, a nudge, an idle queue,
 ;; or a seat near its context wall.  The job stays in the rig
-;; file.  It does not arm a timer or a schedule.  This file
-;; does not register another machine.
+;; file.  It does not arm a timer or a schedule.  A snapshot
+;; is a separate file.  The report says, per seat, whether it
+;; resumed, was rebuilt, started fresh, is waiting, or failed.
+;; A fresh start is a choice.  The check does not write.  A
+;; restore that would fail does not write.  This file does not
+;; register another machine.
 
 ;;; Code:
 
@@ -3288,6 +3292,306 @@ The check reads the rig file and does not arm a job."
   (let ((items (harmless-team--watchdog-check rig)))
     (message "%d due" (length items))
     items))
+
+(defun harmless-team--snapshot-name (name)
+  "Return NAME trimmed, or signal."
+  (harmless-team--token
+   name "team snapshot is empty" "team snapshot must be a string"
+   #'harmless-team--member-name-p "team snapshot is not a name"))
+
+(defun harmless-team--snapshot-fresh-shape (fresh)
+  "Return FRESH when it is nil, one seat, or a list of seats.
+A dotted list is refused.  Seats are resolved later."
+  (cond
+   ((null fresh) nil)
+   ((stringp fresh) fresh)
+   ((listp fresh)
+    (let ((items fresh))
+      (while (consp items)
+        (setq items (cdr items)))
+      (unless (null items)
+        (error "team snapshot fresh must be a list"))
+      fresh))
+   (t (error "team snapshot fresh must be a list"))))
+
+(defun harmless-team--snapshot-directory (rig)
+  "Return the snapshot directory for RIG.  It is not created."
+  (file-name-as-directory
+   (expand-file-name
+    rig
+    (file-name-as-directory
+     (expand-file-name
+      "snapshots" (harmless-team--teams-root nil))))))
+
+(defun harmless-team--snapshot-find (rig name)
+  "Return RIG's snapshot file NAME, or nil.
+The directory is not created."
+  (let ((dir (harmless-team--snapshot-directory rig))
+        (want (concat name ".json"))
+        (found nil))
+    (when (file-directory-p dir)
+      (dolist (file (directory-files dir t "\\.json\\'"))
+        (when (harmless-team--same-p
+               (file-name-nondirectory file) want)
+          (setq found file))))
+    found))
+
+(defun harmless-team--snapshot-new (rig name)
+  "Return a new snapshot file for NAME in RIG, and create its directory."
+  (let* ((dir (harmless-team--snapshot-directory rig))
+         (path (expand-file-name (concat name ".json") dir)))
+    (unless (and (file-name-absolute-p path)
+                 (harmless-directory-strictly-under-p
+                  path (harmless-team--data-directory))
+                 (not (harmless-team--root-text-p path))
+                 (not (equal (file-truename path)
+                             (file-truename "/"))))
+      (error "Refusing to store a team at %s" path))
+    (harmless-ensure-directory dir)
+    path))
+
+(defun harmless-team--snapshot-write (path obj)
+  "Write OBJ as JSON at PATH.  PATH is a snapshot, not the live rig."
+  (unless (and (stringp path)
+               (file-name-absolute-p path)
+               (not (harmless-team--root-text-p path))
+               (not (equal (file-truename path)
+                           (file-truename "/"))))
+    (error "Refusing to store a team at %s" path))
+  (let ((coding-system-for-write 'utf-8-unix))
+    (write-region (harmless-json-text obj) nil path nil 'silent))
+  path)
+
+(defun harmless-team--snapshot-read (path rig name)
+  "Return the snapshot plist at PATH, or signal.
+RIG and NAME are the requested names.  A broken file signals
+\"team snapshot is not valid\" and is not rewritten."
+  (unless (and (stringp path)
+               (file-name-absolute-p path)
+               (file-regular-p path)
+               (not (harmless-team--root-text-p path))
+               (not (equal (file-truename path)
+                           (file-truename "/"))))
+    (error "team snapshot is not valid"))
+  (let* ((text (harmless-team--read-text path))
+         (obj (harmless-json-decode-safe text))
+         (base (file-name-sans-extension
+                (file-name-nondirectory path)))
+         (team (and (harmless-plist-p obj) (plist-get obj :team))))
+    (unless (and (harmless-plist-p obj)
+                 (harmless-team--member-name-p (plist-get obj :name))
+                 (harmless-team--same-p (plist-get obj :name) name)
+                 (harmless-team--same-p (plist-get obj :name) base)
+                 (stringp (plist-get obj :rig))
+                 (harmless-team--same-p (plist-get obj :rig) rig)
+                 (harmless-team--watchdog-due-p (plist-get obj :at))
+                 (harmless-team--structure-p team)
+                 (harmless-team--same-p
+                  (plist-get obj :rig) (plist-get team :name)))
+      (error "team snapshot is not valid"))
+    obj))
+
+(defun harmless-team--snapshot-fresh (team fresh)
+  "Return the stored addresses in FRESH, or signal.
+FRESH is nil, one seat, or a list of seats.  Each seat is
+resolved in TEAM, which is the snapshot."
+  (setq fresh (harmless-team--snapshot-fresh-shape fresh))
+  (cond
+   ((null fresh) nil)
+   ((stringp fresh)
+    (list (harmless-team--endpoint team fresh)))
+   (t
+    (let ((out nil))
+      (dolist (seat fresh)
+        (setq out (append out
+                          (list (harmless-team--endpoint
+                                 team seat)))))
+      out))))
+
+(defun harmless-team--snapshot-live-p (seat)
+  "Return non-nil if SEAT's recorded session is still present.
+This does not start a process or a turn."
+  (let ((session (plist-get seat :session))
+        (runtime (plist-get seat :runtime)))
+    (cond
+     ((or (null runtime)
+          (and (stringp runtime) (string-empty-p runtime))
+          (equal runtime "harmless"))
+      (and (stringp session)
+           (string-match-p harmless-team--session-re session)
+           (condition-case nil
+               (progn (harmless-team--harmless-session session) t)
+             (error nil))))
+     ((equal runtime "terminal")
+      (condition-case nil
+          (progn (harmless-team--terminal-ref session) t)
+        (error nil)))
+     ((member runtime '("claude" "codex" "pi"))
+      (condition-case nil
+          (progn (harmless-team--existing-path session) t)
+        (error nil)))
+     (t nil))))
+
+(defun harmless-team--snapshot-waiting-p (team seat)
+  "Return non-nil if SEAT has a snapshot row that asks a person."
+  (let ((found nil))
+    (dolist (row (plist-get team :rows))
+      (when (and (harmless-team--same-p
+                  (plist-get row :seat)
+                  (plist-get seat :address))
+                 (harmless-team--row-waiting-p row))
+        (setq found t)))
+    found))
+
+(defun harmless-team--snapshot-status (team seat fresh)
+  "Return SEAT's restore status in TEAM.
+FRESH is a list of stored addresses.  One seat has one status."
+  (cond
+   ((harmless-team--seen-p (plist-get seat :address) fresh)
+    "fresh")
+   ((harmless-team--snapshot-waiting-p team seat)
+    "waiting")
+   ((let ((session (plist-get seat :session)))
+      (or (null session)
+          (and (stringp session)
+               (string-empty-p (string-trim session)))))
+    "rebuilt")
+   ((harmless-team--snapshot-live-p seat)
+    "resumed")
+   (t "failed")))
+
+(defun harmless-team--snapshot-report (team fresh)
+  "Return the per-seat report for TEAM and FRESH.
+FRESH is nil, one seat, or a list of seats."
+  (let ((addresses (harmless-team--snapshot-fresh team fresh))
+        (seats nil)
+        (ok t))
+    (dolist (pod (plist-get team :pods))
+      (dolist (seat (plist-get pod :seats))
+        (let ((status (harmless-team--snapshot-status
+                       team seat addresses)))
+          (when (equal status "failed")
+            (setq ok nil))
+          (setq seats
+                (append seats
+                        (list (list :seat (plist-get seat :address)
+                                    :status status)))))))
+    (list :ok ok :seats seats)))
+
+(defun harmless-team--snapshot-apply (team fresh)
+  "Return a copy of TEAM with FRESH seats cleared.
+The snapshot file is not changed.  Work stays."
+  (let ((addresses (harmless-team--snapshot-fresh team fresh))
+        (copy (copy-tree team)))
+    (dolist (pod (plist-get copy :pods))
+      (dolist (seat (plist-get pod :seats))
+        (when (harmless-team--seen-p
+               (plist-get seat :address) addresses)
+          (plist-put seat :session "")
+          (plist-put seat :runtime nil))))
+    copy))
+
+(defun harmless-team--snapshot-take (rig name)
+  "Store a named snapshot of RIG and return NAME.
+A second snapshot of the same name is refused."
+  (setq name (harmless-team--snapshot-name name))
+  (setq rig (harmless-team--rig-name rig))
+  (let ((stored (cdr (harmless-team--load rig))))
+    (when (harmless-team--snapshot-find rig name)
+      (error "team snapshot already exists"))
+    (harmless-team--snapshot-write
+     (harmless-team--snapshot-new rig name)
+     (list :name name
+           :rig (plist-get stored :name)
+           :at (harmless-now-iso)
+           :team stored))
+    name))
+
+(defun harmless-team--snapshot-open (rig name fresh)
+  "Return (TEAM . REPORT) for RIG's snapshot NAME.
+FRESH is the seats that start over.  Nothing is written."
+  (setq name (harmless-team--snapshot-name name))
+  (setq fresh (harmless-team--snapshot-fresh-shape fresh))
+  (setq rig (harmless-team--rig-name rig))
+  (let ((path (harmless-team--snapshot-find rig name)))
+    (unless path
+      (error "team snapshot is missing"))
+    (let ((team (plist-get
+                 (harmless-team--snapshot-read path rig name)
+                 :team)))
+      (cons team (harmless-team--snapshot-report team fresh)))))
+
+(defun harmless-team--snapshot-check (rig name &optional fresh)
+  "Return the report for restoring RIG's snapshot NAME.
+FRESH is nil, one seat, or a list of seats.  This does not
+write, and it does not start a turn or a process."
+  (cdr (harmless-team--snapshot-open rig name fresh)))
+
+(defun harmless-team--snapshot-restore-to (rig team)
+  "Write TEAM over RIG's live file and return the path.
+A missing rig file is created.  A snapshot file is not."
+  (let* ((root (harmless-team--teams-root nil))
+         (path (harmless-team--existing root rig)))
+    (unless path
+      (setq path (harmless-team--new-path
+                  (harmless-team--teams-root t)
+                  (plist-get team :name))))
+    (harmless-team--write path team)))
+
+(defun harmless-team--snapshot-restore (rig name &optional fresh)
+  "Write RIG's snapshot NAME back when every seat can return.
+FRESH seats are cleared and labeled.  A failed seat writes
+nothing."
+  (let* ((opened (harmless-team--snapshot-open rig name fresh))
+         (report (cdr opened)))
+    (unless (plist-get report :ok)
+      (error "team snapshot cannot restore"))
+    (harmless-team--snapshot-restore-to
+     rig (harmless-team--snapshot-apply (car opened) fresh))
+    report))
+
+;;;###autoload
+(defun harmless-team-snapshot (rig name)
+  "Store a named snapshot of RIG and return NAME.
+The copy is a separate file.  The live rig is not changed."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Name: ")))
+  (let ((saved (harmless-team--snapshot-take rig name)))
+    (message "Snapshot %s" saved)
+    saved))
+
+;;;###autoload
+(defun harmless-team-snapshot-check (rig name &optional fresh)
+  "Report whether RIG's snapshot NAME can be restored.
+FRESH is nil, one seat, or a list of seats that start over.
+The check does not write."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Name: ")
+         (let ((answer (read-string "Fresh seat: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))))
+  (let ((report (harmless-team--snapshot-check rig name fresh)))
+    (message "Checked %s" name)
+    report))
+
+;;;###autoload
+(defun harmless-team-snapshot-restore (rig name &optional fresh)
+  "Restore RIG's snapshot NAME when the check can succeed.
+FRESH is nil, one seat, or a list of seats that start over.
+A failed seat leaves the live rig unchanged."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Name: ")
+         (let ((answer (read-string "Fresh seat: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))))
+  (let ((report (harmless-team--snapshot-restore rig name fresh)))
+    (message "Restored %s" name)
+    report))
 
 (provide 'harmless-team)
 

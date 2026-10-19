@@ -91,6 +91,9 @@
 ;;   M-x harmless-team-workflows ; read those declared workflows
 ;;   M-x harmless-team-watchdog ; record a job that survives a restart
 ;;   M-x harmless-team-watchdog-check ; read the jobs that are due
+;;   M-x harmless-team-snapshot ; store a named copy of the rig
+;;   M-x harmless-team-snapshot-check ; report each seat, and do not write
+;;   M-x harmless-team-snapshot-restore ; write the copy back when it can
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

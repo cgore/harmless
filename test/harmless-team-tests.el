@@ -3691,3 +3691,294 @@
     (should (equal roots (harmless-team-test-roots)))
     (should (equal session-roots
                    (harmless-team-test-session-roots)))))
+
+(ert-deftest harmless-team-snapshot-restores-by-name ()
+  "A named snapshot reports each seat and writes only when it can."
+  (let* ((base (make-temp-file "harmless-team-snapshot-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (snaps (expand-file-name "teams/snapshots" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (snap (expand-file-name
+                "teams/snapshots/workshop/morning.json" base))
+         (logf (expand-file-name "seat.log" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (snap-roots (list (file-exists-p "/teams/snapshots")
+                           (file-exists-p "c:/teams/snapshots")
+                           (file-exists-p "d:/teams/snapshots")))
+         (timers (copy-sequence timer-list))
+         (procs (process-list))
+         (pid (number-to-string (emacs-pid)))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (summary (expand-file-name
+                   (concat "sessions/proj/"
+                           harmless-team-test-session-a
+                           "/summary.json")
+                   base))
+         (report
+          (lambda (ok dev)
+            (list :ok ok
+                  :seats
+                  (list (list :seat "dev-build@workshop"
+                              :status dev)
+                        (list :seat "qa-note@workshop"
+                              :status "waiting")
+                        (list :seat "ops-look@workshop"
+                              :status "rebuilt")
+                        (list :seat "ops-file@workshop"
+                              :status "resumed")
+                        (list :seat "ops-term@workshop"
+                              :status "resumed"))))))
+    (make-directory elsewhere t)
+    (let ((harmless-directory "/"))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot "workshop" bad)))
+                       "team snapshot is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-check
+                           "workshop" bad)))
+                       "team snapshot is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-restore
+                           "workshop" bad)))
+                       "team snapshot is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot "workshop" 42)))
+                     "team snapshot must be a string"))
+      (dolist (bad (list "morning-1" "/" "c:" "~" "a/b" "sub/"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot "workshop" bad)))
+                       "team snapshot is not a name")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot-check
+                         "workshop" "morning" 42)))
+                     "team snapshot fresh must be a list"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot-restore
+                         "workshop" "morning"
+                         (cons "dev.build" "qa.note"))))
+                     "team snapshot fresh must be a list"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot
+                         "workshop" "morning")))
+                     "Refusing to store a team at /"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot-check
+                         "workshop" "morning")))
+                     "Refusing to store a team at /"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot-restore
+                         "workshop" "morning")))
+                     "Refusing to store a team at /")))
+    (let ((harmless-directory "c:"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot
+                         "workshop" "morning")))
+                     "Refusing to store a team at c:")))
+    (let ((harmless-directory "notes"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot
+                         "workshop" "morning")))
+                     "Harmless data directory must be absolute, not \"notes\"")))
+    (let ((harmless-directory "notes/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-snapshot-check
+                         "workshop" "morning")))
+                     "Harmless data directory must be absolute, not \"notes/\"")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-snapshot "workshop" "morning")))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (should-not (file-directory-p snaps))
+    (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (harmless-team-add-seat "workshop" "ops" "look" "reader")
+    (harmless-team-add-seat "workshop" "ops" "file" "logger")
+    (harmless-team-add-seat "workshop" "ops" "term" "shell")
+    (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+    (harmless-team-edge "workshop" "delegates_to" "dev.build" "qa.note")
+    (make-directory (file-name-directory summary) t)
+    (harmless-team-test-write
+     summary
+     (harmless-json-text
+      (list :model "grok-4.7" :last-prompt-tokens 1)))
+    (harmless-team-adopt
+     "workshop" "dev" "build" "harmless" harmless-team-test-session-a)
+    (harmless-team-test-write logf "log")
+    (harmless-team-adopt "workshop" "ops" "file" "claude" logf)
+    (harmless-team-adopt "workshop" "ops" "term" "terminal" pid)
+    (harmless-team-row "workshop" "qa.note" "decide the door")
+    (harmless-team-row-claim "workshop" "1")
+    (harmless-team-row-park
+     "workshop" "1" "person" "the door" "notes/door")
+    (let ((note (harmless-team-seat "workshop" "qa" "note"))
+          (look (harmless-team-seat "workshop" "ops" "look"))
+          (file-seat (harmless-team-seat "workshop" "ops" "file"))
+          (term (harmless-team-seat "workshop" "ops" "term")))
+      (should (equal (harmless-team-snapshot "workshop" "  morning  ")
+                     "morning"))
+      (should (file-regular-p snap))
+      (should (file-name-absolute-p snap))
+      (should (harmless-directory-strictly-under-p snap base))
+      (should-not (equal (file-truename snap) (file-truename "/")))
+      (let ((text (harmless-team-test-read snap))
+            (bytes (harmless-team-test-bytes snap))
+            (live (harmless-team-test-bytes file)))
+        (should (string-search "\"morning\"" text))
+        (should (string-search "\"workshop\"" text))
+        (should (string-search harmless-team-test-session-a text))
+        (should (string-search "keep the tests" text))
+        (should (string-search "the door" text))
+        (should (string-search "notes/door" text))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot
+                           "workshop" "morning")))
+                       "team snapshot already exists"))
+        (when (eq system-type 'windows-nt)
+          (should (equal (harmless-team-test-signal
+                          (lambda ()
+                            (harmless-team-snapshot
+                             "Workshop" "Morning")))
+                         "team snapshot already exists")))
+        (should (equal (harmless-team-test-bytes snap) bytes))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-check
+                           "workshop" "morning" "  ")))
+                       "team edge is empty"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-check
+                           "workshop" "morning" "no.such")))
+                       "team seat is missing"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-restore
+                           "workshop" "morning" (list 42))))
+                       "team edge must be a string"))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-check
+                           "workshop" "evening")))
+                       "team snapshot is missing"))
+        (should-not
+         (file-exists-p
+          (expand-file-name
+           "teams/snapshots/workshop/evening.json" base)))
+        (should (equal (harmless-team-test-bytes file) live))
+        (should (equal (harmless-team-test-bytes snap) bytes))
+        (harmless-team-add-work
+         "workshop" "dev" "build" "later change")
+        (harmless-team-release "workshop" "dev" "build")
+        (setq live (harmless-team-test-bytes file))
+        (should (equal (harmless-team-snapshot-check
+                        "workshop" "morning")
+                       (funcall report t "resumed")))
+        (should (equal (harmless-team-test-bytes file) live))
+        (should (equal (harmless-team-test-bytes snap) bytes))
+        (delete-directory (file-name-directory summary) t)
+        (should (equal (harmless-team-snapshot-check
+                        "workshop" "morning")
+                       (funcall report nil "failed")))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-restore
+                           "workshop" "morning")))
+                       "team snapshot cannot restore"))
+        (should (equal (plist-get
+                        (harmless-team-seat "workshop" "dev" "build")
+                        :work)
+                       '("keep the tests" "later change")))
+        (should (equal (harmless-team-test-bytes file) live))
+        (should (equal (harmless-team-test-bytes snap) bytes))
+        (delete-file file)
+        (should-not (file-exists-p file))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-restore
+                           "workshop" "morning")))
+                       "team snapshot cannot restore"))
+        (should-not (file-exists-p file))
+        (should (equal (harmless-team-snapshot-check
+                        "workshop" "morning" (list "dev.build"))
+                       (funcall report t "fresh")))
+        (should-not (file-exists-p file))
+        (should (equal (harmless-team-test-bytes snap) bytes))
+        (should (equal (harmless-team-snapshot-restore
+                        "workshop" "morning" "dev.build")
+                       (funcall report t "fresh")))
+        (should (file-regular-p file))
+        (should (file-name-absolute-p file))
+        (should (harmless-directory-strictly-under-p file base))
+        (should-not (equal (file-truename file) (file-truename "/")))
+        (should (equal (harmless-team-seat "workshop" "dev" "build")
+                       (harmless-team-test-seat "" work)))
+        (should (equal (harmless-team-seat "workshop" "qa" "note")
+                       note))
+        (should (equal (harmless-team-seat "workshop" "ops" "look")
+                       look))
+        (should (equal (harmless-team-seat "workshop" "ops" "file")
+                       file-seat))
+        (should (equal (harmless-team-seat "workshop" "ops" "term")
+                       term))
+        (should (equal (harmless-team-edges "workshop") edge))
+        (should (equal (mapcar (lambda (row) (plist-get row :seat))
+                               (harmless-team-board
+                                "workshop" "waiting"))
+                       '("qa-note@workshop")))
+        (should (string-search
+                 harmless-team-test-session-a
+                 (harmless-team-test-read snap)))
+        (should-not (string-search
+                     harmless-team-test-session-a
+                     (harmless-team-test-read file)))
+        (should-not (string-search
+                     "later change"
+                     (harmless-team-test-read file)))
+        (setq live (harmless-team-test-bytes file))
+        (let ((obj (harmless-json-decode
+                    (harmless-team-test-read snap))))
+          (plist-put obj :at "nope")
+          (harmless-team-test-write snap (harmless-json-text obj)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-snapshot-check
+                           "workshop" "morning")))
+                       "team snapshot is not valid"))
+        (should (equal (harmless-team-test-bytes file) live))))
+    (should (equal timer-list timers))
+    (should (equal (process-list) procs))
+    (should (file-name-absolute-p summary))
+    (should (harmless-directory-strictly-under-p snap base))
+    (should-not (equal (file-truename snap) (file-truename "/")))
+    (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+    (should-not (file-exists-p (expand-file-name "notes" elsewhere)))
+    (should (equal roots (harmless-team-test-roots)))
+    (should (equal session-roots
+                   (harmless-team-test-session-roots)))
+    (should (equal snap-roots
+                   (list (file-exists-p "/teams/snapshots")
+                         (file-exists-p "c:/teams/snapshots")
+                         (file-exists-p "d:/teams/snapshots"))))))
