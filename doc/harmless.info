@@ -1840,6 +1840,29 @@ index, not the notes.
 ‘memory_write_topic’
      Replace one topic file with the full Markdown you supply.
 
+   A finished turn can write one inbox observation.  Set
+‘harmless-memory-observe-function’ to a function of the session.  It
+returns a plist with ‘:title’ and ‘:body’, and optional ‘:topic’ and
+‘:scope’.  Nil writes nothing.  The function is not called when the turn
+aborts or the reply is empty.  A tool call does not write one until the
+turn is idle.  The transcript is not modified.  An unset function writes
+nothing.
+
+   A detached chat records a global observation.  An attached project
+records a workspace observation.  ‘scope’ may name ‘workspace’ or
+‘global’.
+
+   Nil, ‘""’, and whitespace for the title or the body write nothing.  A
+value that is not text is refused: ‘memory title must be a string’,
+‘memory body must be a string’, or ‘memory topic must be a string’.  A
+scope that is not a scope is refused: ‘memory scope is not a scope’.  A
+scope that is not text is refused: ‘memory scope must be a string’.  A
+relative project directory, including ‘~’, is refused and is not
+expanded: ‘memory directory must be absolute’.  ‘/’ and a drive root are
+refused: ‘memory directory is the filesystem root’.  A blank project
+directory is refused: ‘This chat is not attached to a project’.  Not a
+session is refused: ‘No Harmless session’.
+
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
@@ -2257,14 +2280,14 @@ Node: Plugins79801
 Node: Output styles81851
 Node: Image generation83862
 Node: Memory85702
-Node: Plan mode86977
-Node: Usage89963
-Node: Files90982
-Node: Keys92561
-Node: Trouble94111
-Node: Manual95365
-Node: Command Index96070
-Node: Key Index99786
+Node: Plan mode88304
+Node: Usage91290
+Node: Files92309
+Node: Keys93888
+Node: Trouble95438
+Node: Manual96692
+Node: Command Index97397
+Node: Key Index101113
 
 End Tag Table
 

@@ -438,6 +438,13 @@ Each turn sends the index, not the notes.  The model reads a note with
 topic with `memory_write_topic`.  `M-x harmless-remember` saves a note
 directly.  A prefix argument stores it in global memory.
 
+A finished turn can also write one inbox observation.  Set
+`harmless-memory-observe-function` to a function of the session.  It
+returns a title and a body.  Nil writes nothing.  An unset function
+writes nothing.  The transcript is not modified.  A detached chat
+records a global observation.  An attached project records a
+workspace observation.
+
 ## Permissions
 
 `harmless-permission-rules` and `harmless-permission-denies` are

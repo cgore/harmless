@@ -2072,6 +2072,31 @@ Append a fact to the inbox.  @code{topic} is an optional slug, such as
 Replace one topic file with the full Markdown you supply.
 @end table
 
+A finished turn can write one inbox observation.  Set
+@code{harmless-memory-observe-function} to a function of the session.
+It returns a plist with @code{:title} and @code{:body}, and optional
+@code{:topic} and @code{:scope}.  Nil writes nothing.  The function
+is not called when the turn aborts or the reply is empty.  A tool
+call does not write one until the turn is idle.  The transcript is
+not modified.  An unset function writes nothing.
+
+A detached chat records a global observation.  An attached project
+records a workspace observation.  @code{scope} may name
+@code{workspace} or @code{global}.
+
+Nil, @code{""}, and whitespace for the title or the body write
+nothing.  A value that is not text is refused: @samp{memory title
+must be a string}, @samp{memory body must be a string}, or
+@samp{memory topic must be a string}.  A scope that is not a scope
+is refused: @samp{memory scope is not a scope}.  A scope that is
+not text is refused: @samp{memory scope must be a string}.  A
+relative project directory, including @code{~}, is refused and is
+not expanded: @samp{memory directory must be absolute}.  @code{/}
+and a drive root are refused: @samp{memory directory is the
+filesystem root}.  A blank project directory is refused:
+@samp{This chat is not attached to a project}.  Not a session is
+refused: @samp{No Harmless session}.
+
 @node Plan mode
 @chapter Plan mode
 

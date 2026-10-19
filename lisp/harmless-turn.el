@@ -63,6 +63,8 @@
 (require 'harmless-hook)
 (require 'harmless-usage)
 
+(declare-function harmless-memory-observe "harmless-memory" (session))
+
 (defvar harmless--perm-callback)
 
 (cl-defstruct (harmless-turn-acc
@@ -380,6 +382,12 @@ Events that arrive after an abort are ignored."
              (harmless-turn--call session)))
         (if (harmless-turn--take-steers session)
             (harmless-turn--call session)
+          (condition-case err
+              (when (fboundp 'harmless-memory-observe)
+                (harmless-memory-observe session))
+            (error
+             (harmless-log "memory observation: %s"
+                           (error-message-string err))))
           (harmless-session-set-status session 'idle)))))))
 
 (defun harmless-turn--run-tools (session calls k)

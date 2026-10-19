@@ -40,7 +40,8 @@
 ;; to every project.  Workspace notes belong to one project directory.
 ;; New facts land in `observations/_inbox/'.  `harmless-dream' folds
 ;; them into `topics/' and moves the inbox files to `archive/'.
-;; `MEMORY.md' is a generated index.
+;; `MEMORY.md' is a generated index.  A finished turn can also write
+;; one inbox observation when `harmless-memory-observe-function' is set.
 
 ;;; Code:
 
@@ -49,6 +50,12 @@
 (require 'harmless-util)
 (require 'harmless-session)
 (require 'harmless-tools)
+
+(defvar harmless-memory-observe-function nil
+  "Function of (SESSION) that returns an observation, or nil.
+Nil means a finished turn writes no observation.  The plist has
+:title and :body, and optional :topic and :scope.  It is not
+called when the turn aborts or the reply is empty.")
 
 (defun harmless-memory-root ()
   "Return the root directory for Harmless memory."
@@ -304,6 +311,99 @@ TOPIC is an optional slug hint.  Return the path relative to the scope."
       (concat
        "Memory from earlier sessions.  This index is a map.  Read a note with memory_read before relying on it.  Record a durable fact with memory_remember.  Replace a curated topic with memory_write_topic.  Do not edit MEMORY.md.  Do not store secrets, credentials, or one-off task state.  Use workspace for this project and global for a preference that applies everywhere.\n\n"
        (mapconcat #'identity parts "\n")))))
+
+(defun harmless-memory--root-text-p (text)
+  "Return non-nil if TEXT is \"/\" or a drive root."
+  (or (harmless-filesystem-root-p text)
+      (and (stringp text)
+           (string-match-p "\\`[A-Za-z]:[/\\]?\\'" (string-trim text)))))
+
+(defun harmless-memory--scope-name (scope)
+  "Return \"global\" or \"workspace\" for SCOPE.
+Nil returns nil so the caller can pick the default."
+  (cond
+   ((null scope) nil)
+   ((not (stringp scope))
+    (error "memory scope must be a string"))
+   (t
+    (let ((name (string-trim scope)))
+      (cond
+       ((string-empty-p name)
+        (error "memory scope is not a scope"))
+       ((harmless-memory--global-p name) "global")
+       ((equal name "workspace") "workspace")
+       (t (error "memory scope is not a scope")))))))
+
+(defun harmless-memory--workspace-cwd (cwd)
+  "Signal unless CWD can hold workspace memory.
+A relative path, including \"~\", is not expanded."
+  (cond
+   ((or (not (stringp cwd))
+        (string-empty-p (string-trim cwd)))
+    (error "This chat is not attached to a project"))
+   ((harmless-memory--root-text-p cwd)
+    (error "memory directory is the filesystem root"))
+   ((or (string-prefix-p "~" (string-trim cwd))
+        (not (file-name-absolute-p cwd)))
+    (error "memory directory must be absolute"))))
+
+(defun harmless-memory--observe-scope (session scope)
+  "Return the scope name for SESSION and requested SCOPE."
+  (let ((name (or (harmless-memory--scope-name scope)
+                  (if (harmless-session-detached-p session)
+                      "global"
+                    "workspace"))))
+    (unless (harmless-memory--global-p name)
+      (harmless-memory--workspace-cwd (harmless-session-cwd session)))
+    name))
+
+(defun harmless-memory--note (value)
+  "Return an observation plist for VALUE, or nil to store nothing.
+A title or body that is not text signals.  A blank title or body
+stores nothing."
+  (if (not (and (consp value) (keywordp (car value))))
+      nil
+    (let ((title (plist-get value :title))
+          (body (plist-get value :body))
+          (topic (plist-get value :topic))
+          (scope (plist-get value :scope)))
+      (unless (or (null title) (stringp title))
+        (error "memory title must be a string"))
+      (unless (or (null body) (stringp body))
+        (error "memory body must be a string"))
+      (unless (or (null topic) (stringp topic))
+        (error "memory topic must be a string"))
+      (unless (or (null scope) (stringp scope))
+        (error "memory scope must be a string"))
+      (setq title (and (stringp title) (string-trim title)))
+      (setq body (and (stringp body) (string-trim body)))
+      (when (and (stringp title) (not (string-empty-p title))
+                 (stringp body) (not (string-empty-p body)))
+        (list :title title
+              :body body
+              :topic (and (stringp topic)
+                          (not (string-empty-p (string-trim topic)))
+                          (string-trim topic))
+              :scope scope)))))
+
+(defun harmless-memory-observe (session)
+  "Write one inbox observation for a finished turn of SESSION.
+Return the path relative to the scope, or nil when there is nothing
+to store.  The transcript is not modified.  A relative project
+directory is not expanded.  Nothing is written at the filesystem root."
+  (unless (harmless-session-p session)
+    (error "No Harmless session"))
+  (if (not (functionp harmless-memory-observe-function))
+      nil
+    (let ((note (harmless-memory--note
+                 (funcall harmless-memory-observe-function session))))
+      (when note
+        (harmless-memory-remember
+         (harmless-memory--observe-scope session (plist-get note :scope))
+         (harmless-session-cwd session)
+         (plist-get note :title)
+         (plist-get note :body)
+         (plist-get note :topic))))))
 
 (defun harmless-memory--tool-remember (session args)
   "Tool wrapper: remember ARGS on SESSION's project."
