@@ -51,7 +51,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] A queue row: one unit of owned work, with a destination seat, a body, a state, and an append-only history. It survives the owner's turn ending, the owner compacting, and the owner being replaced.
 - [x] Claim a row, append notes, and close it only with a reason: `handed_off_to`, `blocked_on`, `denied`, `canceled`, `no-follow-on`, or `escalation`. Closing records delivery. Acceptance is the next seat's own verdict.
 - [x] Hand work to another seat in one transaction: the source row closes and the destination row opens together.
-- [ ] Park a row on a real blocker, with one wake. Resolving it records the decision and wakes the owner. A park that asks a person includes a plain-language summary and a pointer to the evidence.
+- [x] Park a row on a real blocker, with one wake. Resolving it records the decision and wakes the owner. A park that asks a person includes a plain-language summary and a pointer to the evidence.
 - [ ] An intake stream for observations nobody owns yet, and views over the board: what is held, what is stalled after a claim, and what is waiting on a person.
 - [ ] A declared workflow. When the seat that owns a step closes it, the next step's row is created in the same transaction. The owner decides that the step is done.
 - [ ] Watchdog jobs that survive a restart: a reminder, a pool of artifacts, a nudge to a workflow, an idle queue, or a seat approaching its context wall.

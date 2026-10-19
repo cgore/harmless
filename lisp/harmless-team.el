@@ -51,8 +51,9 @@
 ;; does not drop it.  A claim holds a row.  A note appends
 ;; history.  Closing records delivery.  Acceptance stays the
 ;; next seat's verdict.  A hand closes the source row and opens
-;; the destination row in one write.  This file does not
-;; register another machine.
+;; the destination row in one write.  A park has one wake.
+;; Resolving it records the decision and returns the row to
+;; held.  This file does not register another machine.
 
 ;;; Code:
 
@@ -378,16 +379,34 @@ Nil means the rig has no pace yet."
   "Reasons that can close a queue row.
 Closing records delivery.")
 
+(defun harmless-team--row-plain-p (text)
+  "Return non-nil if TEXT is a non-empty string."
+  (and (stringp text) (not (string-empty-p text))))
+
 (defun harmless-team--row-state-p (item)
-  "Return non-nil if ITEM's state and reason agree.
-Open and held rows have no reason.  A closed row has one."
+  "Return non-nil if ITEM's state and fields agree.
+Open and held rows carry no reason or wake.  A closed row has
+one reason.  A parked row has one wake."
   (let ((state (plist-get item :state))
-        (reason (plist-get item :reason)))
-    (and (member state '("open" "held" "closed"))
-         (if (equal state "closed")
-             (and (stringp reason)
-                  (member reason harmless-team--row-reasons))
-           (null reason)))))
+        (reason (plist-get item :reason))
+        (wake (plist-get item :wake))
+        (summary (plist-get item :summary))
+        (evidence (plist-get item :evidence)))
+    (cond
+     ((member state '("open" "held"))
+      (and (null reason) (null wake)
+           (null summary) (null evidence)))
+     ((equal state "closed")
+      (and (stringp reason)
+           (member reason harmless-team--row-reasons)
+           (null wake) (null summary) (null evidence)))
+     ((equal state "parked")
+      (and (null reason)
+           (harmless-team--row-plain-p wake)
+           (or (and (null summary) (null evidence))
+               (and (harmless-team--row-plain-p summary)
+                    (harmless-team--row-plain-p evidence)))))
+     (t nil))))
 
 (defun harmless-team--row-id-p (id)
   "Return non-nil if ID is a row id."
@@ -2091,7 +2110,10 @@ Internal newlines stay."
         :state (plist-get item :state)
         :history (mapcar #'harmless-team--public-history
                          (plist-get item :history))
-        :reason (plist-get item :reason)))
+        :reason (plist-get item :reason)
+        :wake (plist-get item :wake)
+        :summary (plist-get item :summary)
+        :evidence (plist-get item :evidence)))
 
 (defun harmless-team--next-row-id (rows)
   "Return the next row id after ROWS."
@@ -2256,7 +2278,8 @@ TEXT must be a seat reference."
          (state (plist-get row :state)))
     (cond
      ((equal state "held") (error "team row is held"))
-     ((equal state "closed") (error "team row is closed")))
+     ((equal state "closed") (error "team row is closed"))
+     ((equal state "parked") (error "team row is parked")))
     (plist-put row :state "held")
     (harmless-team--row-append row "claimed")
     (harmless-team--write (car loaded) stored)
@@ -2290,7 +2313,8 @@ verdict."
          (state (plist-get row :state)))
     (cond
      ((equal state "open") (error "team row is not held"))
-     ((equal state "closed") (error "team row is closed")))
+     ((equal state "closed") (error "team row is closed"))
+     ((equal state "parked") (error "team row is parked")))
     (plist-put row :state "closed")
     (plist-put row :reason reason)
     (harmless-team--row-append row "delivered")
@@ -2346,7 +2370,8 @@ The source closes and the destination opens in one write."
          (opened nil))
     (cond
      ((equal state "open") (error "team row is not held"))
-     ((equal state "closed") (error "team row is closed")))
+     ((equal state "closed") (error "team row is closed"))
+     ((equal state "parked") (error "team row is parked")))
     (when (harmless-team--same-p address (plist-get row :seat))
       (error "team row hand is the same seat"))
     (plist-put row :state "closed")
@@ -2381,6 +2406,123 @@ both rows."
              (plist-get (plist-get hand :source) :id)
              (plist-get (plist-get hand :destination) :id))
     hand))
+
+(defun harmless-team--row-wake (text)
+  "Return TEXT trimmed, or signal."
+  (cond
+   ((null text) (error "team row wake is empty"))
+   ((not (stringp text))
+    (error "team row wake must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team row wake is empty")
+    text))
+
+(defun harmless-team--row-decision (text)
+  "Return TEXT trimmed, or signal."
+  (cond
+   ((null text) (error "team row decision is empty"))
+   ((not (stringp text))
+    (error "team row decision must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team row decision is empty")
+    text))
+
+(defun harmless-team--row-field (text noun)
+  "Return TEXT trimmed, or nil when TEXT is blank.
+NOUN names the field in an error.  A non-string signals."
+  (cond
+   ((null text) nil)
+   ((not (stringp text))
+    (error "team row %s must be a string" noun))
+   (t
+    (setq text (string-trim text))
+    (if (string-empty-p text) nil text))))
+
+(defun harmless-team--row-park (rig id wake summary evidence)
+  "Park held row ID in RIG on one WAKE and return it.
+SUMMARY and EVIDENCE together ask a person."
+  (setq wake (harmless-team--row-wake wake))
+  (setq summary (harmless-team--row-field summary "summary"))
+  (setq evidence (harmless-team--row-field evidence "evidence"))
+  (cond
+   ((and summary (null evidence))
+    (error "team row evidence is empty"))
+   ((and evidence (null summary))
+    (error "team row summary is empty")))
+  (setq rig (harmless-team--rig-name rig))
+  (setq id (harmless-team--row-id id))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (row (harmless-team--row-stored stored id))
+         (state (plist-get row :state)))
+    (cond
+     ((equal state "open") (error "team row is not held"))
+     ((equal state "closed") (error "team row is closed"))
+     ((equal state "parked") (error "team row is parked")))
+    (plist-put row :state "parked")
+    (plist-put row :wake wake)
+    (harmless-team--row-append row "parked")
+    (harmless-team--row-append row wake)
+    (when summary
+      (plist-put row :summary summary)
+      (plist-put row :evidence evidence)
+      (harmless-team--row-append row summary)
+      (harmless-team--row-append row evidence))
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-row row)))
+
+(defun harmless-team--row-resolve (rig id decision)
+  "Record DECISION on parked row ID and return it to held.
+The wake is cleared.  The decision stays in the history."
+  (setq decision (harmless-team--row-decision decision))
+  (setq rig (harmless-team--rig-name rig))
+  (setq id (harmless-team--row-id id))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (row (harmless-team--row-stored stored id)))
+    (unless (equal (plist-get row :state) "parked")
+      (error "team row is not parked"))
+    (plist-put row :state "held")
+    (plist-put row :wake nil)
+    (plist-put row :summary nil)
+    (plist-put row :evidence nil)
+    (harmless-team--row-append row decision)
+    (harmless-team--write (car loaded) stored)
+    (harmless-team--public-row row)))
+
+;;;###autoload
+(defun harmless-team-row-park (rig id wake &optional summary evidence)
+  "Park held queue row ID in RIG on one WAKE.
+SUMMARY and EVIDENCE together ask a person.  Return the row."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")
+         (read-string "Wake: ")
+         (let ((answer (read-string "Summary: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))
+         (let ((answer (read-string "Evidence: ")))
+           (if (string-empty-p (string-trim answer))
+               nil
+             answer))))
+  (let ((row (harmless-team--row-park rig id wake summary evidence)))
+    (message "Parked %s" (plist-get row :id))
+    row))
+
+;;;###autoload
+(defun harmless-team-row-resolve (rig id decision)
+  "Record DECISION for parked queue row ID in RIG.
+The row returns to held.  Return the row."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Row: ")
+         (read-string "Decision: ")))
+  (let ((row (harmless-team--row-resolve rig id decision)))
+    (message "Resolved %s" (plist-get row :id))
+    row))
 
 (provide 'harmless-team)
 

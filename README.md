@@ -175,6 +175,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-row-note` | Append a note to an open or held row |
 | `M-x harmless-team-row-close` | Close a held row with a delivery reason |
 | `M-x harmless-team-row-hand` | Hand a held row to another seat in one step |
+| `M-x harmless-team-row-park` | Park a held row on one wake |
+| `M-x harmless-team-row-resolve` | Record the decision and return the row to held |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -419,6 +421,13 @@ the close does not open another row.
 The source row closes with `handed_off_to` and the destination
 row opens with the same body, in one write.  The destination
 row stays open.  Handing a row to its own seat is refused.
+
+`M-x harmless-team-row-park` parks a held row on one wake.  A
+second wake is refused while it is parked.  A summary and a
+pointer to the evidence together ask a person.  One without the
+other is refused.  `M-x harmless-team-row-resolve` records the
+decision and returns the row to held.  That is the owner's wake.
+It does not start a turn.
 
 ## Subagents
 

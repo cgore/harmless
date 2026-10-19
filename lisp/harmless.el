@@ -83,6 +83,8 @@
 ;;   M-x harmless-team-row-note ; append a note to a row
 ;;   M-x harmless-team-row-close ; close a held row with a reason
 ;;   M-x harmless-team-row-hand ; hand a held row to another seat
+;;   M-x harmless-team-row-park ; park a held row on one wake
+;;   M-x harmless-team-row-resolve ; record the decision and wake it
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
