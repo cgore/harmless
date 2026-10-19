@@ -64,8 +64,11 @@
 ;; is a separate file.  The report says, per seat, whether it
 ;; resumed, was rebuilt, started fresh, is waiting, or failed.
 ;; A fresh start is a choice.  The check does not write.  A
-;; restore that would fail does not write.  This file does not
-;; register another machine.
+;; restore that would fail does not write.  Handing a seat to
+;; a successor keeps the seat's name, its edges, and its
+;; inbound work.  The recap of decisions is written at that
+;; boundary.  The successor is already running.  This file
+;; does not register another machine.
 
 ;;; Code:
 
@@ -622,6 +625,41 @@ Nil means the rig has no watchdog yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--boundary-p (item)
+  "Return non-nil if ITEM is one stored handover boundary."
+  (and (harmless-plist-p item)
+       (harmless-team--row-id-p (plist-get item :id))
+       (stringp (plist-get item :seat))
+       (not (string-empty-p (plist-get item :seat)))
+       (stringp (plist-get item :text))
+       (not (string-empty-p (plist-get item :text)))
+       (harmless-team--watchdog-due-p (plist-get item :at))
+       (stringp (plist-get item :from))
+       (not (string-empty-p (plist-get item :from)))
+       (or (null (plist-get item :from-runtime))
+           (member (plist-get item :from-runtime)
+                   harmless-team--runtimes))
+       (member (plist-get item :runtime) harmless-team--runtimes)
+       (stringp (plist-get item :session))
+       (not (string-empty-p (plist-get item :session)))))
+
+(defun harmless-team--boundaries-ok-p (rig)
+  "Return non-nil if RIG's handover boundaries are readable.
+Nil means the rig has no boundary yet."
+  (let ((items (plist-get rig :boundaries)))
+    (if (null items)
+        t
+      (let ((ok t)
+            (ids nil))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-team--boundary-p item)
+                     (not (member (plist-get item :id) ids)))
+                (setq ids (cons (plist-get item :id) ids)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -642,7 +680,8 @@ Nil means the rig has no watchdog yet."
        (harmless-team--rows-ok-p rig)
        (harmless-team--intake-ok-p rig)
        (harmless-team--workflows-ok-p rig)
-       (harmless-team--watchdogs-ok-p rig)))
+       (harmless-team--watchdogs-ok-p rig)
+       (harmless-team--boundaries-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"
@@ -3592,6 +3631,102 @@ A failed seat leaves the live rig unchanged."
   (let ((report (harmless-team--snapshot-restore rig name fresh)))
     (message "Restored %s" name)
     report))
+
+(defun harmless-team--recap-text (text)
+  "Return TEXT trimmed, or signal.
+Internal newlines stay.  This text is the decisions."
+  (cond
+   ((null text) (error "team recap is empty"))
+   ((not (stringp text))
+    (error "team recap must be a string")))
+  (setq text (string-trim text))
+  (if (string-empty-p text)
+      (error "team recap is empty")
+    text))
+
+(defun harmless-team--public-boundary (item)
+  "Return ITEM with keys in a fixed order."
+  (list :id (plist-get item :id)
+        :seat (plist-get item :seat)
+        :text (plist-get item :text)
+        :at (plist-get item :at)
+        :from (plist-get item :from)
+        :from-runtime (plist-get item :from-runtime)
+        :runtime (plist-get item :runtime)
+        :session (plist-get item :session)))
+
+(defun harmless-team--successor (rig pod seat runtime ref recap)
+  "Bind REF to SEAT and record RECAP.  Return seat and boundary.
+The seat's name, edges, and inbound work stay.  REF is already
+running.  A refusal writes nothing."
+  (setq recap (harmless-team--recap-text recap))
+  (setq runtime (harmless-team--runtime runtime))
+  (setq rig (harmless-team--rig-name rig))
+  (setq pod (harmless-team--pod-name pod))
+  (setq seat (harmless-team--seat-name seat))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (found (harmless-team--find stored pod seat)))
+    (unless found
+      (error "team seat is missing"))
+    (let* ((item (cdr found))
+           (from (plist-get item :session))
+           (from-runtime (plist-get item :runtime)))
+      (unless (and (stringp from) (not (string-empty-p from)))
+        (error "team seat is not occupied"))
+      (setq ref (harmless-team--occupant-ref runtime ref))
+      (when (harmless-team--same-p from ref)
+        (error "team successor is the same session"))
+      (let ((boundary
+             (list :id (harmless-team--next-row-id
+                        (plist-get stored :boundaries))
+                   :seat (plist-get item :address)
+                   :text recap
+                   :at (harmless-now-iso)
+                   :from from
+                   :from-runtime from-runtime
+                   :runtime runtime
+                   :session ref)))
+        (plist-put stored :boundaries
+                   (append (plist-get stored :boundaries)
+                           (list boundary)))
+        (plist-put item :session ref)
+        (plist-put item :runtime runtime)
+        (harmless-team--write (car loaded) stored)
+        (list :seat (harmless-team--public stored (car found) item)
+              :boundary (harmless-team--public-boundary boundary))))))
+
+(defun harmless-team--boundaries (rig)
+  "Return RIG's handover boundaries, oldest first."
+  (setq rig (harmless-team--rig-name rig))
+  (mapcar #'harmless-team--public-boundary
+          (plist-get (cdr (harmless-team--load rig)) :boundaries)))
+
+;;;###autoload
+(defun harmless-team-successor (rig pod seat runtime ref recap)
+  "Hand SEAT in POD of RIG to the running session REF.
+RUNTIME names that session.  RECAP is the decisions at this
+boundary.  The seat keeps its name, its edges, and its inbound
+work.  REF is not started.  Return the seat and the boundary."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Pod: ")
+         (read-string "Seat: ")
+         (read-string "Runtime: ")
+         (read-string "Session: ")
+         (read-string "Recap: ")))
+  (let ((saved (harmless-team--successor
+                rig pod seat runtime ref recap)))
+    (message "Successor %s" (plist-get (plist-get saved :seat) :address))
+    saved))
+
+;;;###autoload
+(defun harmless-team-boundaries (rig)
+  "Return RIG's handover boundaries, oldest first."
+  (interactive (list (read-string "Rig: ")))
+  (let ((items (harmless-team--boundaries rig)))
+    (message "%d boundaries" (length items))
+    items))
 
 (provide 'harmless-team)
 

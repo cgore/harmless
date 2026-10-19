@@ -94,6 +94,7 @@
 ;;   M-x harmless-team-snapshot ; store a named copy of the rig
 ;;   M-x harmless-team-snapshot-check ; report each seat, and do not write
 ;;   M-x harmless-team-snapshot-restore ; write the copy back when it can
+;;   M-x harmless-team-successor ; hand a seat to a running successor
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

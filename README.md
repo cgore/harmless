@@ -188,6 +188,8 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-snapshot` | Store a named copy of the rig |
 | `M-x harmless-team-snapshot-check` | Report each seat before a restore |
 | `M-x harmless-team-snapshot-restore` | Write that copy back when no seat failed |
+| `M-x harmless-team-successor` | Hand a seat to a session that is already running |
+| `M-x harmless-team-boundaries` | Read each handover recap, oldest first |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -467,6 +469,12 @@ seat as resumed, rebuilt, fresh, waiting, or failed.  The check
 does not write.  A fresh start is a choice, and the report
 labels it fresh.  `M-x harmless-team-snapshot-restore` writes
 that copy back only when no seat failed.
+
+`M-x harmless-team-successor` hands one seat to a session that
+is already running.  The seat keeps its name, its edges, and
+its inbound work.  The recap of decisions is written on the
+rig at that boundary.  `M-x harmless-team-boundaries` reads
+those recaps, oldest first.  The earlier session keeps running.
 
 ## Subagents
 

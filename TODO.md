@@ -56,7 +56,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] A declared workflow. When the seat that owns a step closes it, the next step's row is created in the same transaction. The owner decides that the step is done.
 - [x] Watchdog jobs that survive a restart: a reminder, a pool of artifacts, a nudge to a workflow, an idle queue, or a seat approaching its context wall.
 - [x] Snapshot a rig and restore it by name. The report says, per seat, whether it resumed, was rebuilt, started fresh, is waiting on a decision, or failed. A fresh start is a choice, and it is labeled as one. Check whether a restore can succeed before running it.
-- [ ] Hand one seat to a successor and keep its name, its edges, and its inbound work. Write that seat's recap of decisions at the boundary.
+- [x] Hand one seat to a successor and keep its name, its edges, and its inbound work. Write that seat's recap of decisions at the boundary.
 - [ ] An agent image: capture a productive seat and start another seat from it. A restore packet carries what a seat knows across a change of runtime.
 - [ ] Plan compaction for seats near the context wall, then compact deliberately and tell the rest of the team. The compact itself is section 3.
 - [ ] Work on disk as a tree: a project holds missions, a mission holds slices. Intent composes down the tree. The slice is the only unit that is specified and proved. Proof is evidence in the tree, with attributed judgments. Progress is derived from that evidence.

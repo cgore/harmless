@@ -2237,6 +2237,8 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-snapshot
 @findex harmless-team-snapshot-check
 @findex harmless-team-snapshot-restore
+@findex harmless-team-successor
+@findex harmless-team-boundaries
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2501,6 +2503,18 @@ value that is not a list is refused: @samp{team snapshot fresh
 must be a list}.  A seat that is not in the snapshot is
 refused: @samp{team seat is missing}.  A snapshot file that
 cannot be read is refused: @samp{team snapshot is not valid}.
+
+@kbd{M-x harmless-team-successor} hands one seat to a session
+that is already running.  The seat keeps its name, its edges,
+and its inbound work.  The recap of decisions is written at
+that boundary.  @kbd{M-x harmless-team-boundaries} reads those
+recaps, oldest first.  The earlier session keeps running.  A
+blank recap is refused: @samp{team recap is empty}.  A recap
+that is not text is refused: @samp{team recap must be a
+string}.  An empty seat is refused: @samp{team seat is not
+occupied}.  The same session again is refused: @samp{team
+successor is the same session}.  Nothing is written when the
+successor cannot be bound.
 
 A blank runtime is refused: @samp{team runtime is empty}.  A
 runtime that is not text is refused: @samp{team runtime must be
@@ -2785,7 +2799,9 @@ noted, closed, handed to another seat, or parked on one wake.
 The same file holds intake that nobody owns yet.  It also
 holds a declared workflow.  Closing its current step opens
 the next step.  It also holds watchdog jobs that remain after
-Emacs restarts.
+Emacs restarts.  It also holds the recap written when a seat
+is handed to a successor.  The seat keeps its name, its
+edges, and its inbound work.
 @xref{Team}.
 
 @item teams/snapshots/@var{rig}/@var{name}.json

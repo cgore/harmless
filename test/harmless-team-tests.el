@@ -3982,3 +3982,224 @@
                    (list (file-exists-p "/teams/snapshots")
                          (file-exists-p "c:/teams/snapshots")
                          (file-exists-p "d:/teams/snapshots"))))))
+
+(ert-deftest harmless-team-successor-keeps-the-seat ()
+  "A successor keeps the seat and writes the recap at the boundary."
+  (let* ((base (make-temp-file "harmless-team-successor-" t))
+         (elsewhere (expand-file-name "elsewhere" base))
+         (harmless-directory (file-name-as-directory base))
+         (default-directory (file-name-as-directory elsewhere))
+         (teams (expand-file-name "teams" base))
+         (file (expand-file-name "teams/workshop.json" base))
+         (roots (harmless-team-test-roots))
+         (session-roots (harmless-team-test-session-roots))
+         (timers (copy-sequence timer-list))
+         (procs (process-list))
+         (pid (number-to-string (emacs-pid)))
+         (work '("keep the tests"))
+         (edge (list (list :kind "delegates_to"
+                           :from "dev-build@workshop"
+                           :to "qa-note@workshop")))
+         (summary-a (expand-file-name
+                     (concat "sessions/proj/"
+                             harmless-team-test-session-a
+                             "/summary.json")
+                     base))
+         (summary-b (expand-file-name
+                     (concat "sessions/proj/"
+                             harmless-team-test-session-b
+                             "/summary.json")
+                     base)))
+    (make-directory elsewhere t)
+    (let ((harmless-directory "/"))
+      (dolist (bad (list nil "" "   "))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-successor
+                           "workshop" "dev" "build" "harmless"
+                           harmless-team-test-session-b bad)))
+                       "team recap is empty")))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-b 42)))
+                     "team recap must be a string"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" nil
+                         harmless-team-test-session-b "decided")))
+                     "team runtime is empty"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "Refusing to store a team at /")))
+    (let ((harmless-directory "c:"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "Refusing to store a team at c:")))
+    (let ((harmless-directory "notes"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "Harmless data directory must be absolute, not \"notes\"")))
+    (let ((harmless-directory "notes/"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "Harmless data directory must be absolute, not \"notes/\"")))
+    (should (equal (harmless-team-test-signal
+                    (lambda ()
+                      (harmless-team-successor
+                       "workshop" "dev" "build" "harmless"
+                       harmless-team-test-session-b "decided")))
+                   "team rig is missing"))
+    (should-not (file-directory-p teams))
+    (harmless-team-add-seat "workshop" "dev" "build" "implementer")
+    (harmless-team-add-seat "workshop" "qa" "note" "notes")
+    (harmless-team-add-work "workshop" "dev" "build" "keep the tests")
+    (harmless-team-edge
+     "workshop" "delegates_to" "dev.build" "qa.note")
+    (harmless-team-room-say "workshop" "general" "Ada" "hello room")
+    (harmless-team-row "workshop" "dev.build" "fix the door")
+    (make-directory (file-name-directory summary-a) t)
+    (harmless-team-test-write
+     summary-a
+     (harmless-json-text (list :model "grok-4.7")))
+    (harmless-team-adopt
+     "workshop" "dev" "build" "harmless" harmless-team-test-session-a)
+    (let ((bytes (harmless-team-test-bytes file)))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "qa" "note" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "team seat is not occupied"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "gone" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "team seat is missing"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-b "decided")))
+                     "team session is missing"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         "not-an-id" "decided")))
+                     "team session is not an id"))
+      (should (equal (harmless-team-test-signal
+                      (lambda ()
+                        (harmless-team-successor
+                         "workshop" "dev" "build" "harmless"
+                         harmless-team-test-session-a "decided")))
+                     "team successor is the same session"))
+      (should (equal (harmless-team-test-bytes file) bytes)))
+    (make-directory (file-name-directory summary-b) t)
+    (harmless-team-test-write
+     summary-b
+     (harmless-json-text (list :model "grok-4.7")))
+    (let ((saved (harmless-team-successor
+                  "workshop" "dev" "build" "harmless"
+                  (concat "  " harmless-team-test-session-b "  ")
+                  "  decided\nthe door  ")))
+      (should (equal (plist-get (plist-get saved :seat) :name) "build"))
+      (should (equal (plist-get (plist-get saved :seat) :address)
+                     "dev-build@workshop"))
+      (should (equal (plist-get (plist-get saved :seat) :work) work))
+      (should (equal (plist-get (plist-get saved :seat) :session)
+                     harmless-team-test-session-b))
+      (should (equal (plist-get (plist-get saved :seat) :runtime)
+                     "harmless"))
+      (let ((boundary (plist-get saved :boundary)))
+        (should (equal (plist-get boundary :id) "1"))
+        (should (equal (plist-get boundary :seat) "dev-build@workshop"))
+        (should (equal (plist-get boundary :text) "decided\nthe door"))
+        (should (equal (plist-get boundary :from)
+                       harmless-team-test-session-a))
+        (should (equal (plist-get boundary :from-runtime) "harmless"))
+        (should (equal (plist-get boundary :runtime) "harmless"))
+        (should (equal (plist-get boundary :session)
+                       harmless-team-test-session-b))
+        (should (string-match-p
+                 "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T"
+                 (plist-get boundary :at)))
+        (should (equal (harmless-team-boundaries "workshop")
+                       (list boundary))))
+      (should (file-directory-p (file-name-directory summary-a)))
+      (should (file-regular-p summary-a))
+      (should (equal (harmless-team-edges "workshop") edge))
+      (should (equal (mapcar (lambda (row) (plist-get row :seat))
+                             (harmless-team-rows "workshop"))
+                     '("dev-build@workshop")))
+      (should (equal (mapcar (lambda (line) (plist-get line :text))
+                             (harmless-team-room-history "workshop"))
+                     '("hello room")))
+      (let ((text (harmless-team-test-read file)))
+        (should (string-search "decided\\nthe door" text))
+        (should (string-search harmless-team-test-session-a text))
+        (should (string-search harmless-team-test-session-b text))))
+    (let ((again (harmless-team-successor
+                  "workshop" "dev" "build" "terminal" pid "/")))
+      (should (equal (plist-get (plist-get again :boundary) :id) "2"))
+      (should (equal (plist-get (plist-get again :boundary) :text) "/"))
+      (should (equal (plist-get (plist-get again :boundary) :from)
+                     harmless-team-test-session-b))
+      (should (equal (plist-get (plist-get again :seat) :session) pid))
+      (should (equal (plist-get (plist-get again :seat) :runtime)
+                     "terminal"))
+      (should (equal (plist-get (plist-get again :seat) :work) work))
+      (should (equal (plist-get (plist-get again :seat) :name) "build"))
+      (should (equal (mapcar (lambda (item) (plist-get item :text))
+                             (harmless-team-boundaries "workshop"))
+                     '("decided\nthe door" "/"))))
+    (should (equal (harmless-team-edges "workshop") edge))
+    (should (file-directory-p (file-name-directory summary-a)))
+    (should-not (file-exists-p "/notes"))
+    (should-not (file-directory-p (expand-file-name "notes" elsewhere)))
+    (let ((saved (harmless-team-boundaries "workshop")))
+      (harmless-team-remove "workshop" "qa" "note")
+      (should (equal (harmless-team-boundaries "workshop") saved))
+      (should (equal (plist-get (harmless-team-seat
+                                 "workshop" "dev" "build")
+                                :work)
+                     work)))
+    (let ((obj (harmless-json-decode (harmless-team-test-read file))))
+      (plist-put (car (plist-get obj :boundaries)) :text "")
+      (harmless-team-test-write file (harmless-json-text obj))
+      (let ((bytes (harmless-team-test-bytes file)))
+        (should (equal (harmless-team-test-signal
+                        (lambda ()
+                          (harmless-team-boundaries "workshop")))
+                       "team rig is not valid"))
+        (should (equal (harmless-team-test-bytes file) bytes))))
+    (should (equal timer-list timers))
+    (should (equal (process-list) procs))
+    (should (file-name-absolute-p file))
+    (should (file-name-absolute-p summary-a))
+    (should (file-name-absolute-p summary-b))
+    (should (harmless-directory-strictly-under-p file base))
+    (should (harmless-directory-strictly-under-p summary-a base))
+    (should (harmless-directory-strictly-under-p summary-b base))
+    (should-not (equal (file-truename file) (file-truename "/")))
+    (should-not (equal (file-truename summary-a) (file-truename "/")))
+    (should-not (equal (file-truename summary-b) (file-truename "/")))
+    (should-not (file-exists-p (expand-file-name "teams" elsewhere)))
+    (should (equal roots (harmless-team-test-roots)))
+    (should (equal session-roots
+                   (harmless-team-test-session-roots)))))
