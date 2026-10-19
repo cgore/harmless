@@ -110,7 +110,8 @@ location.  A relative path or the filesystem root is refused."
   shell-seq
   shell-cwd
   steers
-  agent)
+  agent
+  worktree)
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -407,6 +408,32 @@ The callback and the turn counter stay in memory."
             :error nil
             :task nil))))
 
+(defun harmless-session--worktree-summary (session)
+  "Return summary fields for SESSION's worktree, or nil."
+  (let ((wt (harmless-session-worktree session)))
+    (when (and wt (plist-get wt :name) (plist-get wt :path))
+      (list :worktree-name (plist-get wt :name)
+            :worktree-path (plist-get wt :path)
+            :worktree-branch (plist-get wt :branch)
+            :worktree-original (plist-get wt :original)))))
+
+(defun harmless-session--worktree-from-summary (summary)
+  "Return the worktree plist stored in SUMMARY, or nil."
+  (let ((name (plist-get summary :worktree-name))
+        (path (plist-get summary :worktree-path))
+        (branch (plist-get summary :worktree-branch))
+        (original (plist-get summary :worktree-original)))
+    (when (and (stringp name) (not (string-empty-p name))
+               (stringp path) (not (string-empty-p path)))
+      (list :name name
+            :path path
+            :branch (and (stringp branch)
+                         (not (string-empty-p branch))
+                         branch)
+            :original (and (stringp original)
+                           (not (string-empty-p original))
+                           original)))))
+
 (defun harmless-session-summary-plist (session)
   "Return a plist suitable for summary.json."
   (append
@@ -430,7 +457,8 @@ The callback and the turn counter stay in memory."
          :title-locked (and (harmless-session-title-locked session) t)
          :plan-mode (and (harmless-session-plan-mode session) t)
          :shell-cwd (harmless-session-shell-cwd session))
-   (harmless-session--agent-summary session)))
+   (harmless-session--agent-summary session)
+   (harmless-session--worktree-summary session)))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -538,7 +566,9 @@ Signal when that path would be /NAME or outside the sessions root."
                                   (and (stringp cwd)
                                        (not (string-empty-p cwd))
                                        cwd))
-                     :agent (harmless-session--agent-from-summary summary))))
+                     :agent (harmless-session--agent-from-summary summary)
+                     :worktree (harmless-session--worktree-from-summary
+                                summary))))
       (harmless-session-register session)
       session)))
 

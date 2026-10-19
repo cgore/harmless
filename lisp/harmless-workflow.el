@@ -53,6 +53,7 @@
 (require 'harmless-tools)
 (require 'harmless-turn)
 (require 'harmless-agent)
+(require 'harmless-worktree)
 
 (defvar harmless-agent-stop)
 
@@ -332,7 +333,8 @@ EMPTY is the error when it is blank.  LABEL names the field."
 
 (defun harmless-workflow--agent-parts (expr)
   "Return (PROMPT . OPTS) for an agent EXPR.
-OPTS is a plist with :sandbox, :agent, :label, and :description."
+OPTS is a plist with :sandbox, :agent, :label, :description,
+and :worktree."
   (unless (and (proper-list-p expr) (eq (car expr) 'agent))
     (error "unknown workflow expression"))
   (when (null (cdr expr))
@@ -366,6 +368,9 @@ OPTS is a plist with :sandbox, :agent, :label, and :description."
                                  (harmless-workflow--one-line
                                   val "description is empty"
                                   "description"))))
+          (:worktree
+           (setq opts (plist-put opts :worktree
+                                 (harmless-worktree-name-required val))))
           (_ (error "unknown workflow option: %s"
                     (substring (symbol-name key) 1)))))
       (setq rest (cddr rest)))
@@ -387,6 +392,8 @@ when :sandbox is set."
                       (and spec (plist-get spec :sandbox))
                       'workspace)))
     (push sandbox harmless-workflow--sandboxes)
+    (when (plist-get opts :worktree)
+      (push 'workspace harmless-workflow--sandboxes))
     sandbox))
 
 (defun harmless-workflow--validate-expr (session env expr)
@@ -558,9 +565,12 @@ A signal becomes the workflow result."
                      :description (or (plist-get opts :description)
                                       (plist-get opts :label))))
          (agent-name (plist-get opts :agent))
+         (worktree (plist-get opts :worktree))
          child)
     (when agent-name
       (setq args (plist-put args :agent agent-name)))
+    (when worktree
+      (setq args (plist-put args :worktree worktree)))
     (setq child
           (harmless-agent-create
            session args
@@ -748,7 +758,8 @@ A signal becomes the workflow result."
      "or .harmless/workflows. "
      "Forms are (let NAME EXPR) and (complete EXPR). "
      "EXPR is a string, a bound name, "
-     "(agent PROMPT :sandbox read-only :label TITLE :agent NAME), "
+     "(agent PROMPT :sandbox read-only :label TITLE "
+     ":agent NAME :worktree NAME), "
      "(parallel (agent ...) ...), or (join SEP EXPR ...). "
      "complete's value is the result. "
      "The children have their own transcripts. "

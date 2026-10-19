@@ -53,6 +53,10 @@
 (require 'harmless-tools)
 (require 'harmless-turn)
 
+(declare-function harmless-worktree-for-child "harmless-worktree"
+                  (session args))
+(declare-function harmless-worktree-requested-p "harmless-worktree" (args))
+
 (defconst harmless-agent-read-only-refusal
   "Error: This subagent is read-only. A tool that can write is refused"
   "Result when a read-only subagent is asked to write.")
@@ -337,18 +341,28 @@ Nil, \"\", and whitespace signal \"prompt is empty\"."
     (error nil)))
 
 (defun harmless-agent-class (session args)
-  "Return `read' for a read-only subagent, otherwise `edit'."
-  (if (eq 'read-only (harmless-agent--expected-sandbox session args))
-      'read
-    'edit))
+  "Return `read' for a read-only subagent, otherwise `edit'.
+A requested worktree is `edit' even when the child is read-only.
+A failure to resolve the sandbox is `edit'."
+  (condition-case nil
+      (if (or (and (fboundp 'harmless-worktree-requested-p)
+                   (harmless-worktree-requested-p args))
+              (not (eq 'read-only
+                       (harmless-agent--expected-sandbox session args))))
+          'edit
+        'read)
+    (error 'edit)))
 
 (defun harmless-agent-plan-refuses-p (session tool args)
   "Return a refusal when plan mode blocks this spawn, or nil."
   (when (and (string= (harmless-tool-name tool) "spawn_agent")
-             (harmless-session-plan-mode session)
-             (eq 'workspace
-                 (harmless-agent--expected-sandbox session args)))
-    "Error: Plan mode is on. A subagent that can write is refused"))
+             (harmless-session-plan-mode session))
+    (cond
+     ((and (fboundp 'harmless-worktree-requested-p)
+           (harmless-worktree-requested-p args))
+      "Error: Plan mode is on. A worktree is refused")
+     ((eq 'workspace (harmless-agent--expected-sandbox session args))
+      "Error: Plan mode is on. A subagent that can write is refused"))))
 
 (defun harmless-agent--blank-shell-p (tool args)
   "Return non-nil when TOOL is run_shell with an empty command."
@@ -525,7 +539,8 @@ Nil means a workspace child with the parent's model and every tool."
 
 (defun harmless-agent-create (session args callback)
   "Create a child of SESSION for ARGS that will call CALLBACK.
-The child is not started.  Its directory is under the sessions root."
+The child is not started.  Its directory is under the sessions root.
+A worktree in ARGS is an isolated checkout.  The parent stays put."
   (unless (harmless-session-p session)
     (error "No Harmless session"))
   (when (eq (harmless-session-source session) 'agent)
@@ -538,6 +553,8 @@ The child is not started.  Its directory is under the sessions root."
          (parsed (harmless-parse-model-spec model-spec))
          (effort (or (cdr parsed)
                      (harmless-session-reasoning-effort session)))
+         (worktree (and (fboundp 'harmless-worktree-for-child)
+                        (harmless-worktree-for-child session args)))
          (child
           (apply
            #'harmless-session-new
@@ -548,9 +565,13 @@ The child is not started.  Its directory is under the sessions root."
            :source 'agent
            :permission-mode (harmless-session-permission-mode session)
            :title (harmless-agent--title args spec prompt)
-           (if (harmless-session-detached-p session)
-               (list :detached t)
-             (list :cwd (harmless-session-cwd session))))))
+           (cond
+            (worktree
+             (list :cwd worktree))
+            ((harmless-session-detached-p session)
+             (list :detached t))
+            (t
+             (list :cwd (harmless-session-cwd session)))))))
     (setf (harmless-session-agent child)
           (list :prompt (plist-get spec :prompt)
                 :allow (plist-get spec :allow)
@@ -579,7 +600,14 @@ The child is not started.  Its directory is under the sessions root."
   (harmless-register-tool
    (harmless-tool-create
     :name "spawn_agent"
-    :description "Start a child session and wait for its summary. PROMPT is the task. AGENT is an optional definition name. DESCRIPTION is an optional short title. The child has its own transcript. It cannot start another subagent."
+    :description
+    (concat
+     "Start a child session and wait for its summary. "
+     "PROMPT is the task. AGENT is an optional definition name. "
+     "DESCRIPTION is an optional short title. "
+     "WORKTREE is an optional isolated checkout. "
+     "The child has its own transcript. "
+     "It cannot start another subagent.")
     :class 'edit
     :async t
     :classify #'harmless-agent-class
@@ -589,7 +617,9 @@ The child is not started.  Its directory is under the sessions root."
                            :agent (:type "string"
                                   :description "Definition name, not a path")
                            :description (:type "string"
-                                        :description "Short title"))
+                                        :description "Short title")
+                           :worktree (:type "string"
+                                     :description "Isolated checkout name"))
               :required ["prompt"])
     :fn #'harmless-agent--tool)))
 

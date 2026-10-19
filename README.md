@@ -221,7 +221,20 @@ from the session directory up through your home directory.  A closer
 file wins.  The script is a list of `let` and `complete` forms.  It is
 not Emacs Lisp.  A subagent cannot run a workflow.  Aborting the
 parent aborts a child the workflow started, and the result is not
-added.
+added.  An agent form can pass `:worktree NAME` to edit an isolated
+checkout.
+
+## Worktrees
+
+`enter_worktree` points the session at a git checkout of the same
+repository.  The checkout is stored under `harmless-directory`, outside
+the project, on a branch named `harmless/` plus the name.  It starts at
+the current `HEAD`.  Uncommitted files are not copied.  The same name
+is the same checkout.  `exit_worktree` returns to the previous project
+and leaves the checkout on disk.  `M-x harmless-worktree` and `M-x
+harmless-worktree-exit` do the same from the minibuffer.  `spawn_agent`
+takes `worktree` so the child edits that checkout while the parent
+stays put.
 
 ## Memory
 

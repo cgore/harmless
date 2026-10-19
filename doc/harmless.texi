@@ -522,6 +522,7 @@ A detached chat is offered @code{memory_read},
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
+* Worktrees::   Isolated checkouts of the same repository.
 @end menu
 
 @node File tools
@@ -690,7 +691,9 @@ reply.  The child has its own transcript.  It does not see the
 parent's messages.  @code{prompt} is the task.  Nil, @code{""}, and
 whitespace are refused: @samp{prompt is empty}.  @code{description}
 is an optional one-line title.  A value such as @code{/} or
-@code{sub/} is a title, not a path.
+@code{sub/} is a title, not a path.  @code{worktree} is an optional
+checkout name.  The parent project stays where it is.  The child
+edits that checkout.  @xref{Worktrees}.
 
 @code{agent} is an optional definition name.  It is not a path.
 @code{""} is refused: @samp{agent name is empty}.  @code{sub/},
@@ -753,7 +756,9 @@ child uses the parent's permission mode.
 In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is @code{always-approve}:
 @samp{Plan mode is on. A subagent that can write is refused}.  A
-read-only subagent still runs.
+read-only subagent still runs.  A worktree is refused even for a
+read-only child:
+@samp{Plan mode is on. A worktree is refused}.
 
 The child cannot start another subagent: @samp{a subagent cannot
 start another subagent}.  A tool outside its list is refused:
@@ -857,7 +862,9 @@ whitespace are refused: @samp{prompt is empty}.  @code{:sandbox} is
 @code{read-only} or @code{workspace}.  The default is
 @code{workspace}.  Anything else is refused: @samp{sandbox must be
 workspace or read-only}.  @code{:agent} is an optional definition
-name, the same names as @code{spawn_agent}.  @code{:label} and
+name, the same names as @code{spawn_agent}.  @code{:worktree} is an
+optional checkout name.  It counts as a write even when the child is
+read-only.  @xref{Worktrees}.  @code{:label} and
 @code{:description} are optional one-line titles.  @code{(parallel
 (agent ...) ...)} starts those children together and keeps their
 replies in that order.  An empty list is refused.  @code{(join SEP
@@ -872,8 +879,9 @@ value must be a positive integer.
 
 A read-only child is one whose @code{:sandbox} is @code{read-only},
 or whose definition is read-only.  A workflow whose children are all
-read-only does not ask for permission.  A workflow that can write
-asks, unless the permission mode already allows edits.  In plan
+read-only, and that starts no worktree, does not ask for permission.
+A workflow that can write asks, unless the permission mode already
+allows edits.  In plan
 mode, a workflow that can write is refused before the permission
 question, including when the mode is @code{always-approve}:
 @samp{Error: Plan mode is on. A workflow that can write is refused}.
@@ -890,6 +898,69 @@ workflow's result is not added.  A detached chat can run an inline
 script.  A named script needs a project directory.  Nil, @code{""},
 @code{sub}, @code{sub/}, and @code{/} are not directories Harmless
 searches.
+
+@node Worktrees
+@section Worktrees
+
+@cindex worktree
+@cindex enter_worktree
+@cindex exit_worktree
+@findex harmless-worktree
+@findex harmless-worktree-exit
+@code{enter_worktree} points this session at an isolated checkout of
+the same repository.  @code{name} is required.  Nil, @code{""}, and
+whitespace are refused: @samp{worktree name is empty}.  @code{sub/},
+@code{/}, and @code{c:/} are refused: @samp{worktree name is not a
+name}.  @code{sub} is a name.  A value such as @code{/} passed as
+@code{description} on another tool is not a worktree name.
+
+The checkout is created with git, under @code{harmless-directory},
+outside the project.  The branch is @code{harmless/} plus the name,
+starting at the session's current @code{HEAD}.  Files that are not
+committed are not copied.  The same name is the same checkout.  A
+second session that enters it sees the files already there.  Two
+different names are two checkouts: a write in one does not change
+the other, and neither write changes the original project.
+
+Harmless will not store a checkout at the filesystem root, at a
+relative path, or inside the project.  Nil, @code{""}, @code{sub},
+@code{sub/}, and @code{/} are not a project:
+@samp{This chat is not attached to a project}.  A drive root is not
+@file{/}.  A directory that is not a git working tree is refused:
+@samp{this project is not a git repository}.  When git itself cannot
+be run: @samp{git is not available}.  A branch that already exists
+is refused: @samp{worktree branch already exists: harmless/},
+followed by the name.  A file already at the checkout path is
+refused: @samp{worktree path already exists}.
+
+Entering sets the session's project to that checkout and clears a
+remembered shell directory.  The session files stay in the directory
+they already used.  @kbd{M-x harmless-worktree} asks for the name.
+@code{exit_worktree}, or @kbd{M-x harmless-worktree-exit}, points the
+session back at the project it left.  The checkout stays on disk.  A
+session that was not entered this way is refused:
+@samp{this session is not in a worktree}.  A stored return path that
+is missing, relative, empty, or @file{/} is refused:
+@samp{worktree original is not a directory}, and the session stays
+where it is.
+
+The tool is an edit.  Ask mode asks before creating the checkout.
+Accept-edits and always-approve do not ask.  In plan mode the
+checkout is refused before the question, including when the mode is
+@code{always-approve}:
+@samp{Error: Plan mode is on. A worktree is refused}.  Leaving does
+not create a checkout, so plan mode allows it.
+
+@code{spawn_agent} takes the same @code{worktree} name.  The child
+edits the new checkout.  The parent stays in its project.  A child
+born in a checkout has that checkout as its project; it was not
+moved there, so leaving says it is not in a worktree.  A read-only
+child still cannot write, and it is not offered @code{enter_worktree}.
+Creating the checkout is a write, so plan mode refuses it even for
+that child.  A workflow agent accepts @code{:worktree}.  That script
+can write.  A fork keeps the checkout the session is in.  It does
+not create another one, and it can leave.  Aborting a turn does not
+delete a checkout.
 
 @node Instructions
 @chapter Instructions
@@ -1144,6 +1215,9 @@ The plan, when plan mode has written one.
 @item sessions/_detached/@var{id}/
 A chat with no project.
 
+@item worktrees/@var{repository}/@var{name}/
+An isolated checkout of that repository.  @xref{Worktrees}.
+
 @item memory/global/
 @itemx memory/workspaces/@var{project}/
 Notes.  @xref{Memory}.
@@ -1260,7 +1334,8 @@ in the prompt, cancels the HTTP request or a foreground shell command.
 A background shell keeps running.  A subagent that is still running is
 aborted too, and its summary is not added to the transcript.  A
 workflow that is still running is aborted the same way, and its one
-result is not added.  The session returns to idle and the transcript
+result is not added.  A checkout that session entered stays on disk.
+The session returns to idle and the transcript
 records @samp{aborted}.
 
 An empty reply from the model is an error: @samp{The model returned an

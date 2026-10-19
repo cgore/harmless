@@ -98,6 +98,8 @@
                   (session messages))
 (declare-function harmless-workflow-plan-refuses-p "harmless-workflow"
                   (session tool args))
+(declare-function harmless-worktree-plan-refuses-p "harmless-worktree"
+                  (session tool args))
 
 (cl-defstruct (harmless-turn-batch
                (:constructor harmless-turn-batch-create)
@@ -474,6 +476,9 @@ inside this loop, so it must not start the loop again."
                              session tool args))
                        (and (fboundp 'harmless-workflow-plan-refuses-p)
                             (harmless-workflow-plan-refuses-p
+                             session tool args))
+                       (and (fboundp 'harmless-worktree-plan-refuses-p)
+                            (harmless-worktree-plan-refuses-p
                              session tool args))))))
         (if (or agent-refusal plan-refusal)
             (harmless-turn--finish-call

@@ -155,6 +155,8 @@ and signals.  SESSION is not modified."
           (setf (harmless-session-messages child) (copy-tree kept))
           (setf (harmless-session-plan-mode child)
                 (and (harmless-session-plan-mode session) t))
+          (setf (harmless-session-worktree child)
+                (copy-tree (harmless-session-worktree session)))
           (harmless-session-save child)
           child)
       (error

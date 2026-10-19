@@ -277,6 +277,8 @@ directory, which lives under the Harmless data directory.  Setting
     ("ask_user" "ask")
     ("spawn_agent" "agent")
     ("run_workflow" "workflow")
+    ("enter_worktree" "worktree")
+    ("exit_worktree" "leave")
     (_ (or name "?"))))
 
 (defun harmless-ui--tool-groupable-p (name)
@@ -311,6 +313,8 @@ directory, which lives under the Harmless data directory.  Setting
             ("run_workflow" (or (harmless-tool-arg args :description)
                                 (harmless-tool-arg args :name)
                                 ""))
+            ((or "enter_worktree" "exit_worktree")
+             (or (harmless-tool-arg args :name) ""))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

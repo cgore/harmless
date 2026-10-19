@@ -86,6 +86,7 @@
 (require 'harmless-ask)
 (require 'harmless-agent)
 (require 'harmless-workflow)
+(require 'harmless-worktree)
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-compact)
