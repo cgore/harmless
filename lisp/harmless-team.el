@@ -38,8 +38,10 @@
 ;;
 ;; A rig is a file of pods and named seats.  A seat has a role and
 ;; an address `pod-member@rig`.  The session id can be replaced.
-;; The name, the role, and the inbound work stay.  This file does
-;; not boot a team, send to a seat, or register another machine.
+;; The name, the role, and the inbound work stay.  Edges are
+;; recorded on the rig.  `delegates_to` and `spawned_by` decide
+;; the launch order.  This file does not boot a team, send to a
+;; seat, or register another machine.
 
 ;;; Code:
 
@@ -278,7 +280,136 @@ SEEN-PODS holds pod names already accepted."
                (setq seen (cons (plist-get (car pods) :name) seen)
                      pods (cdr pods))
              (setq ok nil)))
-         (and ok (null pods)))))
+         (and ok (null pods)))
+       (harmless-team--edges-ok-p rig)))
+
+(defconst harmless-team--edge-kinds
+  '("delegates_to" "spawned_by" "can_observe"
+    "collaborates_with" "escalates_to")
+  "Edge kinds a rig can record.")
+
+(defun harmless-team--edge-kind-p (kind)
+  "Return non-nil if KIND is one recorded edge."
+  (and (stringp kind) (member kind harmless-team--edge-kinds)))
+
+(defun harmless-team--key (name)
+  "Return NAME as a hash key.  Windows ignores case."
+  (if (and (eq system-type 'windows-nt) (stringp name))
+      (downcase name)
+    name))
+
+(defun harmless-team--addresses (rig)
+  "Return seat addresses in RIG, in file order."
+  (let ((out nil))
+    (dolist (pod (plist-get rig :pods))
+      (dolist (seat (plist-get pod :seats))
+        (setq out (append out (list (plist-get seat :address))))))
+    out))
+
+(defun harmless-team--stored (key addresses)
+  "Return the address in ADDRESSES whose key is KEY."
+  (let ((found nil))
+    (dolist (addr addresses)
+      (when (and (not found)
+                 (equal (harmless-team--key addr) key))
+        (setq found addr)))
+    found))
+
+(defun harmless-team--before (edge)
+  "Return (EARLIER . LATER) when EDGE decides launch order.
+`delegates_to' runs the source first.  `spawned_by' runs the
+target first.  The other kinds do not decide order."
+  (cond
+   ((equal (plist-get edge :kind) "delegates_to")
+    (cons (plist-get edge :from) (plist-get edge :to)))
+   ((equal (plist-get edge :kind) "spawned_by")
+    (cons (plist-get edge :to) (plist-get edge :from)))))
+
+(defun harmless-team--launch-list (addresses edges)
+  "Return ADDRESSES in launch order, or the symbol `cycle'."
+  (let ((pos (make-hash-table :test 'equal))
+        (indeg (make-hash-table :test 'equal))
+        (succ (make-hash-table :test 'equal))
+        (n 0))
+    (dolist (addr addresses)
+      (let ((key (harmless-team--key addr)))
+        (puthash key n pos)
+        (puthash key 0 indeg)
+        (setq n (1+ n))))
+    (dolist (edge edges)
+      (let ((pair (harmless-team--before edge)))
+        (when pair
+          (let ((earlier (harmless-team--key (car pair)))
+                (later (harmless-team--key (cdr pair))))
+            (puthash later (1+ (gethash later indeg 0)) indeg)
+            (puthash earlier
+                     (cons later (gethash earlier succ))
+                     succ)))))
+    (let ((ready nil)
+          (out nil)
+          (left n))
+      (dolist (addr addresses)
+        (when (zerop (gethash (harmless-team--key addr) indeg 0))
+          (push addr ready)))
+      (setq ready (nreverse ready))
+      (while ready
+        (setq ready
+              (sort ready
+                    (lambda (a b)
+                      (< (gethash (harmless-team--key a) pos)
+                         (gethash (harmless-team--key b) pos)))))
+        (let ((addr (car ready)))
+          (setq ready (cdr ready))
+          (push addr out)
+          (setq left (1- left))
+          (dolist (later (gethash (harmless-team--key addr) succ))
+            (let ((left-deg (1- (gethash later indeg 0))))
+              (puthash later left-deg indeg)
+              (when (zerop left-deg)
+                (push (harmless-team--stored later addresses)
+                      ready))))))
+      (if (zerop left) (nreverse out) 'cycle))))
+
+(defun harmless-team--edge-seen-p (edge seen)
+  "Return non-nil if EDGE is already in SEEN."
+  (let ((found nil))
+    (dolist (item seen)
+      (when (and (equal (plist-get item :kind) (plist-get edge :kind))
+                 (harmless-team--same-p (plist-get item :from)
+                                        (plist-get edge :from))
+                 (harmless-team--same-p (plist-get item :to)
+                                        (plist-get edge :to)))
+        (setq found t)))
+    found))
+
+(defun harmless-team--edges-ok-p (rig)
+  "Return non-nil if RIG's edges are readable.
+Nil edges are a rig with no edges.  A cycle is not readable."
+  (let ((edges (plist-get rig :edges)))
+    (if (null edges)
+        t
+      (let ((addresses (harmless-team--addresses rig))
+            (seen nil)
+            (ok t))
+        (while (and ok (consp edges))
+          (let ((edge (car edges)))
+            (if (and (harmless-plist-p edge)
+                     (harmless-team--edge-kind-p (plist-get edge :kind))
+                     (harmless-team--seen-p
+                      (plist-get edge :from) addresses)
+                     (harmless-team--seen-p
+                      (plist-get edge :to) addresses)
+                     (not (harmless-team--same-p
+                           (plist-get edge :from)
+                           (plist-get edge :to)))
+                     (not (harmless-team--edge-seen-p edge seen)))
+                (setq seen (cons edge seen)
+                      edges (cdr edges))
+              (setq ok nil))))
+        (and ok (null edges)
+             (not (eq (harmless-team--launch-list
+                       addresses (plist-get rig :edges))
+                      'cycle)))))))
 
 (defun harmless-team--read (path rig)
   "Return the rig plist at PATH, or signal.
@@ -496,6 +627,138 @@ Read the rig file.  Do not change it."
              (plist-get saved :address)
              (plist-get saved :session))
     saved))
+
+(defun harmless-team--edge-kind (kind)
+  "Return KIND trimmed, or signal."
+  (cond
+   ((null kind) (error "team edge is empty"))
+   ((not (stringp kind))
+    (error "team edge must be a string")))
+  (setq kind (string-trim kind))
+  (cond
+   ((string-empty-p kind) (error "team edge is empty"))
+   ((not (harmless-team--edge-kind-p kind))
+    (error "team edge is not a kind"))
+   (t kind)))
+
+(defun harmless-team--address-of (rig pod seat)
+  "Return the stored address of POD's SEAT in RIG, or nil."
+  (let ((found (harmless-team--find rig pod seat)))
+    (when found
+      (plist-get (cdr found) :address))))
+
+(defun harmless-team--endpoint (rig text)
+  "Return the stored address for TEXT in RIG, or signal.
+TEXT is `pod.member' or `pod-member@rig'."
+  (cond
+   ((null text) (error "team edge is empty"))
+   ((not (stringp text))
+    (error "team edge must be a string")))
+  (setq text (string-trim text))
+  (cond
+   ((string-empty-p text) (error "team edge is empty"))
+   ((string-match
+     "\\`\\([A-Za-z0-9]+\\)\\.\\([A-Za-z0-9]+\\)\\'" text)
+    (let ((pod (match-string 1 text))
+          (seat (match-string 2 text)))
+      (or (harmless-team--address-of rig pod seat)
+          (error "team seat is missing"))))
+   ((string-match
+     "\\`\\([A-Za-z0-9]+\\)-\\([A-Za-z0-9]+\\)@\\(.+\\)\\'" text)
+    (let ((pod (match-string 1 text))
+          (seat (match-string 2 text))
+          (name (match-string 3 text)))
+      (unless (harmless-team--same-p name (plist-get rig :name))
+        (error "team edge is not a seat"))
+      (or (harmless-team--address-of rig pod seat)
+          (error "team seat is missing"))))
+   (t (error "team edge is not a seat"))))
+
+(defun harmless-team--public-edge (edge)
+  "Return EDGE with keys in a fixed order."
+  (list :kind (plist-get edge :kind)
+        :from (plist-get edge :from)
+        :to (plist-get edge :to)))
+
+(defun harmless-team--connect (rig kind from to)
+  "Record an edge and return it.  A cycle is not written."
+  (setq rig (harmless-team--rig-name rig))
+  (setq kind (harmless-team--edge-kind kind))
+  (let* ((loaded (harmless-team--load rig))
+         (stored (cdr loaded))
+         (source (harmless-team--endpoint stored from))
+         (target (harmless-team--endpoint stored to)))
+    (when (harmless-team--same-p source target)
+      (error "team edge is the same seat"))
+    (let ((edges (plist-get stored :edges)))
+      (dolist (edge edges)
+        (when (and (equal (plist-get edge :kind) kind)
+                   (harmless-team--same-p (plist-get edge :from) source)
+                   (harmless-team--same-p (plist-get edge :to) target))
+          (error "team edge already exists")))
+      (let* ((new (list :kind kind :from source :to target))
+             (next (append edges (list new))))
+        (when (eq (harmless-team--launch-list
+                   (harmless-team--addresses stored) next)
+                  'cycle)
+          (error "team edge is a cycle"))
+        (setq stored (plist-put stored :edges next))
+        (harmless-team--write (car loaded) stored)
+        new))))
+
+(defun harmless-team--edge-list (rig)
+  "Return the edges of RIG in the order they were recorded."
+  (setq rig (harmless-team--rig-name rig))
+  (mapcar #'harmless-team--public-edge
+          (plist-get (cdr (harmless-team--load rig)) :edges)))
+
+(defun harmless-team--order (rig)
+  "Return the launch order of RIG."
+  (setq rig (harmless-team--rig-name rig))
+  (let* ((stored (cdr (harmless-team--load rig)))
+         (order (harmless-team--launch-list
+                 (harmless-team--addresses stored)
+                 (plist-get stored :edges))))
+    (if (eq order 'cycle)
+        (error "team rig is not valid")
+      order)))
+
+;;;###autoload
+(defun harmless-team-edge (rig kind from to)
+  "Record an edge of KIND from FROM to TO in RIG.
+FROM and TO are `pod.member' or `pod-member@rig'.
+`delegates_to' starts FROM before TO.  `spawned_by' starts TO
+before FROM.  The other kinds are recorded and do not change
+the order.  Return the edge."
+  (interactive
+   (list (read-string "Rig: ")
+         (read-string "Kind: ")
+         (read-string "From: ")
+         (read-string "To: ")))
+  (let ((edge (harmless-team--connect rig kind from to)))
+    (message "%s %s -> %s"
+             (plist-get edge :kind)
+             (plist-get edge :from)
+             (plist-get edge :to))
+    edge))
+
+;;;###autoload
+(defun harmless-team-edges (rig)
+  "Return the edges recorded on RIG, in that order."
+  (interactive (list (read-string "Rig: ")))
+  (let ((edges (harmless-team--edge-list rig)))
+    (message "%d edges" (length edges))
+    edges))
+
+;;;###autoload
+(defun harmless-team-launch-order (rig)
+  "Return the seat addresses of RIG in launch order.
+`delegates_to' and `spawned_by' decide the order.  The other
+edges do not.  This does not start a seat."
+  (interactive (list (read-string "Rig: ")))
+  (let ((order (harmless-team--order rig)))
+    (message "%s" (mapconcat #'identity order ", "))
+    order))
 
 (provide 'harmless-team)
 

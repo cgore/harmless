@@ -1965,6 +1965,23 @@ the seat back.
 Files::.  A pod name and a seat name are letters and digits.  A rig name
 may also contain hyphens.  The address uses the stored spelling.
 
+   ‘M-x harmless-team-edge’ records one edge.  The ends are ‘pod.member’
+or the address.  ‘delegates_to’ starts the source before the target.
+‘spawned_by’ starts the target before the source.  ‘can_observe’,
+‘collaborates_with’, and ‘escalates_to’ are recorded and shown, and they
+do not change the order.  ‘M-x harmless-team-edges’ reads the edges.
+‘M-x harmless-team-launch-order’ reads the order.  It does not start a
+seat.
+
+   Nil, ‘""’, and whitespace are refused: ‘team edge is empty’.  An edge
+that is not text is refused: ‘team edge must be a string’.  Any other
+kind is refused: ‘team edge is not a kind’.  An end that is not a seat
+reference is refused: ‘team edge is not a seat’.  An edge from a seat to
+itself is refused: ‘team edge is the same seat’.  The same edge again is
+refused: ‘team edge already exists’.  An edge that would loop the launch
+order is refused: ‘team edge is a cycle’.  The rig file is left
+unchanged.
+
    Nil, ‘""’, and whitespace are refused: ‘team rig is empty’.  A rig
 that is not text is refused: ‘team rig must be a string’.  A path is
 refused: ‘team rig is not a name’.  A pod and a seat use the same three
@@ -2177,8 +2194,8 @@ replaced with ‘/’.
      One headless task.  *Note Headless::.
 
 ‘teams/RIG.json’
-     One rig: its pods, its seats, and the work each seat still holds.
-     *Note Team::.
+     One rig: its pods, its seats, its edges, and the work each seat
+     still holds.  *Note Team::.
 
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
@@ -2415,6 +2432,9 @@ Command Index
 * harmless-task-status:                  Headless.             (line  6)
 * harmless-team-add-seat:                Team.                 (line  6)
 * harmless-team-add-work:                Team.                 (line  6)
+* harmless-team-edge:                    Team.                 (line  6)
+* harmless-team-edges:                   Team.                 (line  6)
+* harmless-team-launch-order:            Team.                 (line  6)
 * harmless-team-occupy:                  Team.                 (line  6)
 * harmless-team-seat:                    Team.                 (line  6)
 * harmless-usage:                        Usage.                (line  6)
@@ -2499,15 +2519,15 @@ Node: Image generation85861
 Node: Headless87703
 Node: Pages90391
 Node: Team93228
-Node: Memory95041
-Node: Plan mode97631
-Node: Usage100617
-Node: Files101636
-Node: Keys103391
-Node: Trouble105073
-Node: Manual106327
-Node: Command Index107032
-Node: Key Index111624
+Node: Memory96046
+Node: Plan mode98636
+Node: Usage101622
+Node: Files102641
+Node: Keys104408
+Node: Trouble106090
+Node: Manual107344
+Node: Command Index108049
+Node: Key Index112860
 
 End Tag Table
 

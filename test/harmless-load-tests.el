@@ -63,6 +63,9 @@
   (should (fboundp 'harmless-team-occupy))
   (should (fboundp 'harmless-team-add-work))
   (should (fboundp 'harmless-team-seat))
+  (should (fboundp 'harmless-team-edge))
+  (should (fboundp 'harmless-team-edges))
+  (should (fboundp 'harmless-team-launch-order))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()

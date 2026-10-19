@@ -149,6 +149,9 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-team-occupy` | Put a session in that seat, or replace it |
 | `M-x harmless-team-add-work` | Append text the seat keeps when the session changes |
 | `M-x harmless-team-seat` | Read the seat back |
+| `M-x harmless-team-edge` | Record an edge between two seats |
+| `M-x harmless-team-edges` | Read the edges on a rig |
+| `M-x harmless-team-launch-order` | Read the order `delegates_to` and `spawned_by` decide |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -314,6 +317,13 @@ calling it again replaces that session.  The name, the role, and
 the inbound work stay.  `M-x harmless-team-add-work` appends one
 text to that work.  The record is `teams/<rig>.json` under
 `harmless-directory`.
+
+`M-x harmless-team-edge` records an edge.  `delegates_to` starts
+the source before the target.  `spawned_by` starts the target
+before the source.  `can_observe`, `collaborates_with`, and
+`escalates_to` are recorded and do not change that order.
+`M-x harmless-team-launch-order` reads the order.  It does not
+start a seat.
 
 ## Subagents
 

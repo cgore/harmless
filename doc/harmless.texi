@@ -2198,6 +2198,9 @@ destination is refused: @samp{page path is the source}.
 @findex harmless-team-occupy
 @findex harmless-team-add-work
 @findex harmless-team-seat
+@findex harmless-team-edge
+@findex harmless-team-edges
+@findex harmless-team-launch-order
 A rig is a named team.  A pod is a named group of seats.  A seat
 has a name, a role, and an address.  The address is
 @code{pod-member@@rig}, for example @code{dev-build@@workshop}.
@@ -2214,6 +2217,26 @@ The record is @file{teams/@var{rig}.json} under
 @code{harmless-directory}.  @xref{Files}.  A pod name and a seat
 name are letters and digits.  A rig name may also contain
 hyphens.  The address uses the stored spelling.
+
+@kbd{M-x harmless-team-edge} records one edge.  The ends are
+@code{pod.member} or the address.  @code{delegates_to} starts
+the source before the target.  @code{spawned_by} starts the
+target before the source.  @code{can_observe},
+@code{collaborates_with}, and @code{escalates_to} are recorded
+and shown, and they do not change the order.
+@kbd{M-x harmless-team-edges} reads the edges.
+@kbd{M-x harmless-team-launch-order} reads the order.  It does
+not start a seat.
+
+Nil, @code{""}, and whitespace are refused: @samp{team edge is
+empty}.  An edge that is not text is refused: @samp{team edge
+must be a string}.  Any other kind is refused: @samp{team edge
+is not a kind}.  An end that is not a seat reference is
+refused: @samp{team edge is not a seat}.  An edge from a seat
+to itself is refused: @samp{team edge is the same seat}.  The
+same edge again is refused: @samp{team edge already exists}.
+An edge that would loop the launch order is refused:
+@samp{team edge is a cycle}.  The rig file is left unchanged.
 
 Nil, @code{""}, and whitespace are refused: @samp{team rig is
 empty}.  A rig that is not text is refused: @samp{team rig must
@@ -2454,7 +2477,8 @@ A chat with no project.
 One headless task.  @xref{Headless}.
 
 @item teams/@var{rig}.json
-One rig: its pods, its seats, and the work each seat still holds.
+One rig: its pods, its seats, its edges, and the work each seat
+still holds.
 @xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/
