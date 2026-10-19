@@ -41,7 +41,7 @@ Every turn resends the full transcript. Editing an earlier prompt still aborts a
 
 A message informs. A queue row obligates. A seat outlives the session occupying it.
 
-- [ ] A rig of pods of named seats. A seat has a role and an address (`pod-member@rig`). The session in it can be replaced. The seat keeps its name, its role, and its inbound work.
+- [x] A rig of pods of named seats. A seat has a role and an address (`pod-member@rig`). The session in it can be replaced. The seat keeps its name, its role, and its inbound work.
 - [ ] Edges between seats. `delegates_to` and `spawned_by` decide launch order. `can_observe`, `collaborates_with`, and `escalates_to` are recorded and shown.
 - [ ] Boot a team from a spec, a named starter, or a portable bundle. Preview the boot before it runs. Grow, shrink, add, and remove seats while the team runs. Removing a seat that still holds work requires a fallback seat, or the removal is refused.
 - [ ] Adopt a session that is already running, including one started by hand. Release it without killing it. A seat can be a Harmless session, a Claude Code session, a Codex session, a Pi session, or a plain terminal for a dev server or a log.

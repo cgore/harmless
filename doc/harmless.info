@@ -43,6 +43,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Image generation::    Write a generated image into the project.
 * Headless::            One prompt, and a task that outlives Emacs.
 * Pages::               Publish Markdown or HTML as a page.
+* Team::                A rig of pods and named seats.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -1892,7 +1893,7 @@ is the session file a window would have saved.  In batch Emacs, a tool
 that would ask is denied.  The turn still ends.
 
 
-File: harmless.info,  Node: Pages,  Next: Memory,  Prev: Headless,  Up: Top
+File: harmless.info,  Node: Pages,  Next: Team,  Prev: Headless,  Up: Top
 
 17 Pages
 ********
@@ -1944,9 +1945,46 @@ parent is missing is refused: ‘page path is missing’.  The source file
 as the destination is refused: ‘page path is the source’.
 
 
-File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Pages,  Up: Top
+File: harmless.info,  Node: Team,  Next: Memory,  Prev: Pages,  Up: Top
 
-18 Memory
+18 Team
+*******
+
+A rig is a named team.  A pod is a named group of seats.  A seat has a
+name, a role, and an address.  The address is ‘pod-member@rig’, for
+example ‘dev-build@workshop’.  The session that occupies the seat can be
+replaced.  The seat keeps its name, its role, and its inbound work.
+
+   ‘M-x harmless-team-add-seat’ records the seat.  It starts with no
+session and no work.  ‘M-x harmless-team-occupy’ sets the session id.
+Calling it again replaces that session.  ‘M-x harmless-team-add-work’
+appends one text to the inbound work.  ‘M-x harmless-team-seat’ reads
+the seat back.
+
+   The record is ‘teams/RIG.json’ under ‘harmless-directory’.  *Note
+Files::.  A pod name and a seat name are letters and digits.  A rig name
+may also contain hyphens.  The address uses the stored spelling.
+
+   Nil, ‘""’, and whitespace are refused: ‘team rig is empty’.  A rig
+that is not text is refused: ‘team rig must be a string’.  A path is
+refused: ‘team rig is not a name’.  A pod and a seat use the same three
+sentences, with ‘pod’ or ‘seat’ in place of ‘rig’.  A role uses the
+empty and must-be-a-string sentences.  A session uses them too, and an
+id that is not a session id is refused: ‘team session is not an id’.
+Work text uses the empty and must-be-a-string sentences.
+
+   A second seat with the same name is refused: ‘team seat already
+exists’.  A missing rig is refused: ‘team rig is missing’.  A missing
+seat is refused: ‘team seat is missing’.  A broken rig file is refused:
+‘team rig is not valid’.  That file is left unchanged.
+
+   A team file is refused at the filesystem root: ‘Refusing to store a
+team at ’, followed by that directory.
+
+
+File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Team,  Up: Top
+
+19 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2014,7 +2052,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-19 Plan mode
+20 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2079,7 +2117,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-20 Usage
+21 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2103,7 +2141,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-21 Files
+22 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2138,6 +2176,10 @@ replaced with ‘/’.
 ‘tasks/ID.json’
      One headless task.  *Note Headless::.
 
+‘teams/RIG.json’
+     One rig: its pods, its seats, and the work each seat still holds.
+     *Note Team::.
+
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
 
@@ -2157,7 +2199,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-22 Keys
+23 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2269,7 +2311,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-23 Trouble
+24 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2296,7 +2338,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-24 Manual
+25 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2371,6 +2413,10 @@ Command Index
 * harmless-switch:                       Sessions.             (line  6)
 * harmless-task-start:                   Headless.             (line  6)
 * harmless-task-status:                  Headless.             (line  6)
+* harmless-team-add-seat:                Team.                 (line  6)
+* harmless-team-add-work:                Team.                 (line  6)
+* harmless-team-occupy:                  Team.                 (line  6)
+* harmless-team-seat:                    Team.                 (line  6)
 * harmless-usage:                        Usage.                (line  6)
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
@@ -2417,50 +2463,51 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2096
-Node: Installation2827
-Node: Starting4431
-Node: Sessions4970
-Node: Transcript8151
-Node: Prompt11912
-Node: Permissions13153
-Node: Accounts20459
-Node: Models22704
-Node: Tools23800
-Node: File tools28148
-Node: Search32655
-Node: Shell34551
-Node: Questions37336
-Node: Subagents38106
-Node: Workflows42255
-Node: Worktrees47258
-Node: Messages50386
-Node: Web search52207
-Node: Fetch a page53062
-Node: X search54295
-Node: MCP56692
-Node: Computer use59396
-Node: Monitors61412
-Node: Schedules64416
-Node: Todos66882
-Node: Review69537
-Node: Language server73120
-Node: Instructions76307
-Node: Skills79415
-Node: Plugins81745
-Node: Output styles83795
-Node: Image generation85806
-Node: Headless87648
-Node: Pages90336
-Node: Memory93175
-Node: Plan mode95766
-Node: Usage98752
-Node: Files99771
-Node: Keys101414
-Node: Trouble103096
-Node: Manual104350
-Node: Command Index105055
-Node: Key Index109355
+Node: Introduction2151
+Node: Installation2882
+Node: Starting4486
+Node: Sessions5025
+Node: Transcript8206
+Node: Prompt11967
+Node: Permissions13208
+Node: Accounts20514
+Node: Models22759
+Node: Tools23855
+Node: File tools28203
+Node: Search32710
+Node: Shell34606
+Node: Questions37391
+Node: Subagents38161
+Node: Workflows42310
+Node: Worktrees47313
+Node: Messages50441
+Node: Web search52262
+Node: Fetch a page53117
+Node: X search54350
+Node: MCP56747
+Node: Computer use59451
+Node: Monitors61467
+Node: Schedules64471
+Node: Todos66937
+Node: Review69592
+Node: Language server73175
+Node: Instructions76362
+Node: Skills79470
+Node: Plugins81800
+Node: Output styles83850
+Node: Image generation85861
+Node: Headless87703
+Node: Pages90391
+Node: Team93228
+Node: Memory95041
+Node: Plan mode97631
+Node: Usage100617
+Node: Files101636
+Node: Keys103391
+Node: Trouble105073
+Node: Manual106327
+Node: Command Index107032
+Node: Key Index111624
 
 End Tag Table
 

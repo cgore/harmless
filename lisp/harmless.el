@@ -59,6 +59,7 @@
 ;;   M-x harmless-info         ; this manual
 ;;   M-x harmless-task-start   ; one prompt in another Emacs
 ;;   M-x harmless-publish      ; publish Markdown or HTML as a page
+;;   M-x harmless-team-add-seat ; record one seat in a rig
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -115,6 +116,7 @@
 (require 'harmless-transient)
 (require 'harmless-headless)
 (require 'harmless-page)
+(require 'harmless-team)
 
 (defvar harmless--config-loaded nil
   "Non-nil after the Harmless config file has been loaded.")

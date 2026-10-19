@@ -145,6 +145,10 @@ If nothing is configured, `M-x harmless` walks through a short setup.
 | `M-x harmless-task-start` | Run one prompt in another Emacs that keeps going after this one exits |
 | `M-x harmless-task-status` | Read that task's status |
 | `M-x harmless-publish` | Publish a Markdown or HTML file as a page |
+| `M-x harmless-team-add-seat` | Record a named seat in a rig |
+| `M-x harmless-team-occupy` | Put a session in that seat, or replace it |
+| `M-x harmless-team-add-work` | Append text the seat keeps when the session changes |
+| `M-x harmless-team-seat` | Read the seat back |
 | `M-x harmless-add-directory` | Let this session read and edit a directory outside the project (`+` in the transcript) |
 | `M-x harmless-reload-all-harmless` | Reload the Lisp checkout into this Emacs |
 
@@ -300,6 +304,16 @@ escaped.  An HTML document is copied.  An HTML fragment is wrapped
 in a document.  With no destination, the page is
 `.harmless/pages/NAME.html`.  A relative destination stays in the
 project.  The source file is left unchanged.
+
+## Team
+
+`M-x harmless-team-add-seat` records a seat in a pod of a rig.
+The address is `pod-member@rig`.  The seat starts with no
+session.  `M-x harmless-team-occupy` sets the session id, and
+calling it again replaces that session.  The name, the role, and
+the inbound work stay.  `M-x harmless-team-add-work` appends one
+text to that work.  The record is `teams/<rig>.json` under
+`harmless-directory`.
 
 ## Subagents
 

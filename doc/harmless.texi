@@ -52,6 +52,7 @@ commands, keys, and files a user needs.
 * Image generation::    Write a generated image into the project.
 * Headless::            One prompt, and a task that outlives Emacs.
 * Pages::               Publish Markdown or HTML as a page.
+* Team::                A rig of pods and named seats.
 * Memory::              Notes that outlive one session.
 * Plan mode::           Agree on a plan before editing.
 * Usage::               Tokens and rate limits.
@@ -2189,6 +2190,50 @@ not a page}.  An absolute destination whose parent is missing is
 refused: @samp{page path is missing}.  The source file as the
 destination is refused: @samp{page path is the source}.
 
+@node Team
+@chapter Team
+
+@cindex team
+@findex harmless-team-add-seat
+@findex harmless-team-occupy
+@findex harmless-team-add-work
+@findex harmless-team-seat
+A rig is a named team.  A pod is a named group of seats.  A seat
+has a name, a role, and an address.  The address is
+@code{pod-member@@rig}, for example @code{dev-build@@workshop}.
+The session that occupies the seat can be replaced.  The seat
+keeps its name, its role, and its inbound work.
+
+@kbd{M-x harmless-team-add-seat} records the seat.  It starts
+with no session and no work.  @kbd{M-x harmless-team-occupy}
+sets the session id.  Calling it again replaces that session.
+@kbd{M-x harmless-team-add-work} appends one text to the inbound
+work.  @kbd{M-x harmless-team-seat} reads the seat back.
+
+The record is @file{teams/@var{rig}.json} under
+@code{harmless-directory}.  @xref{Files}.  A pod name and a seat
+name are letters and digits.  A rig name may also contain
+hyphens.  The address uses the stored spelling.
+
+Nil, @code{""}, and whitespace are refused: @samp{team rig is
+empty}.  A rig that is not text is refused: @samp{team rig must
+be a string}.  A path is refused: @samp{team rig is not a name}.
+A pod and a seat use the same three sentences, with @code{pod}
+or @code{seat} in place of @code{rig}.  A role uses the empty
+and must-be-a-string sentences.  A session uses them too, and an
+id that is not a session id is refused: @samp{team session is
+not an id}.  Work text uses the empty and must-be-a-string
+sentences.
+
+A second seat with the same name is refused: @samp{team seat
+already exists}.  A missing rig is refused: @samp{team rig is
+missing}.  A missing seat is refused: @samp{team seat is
+missing}.  A broken rig file is refused: @samp{team rig is not
+valid}.  That file is left unchanged.
+
+A team file is refused at the filesystem root: @samp{Refusing to
+store a team at }, followed by that directory.
+
 @node Memory
 @chapter Memory
 
@@ -2407,6 +2452,10 @@ A chat with no project.
 
 @item tasks/@var{id}.json
 One headless task.  @xref{Headless}.
+
+@item teams/@var{rig}.json
+One rig: its pods, its seats, and the work each seat still holds.
+@xref{Team}.
 
 @item worktrees/@var{repository}/@var{name}/
 An isolated checkout of that repository.  @xref{Worktrees}.

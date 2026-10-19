@@ -59,6 +59,10 @@
   (should (fboundp 'harmless-headless-batch))
   (should (fboundp 'harmless-headless-work))
   (should (fboundp 'harmless-publish))
+  (should (fboundp 'harmless-team-add-seat))
+  (should (fboundp 'harmless-team-occupy))
+  (should (fboundp 'harmless-team-add-work))
+  (should (fboundp 'harmless-team-seat))
   (should (harmless-tool-by-name "generate_image")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
