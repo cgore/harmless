@@ -318,6 +318,11 @@ directory, which lives under the Harmless data directory.  Setting
     ("notebook_edit" "notebook")
     ("skill" "skill")
     ("generate_image" "image")
+    ("team_boot" "boot")
+    ("team_inspect" "inspect")
+    ("team_message" "message")
+    ("team_snapshot" "snapshot")
+    ("team_restore" "restore")
     (_ (if (and (stringp name) (string-prefix-p "mcp__" name))
            "mcp"
          (or name "?")))))
@@ -474,6 +479,18 @@ directory, which lives under the Harmless data directory.  Setting
             ("generate_image"
              (let ((path (harmless-tool-arg args :path)))
                (if (stringp path) path "")))
+            ("team_boot"
+             (let ((spec (harmless-tool-arg args :spec)))
+               (if (stringp spec) spec "")))
+            ("team_inspect"
+             (let ((rig (harmless-tool-arg args :rig)))
+               (if (stringp rig) rig "")))
+            ("team_message"
+             (let ((text (harmless-tool-arg args :text)))
+               (if (stringp text) text "")))
+            ((or "team_snapshot" "team_restore")
+             (let ((name (harmless-tool-arg args :name)))
+               (if (stringp name) name "")))
             (_ (or (harmless-tool-arg args :path)
                    (harmless-tool-arg args :pattern)
                    (harmless-tool-arg args :command)

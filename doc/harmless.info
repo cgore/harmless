@@ -589,7 +589,9 @@ definition, references, or diagnostics.  *Note Language server::.
 replaces one notebook cell.  ‘I’ attaches an image to the next prompt.
 *Note File tools::.  ‘skill’ loads one skill into later turns.  *Note
 Skills::.  ‘generate_image’ writes a generated image into the project.
-*Note Image generation::.
+*Note Image generation::.  ‘team_boot’, ‘team_inspect’, ‘team_message’,
+‘team_snapshot’, and ‘team_restore’ call the same team commands a person
+runs.  *Note Team::.
 
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -2317,6 +2319,23 @@ seat is refused: ‘team seat is missing’.  A broken rig file is refused:
    A team file is refused at the filesystem root: ‘Refusing to store a
 team at ’, followed by that directory.
 
+   ‘team_boot’ calls ‘M-x harmless-team-boot’.  ‘team_inspect’ reads the
+seats, the edges, the launch order, and the rows.  It writes nothing.
+‘team_message’ calls ‘M-x harmless-team-send’.  The seat must already be
+occupied.  ‘team_snapshot’ calls ‘M-x harmless-team-snapshot’.  The live
+rig is not changed.  ‘team_restore’ calls ‘M-x
+harmless-team-snapshot-restore’.  A seat that cannot return writes
+nothing.
+
+   A detached chat is not offered these tools.  Calling one there is
+refused: ‘This chat is not attached to a project’.  A missing session is
+refused: ‘No Harmless session’.  Plan mode refuses the tools that write:
+‘Plan mode is on. Only plan.md may be edited, with write_plan’.  Inspect
+still reads.  The command errors are unchanged, including ‘team spec is
+empty’, ‘team rig is missing’, ‘team send is empty’, ‘team seat is not
+occupied’, ‘team snapshot is missing’, and ‘team snapshot cannot
+restore’.
+
 
 File: harmless.info,  Node: Machines,  Next: People,  Prev: Team,  Up: Top
 
@@ -2959,7 +2978,7 @@ Command Index
 * generate_image:                        Image generation.     (line  6)
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
-* harmless-add-directory:                Tools.                (line 30)
+* harmless-add-directory:                Tools.                (line 32)
 * harmless-attach-image:                 File tools.           (line 51)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
@@ -3098,7 +3117,7 @@ Key Index
 * Menu:
 
 * ! (permission):                        Permissions.          (line  6)
-* + (transcript):                        Tools.                (line 30)
+* + (transcript):                        Tools.                (line 32)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 79)
@@ -3136,45 +3155,45 @@ Node: Permissions13472
 Node: Accounts20778
 Node: Models23023
 Node: Tools24119
-Node: File tools28467
-Node: Search32974
-Node: Shell34870
-Node: Questions37655
-Node: Subagents38425
-Node: Workflows42574
-Node: Worktrees47577
-Node: Messages50705
-Node: Web search52526
-Node: Fetch a page53381
-Node: X search54614
-Node: MCP57011
-Node: Computer use59715
-Node: Monitors61731
-Node: Schedules64735
-Node: Todos67201
-Node: Review69856
-Node: Language server73439
-Node: Instructions76626
-Node: Skills79734
-Node: Plugins83894
-Node: Output styles86746
-Node: Image generation88757
-Node: Headless90599
-Node: Pages93287
-Node: Team96124
-Node: Machines116022
-Node: People118889
-Node: Scope121173
-Node: Context125182
-Node: Memory128317
-Node: Plan mode130910
-Node: Usage133896
-Node: Files134915
-Node: Keys138311
-Node: Trouble139993
-Node: Manual141247
-Node: Command Index141952
-Node: Key Index151800
+Node: File tools28627
+Node: Search33134
+Node: Shell35030
+Node: Questions37815
+Node: Subagents38585
+Node: Workflows42734
+Node: Worktrees47737
+Node: Messages50865
+Node: Web search52686
+Node: Fetch a page53541
+Node: X search54774
+Node: MCP57171
+Node: Computer use59875
+Node: Monitors61891
+Node: Schedules64895
+Node: Todos67361
+Node: Review70016
+Node: Language server73599
+Node: Instructions76786
+Node: Skills79894
+Node: Plugins84054
+Node: Output styles86906
+Node: Image generation88917
+Node: Headless90759
+Node: Pages93447
+Node: Team96284
+Node: Machines117174
+Node: People120041
+Node: Scope122325
+Node: Context126334
+Node: Memory129469
+Node: Plan mode132062
+Node: Usage135048
+Node: Files136067
+Node: Keys139463
+Node: Trouble141145
+Node: Manual142399
+Node: Command Index143104
+Node: Key Index152952
 
 End Tag Table
 

@@ -525,6 +525,15 @@ and tells the room.  The seat must already be at that wall.
 first.  The transcript summary is `M-x harmless-compact`.
 Nothing is started.
 
+The model calls the same commands through tools.
+`team_boot` boots a spec.  `team_inspect` reads the seats, the
+edges, the launch order, and the rows, and it writes nothing.
+`team_message` sends text to an occupied seat.  `team_snapshot`
+stores a named copy.  `team_restore` puts that copy back when
+every seat can return.  A detached chat is not offered these
+tools.  Plan mode refuses the ones that write.  Nothing is
+started.
+
 ## Machines
 
 A machine is a name and a directory.  The directory is that

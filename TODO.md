@@ -64,7 +64,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] Reconcile the skill loadout for one working directory, and inspect a plugin's skills, hooks, and MCP servers. Installing a plugin stays an explicit copy.
 - [x] A registry of other machines. The same team verbs run against a registered host, and one file can be copied between hosts.
 - [x] A person is an address. A queue row to that address is how the team asks for a decision, and the row's history is the receipt. Slack is the first connector. Secrets stay out of the team config.
-- [ ] The model can boot, inspect, message, snapshot, and restore the team through tools, with the same guards as the commands a person runs.
+- [x] The model can boot, inspect, message, snapshot, and restore the team through tools, with the same guards as the commands a person runs.
 - [ ] Named auth profiles per runtime. Switch a seat to another account without stranding its conversation. The team record never stores the token.
 - [ ] A health surface that says what is true, and a recovery command when a live session and the record disagree. A rig can also run services beside its seats and report those services' health separately.
 - [ ] One fleet view: topology, health, and the rows that need a person. The dashboard today lists sessions by project.

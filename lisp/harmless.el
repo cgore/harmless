@@ -126,6 +126,11 @@
 ;;   M-x harmless-person-show ; read one person
 ;;   M-x harmless-person-remove ; forget a person, and keep the rows
 ;;   M-x harmless-person-ask ; open a queue row and record the receipt
+;;   team_boot ; boot a rig from a spec
+;;   team_inspect ; read seats, edges, order, and rows
+;;   team_message ; send text to an occupied seat
+;;   team_snapshot ; store a named snapshot
+;;   team_restore ; restore that snapshot
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -183,6 +188,7 @@
 (require 'harmless-headless)
 (require 'harmless-page)
 (require 'harmless-team)
+(require 'harmless-team-tools)
 (require 'harmless-machine)
 (require 'harmless-person)
 (require 'harmless-scope)

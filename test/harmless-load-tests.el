@@ -135,7 +135,12 @@
   (should (fboundp 'harmless-context-show))
   (should (fboundp 'harmless-context-get))
   (should (fboundp 'harmless-context-profile))
-  (should (harmless-tool-by-name "generate_image")))
+  (should (harmless-tool-by-name "generate_image"))
+  (should (harmless-tool-by-name "team_boot"))
+  (should (harmless-tool-by-name "team_inspect"))
+  (should (harmless-tool-by-name "team_message"))
+  (should (harmless-tool-by-name "team_snapshot"))
+  (should (harmless-tool-by-name "team_restore")))
 
 (ert-deftest harmless-reload-all-harmless-reloads-sources ()
   (let* ((previous load-prefer-newer)
