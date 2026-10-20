@@ -82,15 +82,19 @@ root."
     (let ((cwd (harmless-session-cwd session)))
       (when (and (stringp cwd)
                  (not (string-empty-p cwd))
-                 (file-name-absolute-p cwd)
+                 (harmless-path-absolute-p cwd)
                  (not (equal (directory-file-name cwd) "/"))
                  (not (harmless-filesystem-root-p cwd)))
-        (let ((file (expand-file-name
-                     ".harmless/mcp.json"
-                     (file-name-as-directory
-                      (directory-file-name cwd)))))
+        (let ((file (if (harmless-foreign-absolute-p cwd)
+                        (concat (file-name-as-directory
+                                 (harmless-collapse-path cwd))
+                                ".harmless/mcp.json")
+                      (expand-file-name
+                       ".harmless/mcp.json"
+                       (file-name-as-directory
+                        (directory-file-name cwd))))))
           (when (and (stringp file)
-                     (file-name-absolute-p file)
+                     (harmless-path-absolute-p file)
                      (not (equal file "/.harmless/mcp.json"))
                      (not (equal file "/mcp.json"))
                      (not (harmless-filesystem-root-p file)))

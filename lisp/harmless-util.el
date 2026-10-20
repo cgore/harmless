@@ -205,12 +205,34 @@ undecoded process), interpret those bytes as UTF-8."
       string
     (concat (substring string 0 (max 0 (- n 1))) "…")))
 
+(defun harmless-foreign-absolute-p (path)
+  "Return non-nil if PATH is absolute on Windows and not on this system.
+A drive path starts with a letter and a colon, including \"c:\",
+\"c:/\", \"c:\\\", and \"c:/shot.png\".  A string of only backslashes
+is the Windows root.  \"~\" is not included.  PATH is not trimmed, so
+\" c:/\" is not absolute."
+  (and (stringp path)
+       (not (string-empty-p path))
+       (not (string-prefix-p "~" path))
+       (or (string-match-p "\\`[A-Za-z]:" path)
+           (string-match-p "\\`\\\\+\\'" path))))
+
+(defun harmless-path-absolute-p (path)
+  "Return non-nil if PATH is absolute here or on Windows.
+Nil and \"\" are not.  \"~\" is absolute when `file-name-absolute-p'
+says so."
+  (and (stringp path)
+       (not (string-empty-p path))
+       (or (file-name-absolute-p path)
+           (harmless-foreign-absolute-p path))))
+
 (defun harmless-collapse-path (path)
   "Return absolute PATH with \".\" and \"..\" removed.
 PATH must already be absolute.  This does not read `default-directory'.
 A Windows drive letter stays on that drive.  A leading slash would make
-a later `expand-file-name' paste the path onto the current drive."
-  (unless (and (stringp path) (file-name-absolute-p path))
+a later `expand-file-name' paste the path onto the current drive.  A
+string of only backslashes collapses to \"/\"."
+  (unless (harmless-path-absolute-p path)
     (error "Not an absolute path: %S" path))
   (save-match-data
     (let* ((drive (and (string-match "\\`\\([A-Za-z]:\\)" path)
@@ -228,14 +250,27 @@ a later `expand-file-name' paste the path onto the current drive."
        (parts (concat "/" (mapconcat #'identity parts "/")))
        (t "/")))))
 
+(defun harmless-expand-kept (path)
+  "Return PATH expanded without joining a Windows path onto this system.
+A drive path or a string of only backslashes is collapsed as text.
+`expand-file-name' and `file-truename' paste those onto
+`default-directory' where they are not absolute."
+  (if (harmless-foreign-absolute-p path)
+      (harmless-collapse-path path)
+    (expand-file-name path)))
+
 (defun harmless-filesystem-root-p (path)
   "Return non-nil if PATH is the filesystem root.
-Relative paths, nil, and the empty string are not the root."
+Relative paths, nil, and the empty string are not the root.  A
+Windows drive root is not \"/\".  A string of only backslashes is
+the root.  PATH is not trimmed."
   (and (stringp path)
        (not (string-empty-p path))
-       (file-name-absolute-p path)
+       (or (file-name-absolute-p path)
+           (harmless-foreign-absolute-p path))
        (equal (harmless-collapse-path
-               (if (string-prefix-p "~" path)
+               (if (and (string-prefix-p "~" path)
+                        (not (harmless-foreign-absolute-p path)))
                    (expand-file-name path)
                  path))
               "/")))
@@ -270,15 +305,16 @@ not match, so they are not compared by expanding them against /."
 
 (defun harmless-directory-strictly-under-p (dir parent)
   "Return non-nil if DIR is strictly inside PARENT.
-Both must be absolute.  A match against the filesystem root does not
-make DIR acceptable."
-  (when (and (stringp dir) (stringp parent)
-             (file-name-absolute-p dir) (file-name-absolute-p parent)
+Both must be absolute.  A Windows drive path is compared as text,
+because `expand-file-name' would join it onto this system.  A match
+against the filesystem root does not make DIR acceptable."
+  (when (and (harmless-path-absolute-p dir)
+             (harmless-path-absolute-p parent)
              (not (harmless-filesystem-root-p parent)))
     (let ((child (file-name-as-directory
-                  (harmless-collapse-path (expand-file-name dir))))
+                  (harmless-collapse-path (harmless-expand-kept dir))))
           (root (file-name-as-directory
-                 (harmless-collapse-path (expand-file-name parent)))))
+                 (harmless-collapse-path (harmless-expand-kept parent)))))
       (and (string-prefix-p root child)
            (not (string= root child))))))
 

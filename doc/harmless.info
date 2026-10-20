@@ -1,4 +1,4 @@
-This is harmless.info, produced by makeinfo version 7.3 from
+This is harmless.info, produced by makeinfo version 7.2 from
 harmless.texi.
 
 Copyright © 2026 Christopher Mark Gore.
@@ -799,9 +799,10 @@ File: harmless.info,  Node: Shell,  Next: Questions,  Prev: Search,  Up: Tools
 The next command starts in the same directory when a ‘cd’ stayed inside
 the project.  Nil and ‘""’ mean the project root.  A ‘cd’ that leaves
 the project is not kept.  Harmless reports ‘The shell left the project.
-The next command starts in ’, followed by the directory it kept.  The
-filesystem root is not kept.  The remembered directory is saved with the
-session.
+The next command starts in ’, followed by the directory the next command
+starts in.  A remembered directory is used only when it is still inside
+the project.  The filesystem root is not kept.  The remembered directory
+is saved with the session.
 
    ‘timeout’ is how many seconds to wait.  When it is omitted,
 ‘harmless-shell-timeout-seconds’ (120) is used.  A negative number,
@@ -3291,45 +3292,45 @@ Node: Tools24316
 Node: File tools28824
 Node: Search33331
 Node: Shell35227
-Node: Questions38012
-Node: Subagents38782
-Node: Workflows42931
-Node: Worktrees47934
-Node: Messages51062
-Node: Web search52883
-Node: Fetch a page53738
-Node: X search54971
-Node: MCP57368
-Node: Computer use60072
-Node: Monitors62088
-Node: Schedules65092
-Node: Todos67558
-Node: Review70213
-Node: Language server73796
-Node: Instructions76983
-Node: Skills80091
-Node: Plugins84251
-Node: Output styles87103
-Node: Image generation89114
-Node: Headless90956
-Node: Pages93644
-Node: Team96481
-Node: Machines117560
-Node: People120427
-Node: Profiles122714
-Node: Health125370
-Node: Fleet127382
-Node: Scope128148
-Node: Context132156
-Node: Memory135291
-Node: Plan mode137884
-Node: Usage140870
-Node: Files141889
-Node: Keys145476
-Node: Trouble147158
-Node: Manual148412
-Node: Command Index149117
-Node: Key Index159695
+Node: Questions38105
+Node: Subagents38875
+Node: Workflows43024
+Node: Worktrees48027
+Node: Messages51155
+Node: Web search52976
+Node: Fetch a page53831
+Node: X search55064
+Node: MCP57461
+Node: Computer use60165
+Node: Monitors62181
+Node: Schedules65185
+Node: Todos67651
+Node: Review70306
+Node: Language server73889
+Node: Instructions77076
+Node: Skills80184
+Node: Plugins84344
+Node: Output styles87196
+Node: Image generation89207
+Node: Headless91049
+Node: Pages93737
+Node: Team96574
+Node: Machines117653
+Node: People120520
+Node: Profiles122807
+Node: Health125463
+Node: Fleet127475
+Node: Scope128241
+Node: Context132249
+Node: Memory135384
+Node: Plan mode137977
+Node: Usage140963
+Node: Files141982
+Node: Keys145569
+Node: Trouble147251
+Node: Manual148505
+Node: Command Index149210
+Node: Key Index159788
 
 End Tag Table
 

@@ -59,20 +59,35 @@
   :group 'harmless)
 
 (defun harmless-tools-fs-inside-p (root path)
-  "Return non-nil if PATH is inside ROOT after resolving `..'."
-  (let* ((root (file-name-as-directory (file-truename root)))
-         (path (file-truename path)))
-    (or (string-prefix-p root path)
-        (string-prefix-p root (file-name-as-directory path))
-        (string= (directory-file-name root) path))))
+  "Return non-nil if PATH is inside ROOT after resolving `..'.
+A Windows drive path is never inside a path on this system.  Two
+drive paths are compared as text, because `file-truename' would
+join them onto `default-directory'."
+  (let ((foreign (or (harmless-foreign-absolute-p root)
+                     (harmless-foreign-absolute-p path))))
+    (when (or (not foreign)
+              (and (harmless-foreign-absolute-p root)
+                   (harmless-foreign-absolute-p path)))
+      (let* ((root (file-name-as-directory
+                    (if foreign
+                        (harmless-collapse-path root)
+                      (file-truename root))))
+             (path (if foreign
+                       (harmless-collapse-path path)
+                     (file-truename path))))
+        (or (string-prefix-p root path)
+            (string-prefix-p root (file-name-as-directory path))
+            (string= (directory-file-name root) path))))))
 
 (defun harmless-extra-root-text-p (text)
   "Return non-nil if TEXT is \"/\" or a drive root.
-TEXT is not expanded.  A relative path and \"~\" are not roots."
+TEXT is not expanded.  A relative path and \"~\" are not roots.
+A string of only backslashes is the root."
   (and (stringp text)
        (or (equal text "/")
            (string-match-p "\\`[A-Za-z]:[/\\]?\\'" text)
-           (and (file-name-absolute-p text)
+           (string-match-p "\\`\\\\+\\'" text)
+           (and (harmless-path-absolute-p text)
                 (not (string-prefix-p "~" text))
                 (harmless-filesystem-root-p text)))))
 
@@ -208,7 +223,9 @@ PATH may stay inside the project or an extra directory."
   (unless (and path (not (string-empty-p path)))
     (error "Path is empty"))
   (let* ((cwd (harmless-session-require-project session))
-         (full (expand-file-name path cwd)))
+         (full (if (harmless-foreign-absolute-p path)
+                   (harmless-collapse-path path)
+                 (expand-file-name path cwd))))
     (unless (harmless-tools-fs-allowed-p session full)
       (error "Path escapes project: %s" path))
     full))

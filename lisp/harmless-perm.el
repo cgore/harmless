@@ -332,14 +332,15 @@ characters, including spaces and slashes."
 PATH is absolute.  It is expanded on its own, so a relative name
 is not resolved against `default-directory'.  The filesystem root
 and CWD itself do not match."
-  (when (and (stringp cwd) (file-name-absolute-p cwd)
-             (stringp path) (file-name-absolute-p path)
+  (when (and (harmless-path-absolute-p cwd)
+             (harmless-path-absolute-p path)
              (not (harmless-filesystem-root-p cwd)))
-    (let* ((ignore (file-name-case-insensitive-p cwd))
+    (let* ((ignore (and (not (harmless-foreign-absolute-p cwd))
+                        (file-name-case-insensitive-p cwd)))
            (root (harmless-perm--slash
                   (file-name-as-directory
-                   (directory-file-name (expand-file-name cwd)))))
-           (full (harmless-perm--slash (expand-file-name path))))
+                   (directory-file-name (harmless-expand-kept cwd)))))
+           (full (harmless-perm--slash (harmless-expand-kept path))))
       (when (and (string-prefix-p root full ignore)
                  (not (string-empty-p (substring full (length root)))))
         (substring full (length root))))))
@@ -350,7 +351,7 @@ A relative path is not expanded.  Nil, \"\", the project itself,
 and a path outside the project do not match."
   (cond
    ((not (and (stringp path) (not (string-empty-p path)))) nil)
-   ((or (file-name-absolute-p path) (string-prefix-p "~" path))
+   ((or (harmless-path-absolute-p path) (string-prefix-p "~" path))
     (harmless-perm--under-root (harmless-session-cwd session) path))
    (t (harmless-perm--clean-relative path))))
 

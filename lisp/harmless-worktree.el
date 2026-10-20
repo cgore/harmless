@@ -64,7 +64,7 @@ Nil, \"\", a relative path, and the filesystem root cannot.  A
 trailing slash is the same directory.  A drive root is not /."
   (and (stringp dir)
        (not (string-empty-p dir))
-       (file-name-absolute-p dir)
+       (harmless-path-absolute-p dir)
        (not (harmless-filesystem-root-p dir))))
 
 (defun harmless-worktree-name (value)

@@ -326,7 +326,7 @@ PowerShell is refused before a process starts when it is missing."
                  (integerp (nth 0 shot))
                  (integerp (nth 1 shot))
                  (stringp (nth 2 shot))
-                 (file-name-absolute-p (nth 2 shot))
+                 (harmless-path-absolute-p (nth 2 shot))
                  (not (harmless-filesystem-root-p (nth 2 shot))))
       (error "computer capture failed"))
     (format "%dx%d\n%s" (nth 0 shot) (nth 1 shot) (nth 2 shot))))

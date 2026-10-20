@@ -192,11 +192,10 @@ Names are checked.  Nothing is written."
 
 (defun harmless-team--same-p (a b)
   "Return non-nil if names A and B are the same seat name.
-Windows compares them without case."
+The comparison ignores case, including on a case-sensitive
+filesystem.  Seat addresses and room topics are compared here."
   (and (stringp a) (stringp b)
-       (if (eq system-type 'windows-nt)
-           (string= (downcase a) (downcase b))
-         (string= a b))))
+       (string= (downcase a) (downcase b))))
 
 (defun harmless-team--refuse-root (place)
   "Signal if PLACE is the filesystem root or a drive root.
@@ -817,8 +816,8 @@ Nil means the rig has no services.  A service is not a seat."
   (and (stringp kind) (member kind harmless-team--edge-kinds)))
 
 (defun harmless-team--key (name)
-  "Return NAME as a hash key.  Windows ignores case."
-  (if (and (eq system-type 'windows-nt) (stringp name))
+  "Return NAME as a hash key.  Case is ignored."
+  (if (stringp name)
       (downcase name)
     name))
 

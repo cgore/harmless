@@ -714,8 +714,7 @@ DIR is nil when the marker is absent."
   "Remember REPORTED when it stays inside SESSION's project.
 Return a sentence when REPORTED leaves the project, or nil."
   (let ((root (directory-file-name
-               (file-truename (harmless-session-require-project session))))
-        (kept (or (harmless-session-shell-cwd session) nil)))
+               (file-truename (harmless-session-require-project session)))))
     (cond
      ((or (not (stringp reported))
           (string-empty-p reported)
@@ -724,10 +723,13 @@ Return a sentence when REPORTED leaves the project, or nil."
       nil)
      ((or (harmless-filesystem-root-p reported)
           (not (harmless-tools-fs-inside-p root reported)))
-      (format "The shell left the project. The next command starts in %s."
-              (if (and (stringp kept) (file-directory-p kept))
-                  (directory-file-name kept)
-                root)))
+      (let ((next (harmless-shell-directory session))
+            (kept (harmless-session-shell-cwd session)))
+        (unless (and (stringp kept)
+                     (harmless-same-directory-p kept next))
+          (setf (harmless-session-shell-cwd session) nil))
+        (format "The shell left the project. The next command starts in %s."
+                next)))
      ((harmless-same-directory-p reported root)
       (setf (harmless-session-shell-cwd session) nil)
       nil)

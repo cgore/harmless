@@ -167,17 +167,16 @@
   (should (equal "/" (harmless-collapse-path "/sessions/..")))
   (should (equal "/tmp/sessions/%2F/uuid"
                  (harmless-collapse-path "/tmp/sessions/%2F/uuid")))
-  (when (eq system-type 'windows-nt)
-    (should (equal "c:/Users/proj"
-                   (harmless-collapse-path "c:/Users/../Users/proj")))
-    (should (equal "c:/" (harmless-collapse-path "c:/")))
-    (should (equal "c:/" (harmless-collapse-path "c:/Users/..")))
-    (should (equal "D:/a/b" (harmless-collapse-path "D:\\a\\b\\.")))
-    (should-not (harmless-filesystem-root-p "c:/"))
-    (should-not (harmless-filesystem-root-p "c:/Users"))
-    (should (harmless-directory-strictly-under-p "c:/proj/a" "c:/proj"))
-    (should-not (harmless-directory-strictly-under-p "c:/proj" "d:/proj"))
-    (should-not (harmless-directory-strictly-under-p "d:/c:/proj/a" "c:/proj")))
+  (should (equal "c:/Users/proj"
+                 (harmless-collapse-path "c:/Users/../Users/proj")))
+  (should (equal "c:/" (harmless-collapse-path "c:/")))
+  (should (equal "c:/" (harmless-collapse-path "c:/Users/..")))
+  (should (equal "D:/a/b" (harmless-collapse-path "D:\\a\\b\\.")))
+  (should-not (harmless-filesystem-root-p "c:/"))
+  (should-not (harmless-filesystem-root-p "c:/Users"))
+  (should (harmless-directory-strictly-under-p "c:/proj/a" "c:/proj"))
+  (should-not (harmless-directory-strictly-under-p "c:/proj" "d:/proj"))
+  (should-not (harmless-directory-strictly-under-p "d:/c:/proj/a" "c:/proj"))
   (should-not (harmless-filesystem-root-p (expand-file-name "~")))
   (should (harmless-filesystem-root-p "/../.."))
   (harmless-test-error "Not an absolute path"

@@ -108,11 +108,14 @@ The filesystem root is refused."
        ((string-prefix-p "~" raw)
         (error "image path must be absolute"))
        (t
-        (let ((full (if (file-name-absolute-p raw)
-                        raw
-                      (expand-file-name raw project))))
+        (let ((full (cond
+                     ((harmless-foreign-absolute-p raw)
+                      (harmless-collapse-path raw))
+                     ((file-name-absolute-p raw) raw)
+                     (t (expand-file-name raw project)))))
           (when (or (harmless-image--root-text-p full)
-                    (and (file-exists-p full)
+                    (and (not (harmless-foreign-absolute-p full))
+                         (file-exists-p full)
                          (equal (file-truename full) (file-truename "/"))))
             (error "image path is the filesystem root"))
           (when (or (directory-name-p full)
