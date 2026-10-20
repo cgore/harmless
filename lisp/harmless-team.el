@@ -73,8 +73,10 @@
 ;; changes.  Neither one starts a session.  A compact plan
 ;; lists seats near the context wall and writes nothing.
 ;; Compacting deliberately records why and tells the room.
-;; The transcript summary is M-x harmless-compact.  This file
-;; does not register another machine.
+;; The transcript summary is M-x harmless-compact.  A seat may
+;; name an auth profile.  The name is not a token.  A token
+;; key is not a valid rig.  This file does not register
+;; another machine.
 
 ;;; Code:
 
@@ -289,6 +291,23 @@ non-empty reference."
                 (member runtime harmless-team--runtimes))
            (not (string-empty-p session)))))))
 
+(defun harmless-team--profile-name-p (name)
+  "Return non-nil if NAME is an auth profile name.
+Letters are lowercase.  Matching does not ignore case."
+  (and (stringp name)
+       (let ((case-fold-search nil))
+         (string-match-p "\\`[a-z0-9]+\\'" name))))
+
+(defun harmless-team--profile-field-p (seat)
+  "Return non-nil if SEAT's profile is missing or a name.
+A token, a secret, or a password key is refused."
+  (and (not (plist-member seat :token))
+       (not (plist-member seat :secret))
+       (not (plist-member seat :password))
+       (let ((profile (plist-get seat :profile)))
+         (or (null profile)
+             (harmless-team--profile-name-p profile)))))
+
 (defun harmless-team--seat-ok-p (seat pod rig seen)
   "Return non-nil if SEAT belongs to POD in RIG.
 SEEN holds seat names already accepted in POD."
@@ -299,6 +318,7 @@ SEEN holds seat names already accepted in POD."
        (not (string-empty-p (plist-get seat :role)))
        (harmless-team--stored-session-p seat)
        (harmless-team--string-list-p (plist-get seat :work))
+       (harmless-team--profile-field-p seat)
        (equal (plist-get seat :address)
               (format "%s-%s@%s"
                       pod (plist-get seat :name) rig))))
@@ -702,9 +722,33 @@ Nil means the rig has no compact notice yet."
               (setq ok nil))))
         (and ok (null items))))))
 
+(defun harmless-team--secret-key-p (obj)
+  "Return non-nil if OBJ stores a token, a secret, or a password."
+  (cond
+   ((harmless-plist-p obj)
+    (or (plist-member obj :token)
+        (plist-member obj :secret)
+        (plist-member obj :password)
+        (let ((found nil)
+              (tail obj))
+          (while (and (not found) (consp tail))
+            (setq tail (cdr tail))
+            (when (consp tail)
+              (setq found (harmless-team--secret-key-p (car tail))
+                    tail (cdr tail))))
+          found)))
+   ((and (listp obj) (proper-list-p obj))
+    (let ((found nil))
+      (while (and (not found) (consp obj))
+        (setq found (harmless-team--secret-key-p (car obj))
+              obj (cdr obj)))
+      found))
+   (t nil)))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
+       (not (harmless-team--secret-key-p rig))
        (harmless-team--rig-name-p (plist-get rig :name))
        (let ((pods (plist-get rig :pods))
              (seen nil)
@@ -916,10 +960,13 @@ not valid\" and is not rewritten."
                       :address (plist-get seat :address)
                       :session (plist-get seat :session)
                       :work (plist-get seat :work)))
-        (runtime (plist-get seat :runtime)))
-    (if (and (stringp runtime) (not (string-empty-p runtime)))
-        (append public (list :runtime runtime))
-      public)))
+        (runtime (plist-get seat :runtime))
+        (profile (plist-get seat :profile)))
+    (when (and (stringp runtime) (not (string-empty-p runtime)))
+      (setq public (append public (list :runtime runtime))))
+    (when (and (stringp profile) (not (string-empty-p profile)))
+      (setq public (append public (list :profile profile))))
+    public))
 
 (defun harmless-team--load (rig)
   "Return (PATH . RIG) for RIG, or signal.

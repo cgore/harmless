@@ -55,6 +55,7 @@ commands, keys, and files a user needs.
 * Team::                A rig of pods and named seats.
 * Machines::            Other hosts and one file copied between them.
 * People::              A person address, a row, and a Slack receipt.
+* Profiles::            A named account for one runtime.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2700,6 +2701,11 @@ empty}, @samp{team rig is missing}, @samp{team send is empty},
 @samp{team seat is not occupied}, @samp{team snapshot is
 missing}, and @samp{team snapshot cannot restore}.
 
+A seat can name an auth profile for its runtime.
+@xref{Profiles}.  Switching that profile keeps the session and
+the inbound work.  The rig stores the profile name and never
+the token.
+
 @node Machines
 @chapter Machines
 
@@ -2822,6 +2828,69 @@ That file is left unchanged.  A token, a secret, or a password
 in that file is refused the same way.  The people file is
 refused at the filesystem root: @samp{Refusing to store a
 person at }, followed by that directory.
+
+@node Profiles
+@chapter Profiles
+
+@cindex profiles
+@findex harmless-profile-add
+@findex harmless-profile-list
+@findex harmless-profile-show
+@findex harmless-profile-remove
+@findex harmless-profile-switch
+A profile is a name and a runtime.  The third field is the
+name of an environment variable.  The token is that
+variable's value.  @kbd{M-x harmless-profile-add} records
+those three.  It does not store the token.
+@kbd{M-x harmless-profile-list} returns the names.  A missing
+file is an empty list and writes nothing.
+@kbd{M-x harmless-profile-show} returns one profile and
+whether its variable is set.  The token is not in that
+result.  @kbd{M-x harmless-profile-remove} forgets the name.
+A seat that already names it keeps that name, its session,
+and its inbound work.
+
+@kbd{M-x harmless-profile-switch} points an occupied seat at
+one profile.  The profile's runtime must already be the
+seat's runtime.  The session and the inbound work stay.  The
+rig stores the profile name and never the token.  This is
+not @kbd{M-x harmless-login}.  Nothing is started, and no
+connection is opened.
+
+The profile file is @file{profiles.json} under the local
+Harmless data directory.  It is not part of the rig.
+
+Nil, @code{""}, and whitespace are refused: @samp{profile name
+is empty}.  A value that is not text is refused: @samp{profile
+name must be a string}.  A path, @code{~}, a hyphen, and the
+filesystem root are refused: @samp{profile name is not a name}.
+A second registration is refused: @samp{profile is already
+registered: }, followed by the name.  A missing profile is
+refused: @samp{no profile named }, followed by the name.
+
+Nil, @code{""}, and whitespace are refused: @samp{profile
+runtime is empty}.  A value that is not text is refused:
+@samp{profile runtime must be a string}.  Any other runtime is
+refused: @samp{profile runtime is not a runtime}.  The runtimes
+are @code{harmless}, @code{claude}, @code{codex}, @code{pi},
+and @code{terminal}.
+
+Nil, @code{""}, and whitespace are refused: @samp{profile env
+is empty}.  A value that is not text is refused: @samp{profile
+env must be a string}.  A path, @code{~}, a lowercase name,
+and a token are refused: @samp{profile env is not a name}.
+
+An empty seat is refused: @samp{team seat is not occupied}.
+A profile for a different runtime is refused: @samp{profile
+runtime does not match}.  The seat is left unchanged.
+
+A broken profile file is refused: @samp{profiles are not
+valid}.  That file is left unchanged.  A token, a secret, or
+a password in that file is refused the same way.  A token key
+in the rig is refused: @samp{team rig is not valid}.  That
+file is left unchanged.  The profile file is refused at the
+filesystem root: @samp{Refusing to store a profile at },
+followed by that directory.
 
 @node Scope
 @chapter Scope
@@ -3181,6 +3250,11 @@ Optional configuration, loaded once.
 @itemx auth-anthropic.json
 @itemx auth-@var{slug}.json
 OAuth tokens for each connection.  Mode 0600.
+
+@item profiles.json
+Named auth profiles.  Each one is a name, a runtime, and the
+environment variable that holds the token.  The token is not
+in this file.  @xref{Profiles}.
 
 @item sessions/@var{project}/@var{id}/summary.json
 The session's model, status, totals, plan flag, schedules that

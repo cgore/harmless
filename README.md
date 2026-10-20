@@ -574,6 +574,27 @@ The people file is `RIG.people.json` beside the rig.  It is
 not part of the rig.  A path, `~`, and the filesystem root
 are refused and are not expanded.
 
+## Profiles
+
+A profile is a name and a runtime.  `M-x harmless-profile-add`
+records the name, the runtime, and the environment variable
+that holds the token.  The token is not stored.
+`M-x harmless-profile-list` returns the names.  A missing file
+is an empty list and writes nothing.
+`M-x harmless-profile-show` returns one profile and whether
+that variable is set.  It does not return the token.
+`M-x harmless-profile-remove` forgets the name.  A seat that
+already names it keeps that name and its conversation.
+
+`M-x harmless-profile-switch` points an occupied seat at a
+profile of the same runtime.  The session and the inbound
+work stay.  The rig stores the profile name and never the
+token.  This is not `M-x harmless-login`.  Nothing is started.
+
+The profile file is `profiles.json` under the local Harmless
+data directory.  It is not part of the rig.  A path, `~`, and
+the filesystem root are refused and are not expanded.
+
 ## Scope
 
 A project directory holds missions, and a mission holds slices.

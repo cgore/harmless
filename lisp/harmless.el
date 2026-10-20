@@ -126,6 +126,11 @@
 ;;   M-x harmless-person-show ; read one person
 ;;   M-x harmless-person-remove ; forget a person, and keep the rows
 ;;   M-x harmless-person-ask ; open a queue row and record the receipt
+;;   M-x harmless-profile-add ; name an auth profile for one runtime
+;;   M-x harmless-profile-list ; list those profiles
+;;   M-x harmless-profile-show ; read one profile, not its token
+;;   M-x harmless-profile-remove ; forget a profile, and keep the seat
+;;   M-x harmless-profile-switch ; switch a seat and keep its conversation
 ;;   team_boot ; boot a rig from a spec
 ;;   team_inspect ; read seats, edges, order, and rows
 ;;   team_message ; send text to an occupied seat
@@ -191,6 +196,7 @@
 (require 'harmless-team-tools)
 (require 'harmless-machine)
 (require 'harmless-person)
+(require 'harmless-profile)
 (require 'harmless-scope)
 (require 'harmless-context)
 

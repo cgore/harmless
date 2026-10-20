@@ -46,6 +46,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Team::                A rig of pods and named seats.
 * Machines::            Other hosts and one file copied between them.
 * People::              A person address, a row, and a Slack receipt.
+* Profiles::            A named account for one runtime.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2336,6 +2337,10 @@ empty’, ‘team rig is missing’, ‘team send is empty’, ‘team seat is n
 occupied’, ‘team snapshot is missing’, and ‘team snapshot cannot
 restore’.
 
+   A seat can name an auth profile for its runtime.  *Note Profiles::.
+Switching that profile keeps the session and the inbound work.  The rig
+stores the profile name and never the token.
+
 
 File: harmless.info,  Node: Machines,  Next: People,  Prev: Team,  Up: Top
 
@@ -2393,7 +2398,7 @@ directory is refused: ‘machine file is not a file’.  An existing
 destination is refused: ‘machine file is already there’.
 
 
-File: harmless.info,  Node: People,  Next: Scope,  Prev: Machines,  Up: Top
+File: harmless.info,  Node: People,  Next: Profiles,  Prev: Machines,  Up: Top
 
 20 People
 *********
@@ -2439,9 +2444,61 @@ refused the same way.  The people file is refused at the filesystem
 root: ‘Refusing to store a person at ’, followed by that directory.
 
 
-File: harmless.info,  Node: Scope,  Next: Context,  Prev: People,  Up: Top
+File: harmless.info,  Node: Profiles,  Next: Scope,  Prev: People,  Up: Top
 
-21 Scope
+21 Profiles
+***********
+
+A profile is a name and a runtime.  The third field is the name of an
+environment variable.  The token is that variable's value.  ‘M-x
+harmless-profile-add’ records those three.  It does not store the token.
+‘M-x harmless-profile-list’ returns the names.  A missing file is an
+empty list and writes nothing.  ‘M-x harmless-profile-show’ returns one
+profile and whether its variable is set.  The token is not in that
+result.  ‘M-x harmless-profile-remove’ forgets the name.  A seat that
+already names it keeps that name, its session, and its inbound work.
+
+   ‘M-x harmless-profile-switch’ points an occupied seat at one profile.
+The profile's runtime must already be the seat's runtime.  The session
+and the inbound work stay.  The rig stores the profile name and never
+the token.  This is not ‘M-x harmless-login’.  Nothing is started, and
+no connection is opened.
+
+   The profile file is ‘profiles.json’ under the local Harmless data
+directory.  It is not part of the rig.
+
+   Nil, ‘""’, and whitespace are refused: ‘profile name is empty’.  A
+value that is not text is refused: ‘profile name must be a string’.  A
+path, ‘~’, a hyphen, and the filesystem root are refused: ‘profile name
+is not a name’.  A second registration is refused: ‘profile is already
+registered: ’, followed by the name.  A missing profile is refused: ‘no
+profile named ’, followed by the name.
+
+   Nil, ‘""’, and whitespace are refused: ‘profile runtime is empty’.  A
+value that is not text is refused: ‘profile runtime must be a string’.
+Any other runtime is refused: ‘profile runtime is not a runtime’.  The
+runtimes are ‘harmless’, ‘claude’, ‘codex’, ‘pi’, and ‘terminal’.
+
+   Nil, ‘""’, and whitespace are refused: ‘profile env is empty’.  A
+value that is not text is refused: ‘profile env must be a string’.  A
+path, ‘~’, a lowercase name, and a token are refused: ‘profile env is
+not a name’.
+
+   An empty seat is refused: ‘team seat is not occupied’.  A profile for
+a different runtime is refused: ‘profile runtime does not match’.  The
+seat is left unchanged.
+
+   A broken profile file is refused: ‘profiles are not valid’.  That
+file is left unchanged.  A token, a secret, or a password in that file
+is refused the same way.  A token key in the rig is refused: ‘team rig
+is not valid’.  That file is left unchanged.  The profile file is
+refused at the filesystem root: ‘Refusing to store a profile at ’,
+followed by that directory.
+
+
+File: harmless.info,  Node: Scope,  Next: Context,  Prev: Profiles,  Up: Top
+
+22 Scope
 ********
 
 A project directory holds missions, and a mission holds slices.  ‘M-x
@@ -2511,7 +2568,7 @@ by that path.
 
 File: harmless.info,  Node: Context,  Next: Memory,  Prev: Scope,  Up: Top
 
-22 Context
+23 Context
 **********
 
 A project holds context packs under ‘packs/NAME/PACK.md’.  ‘M-x
@@ -2566,7 +2623,7 @@ context at ’, followed by that path.
 
 File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Context,  Up: Top
 
-23 Memory
+24 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2634,7 +2691,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-24 Plan mode
+25 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2699,7 +2756,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-25 Usage
+26 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2723,7 +2780,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-26 Files
+27 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2740,6 +2797,11 @@ replaced with ‘/’.
 ‘auth-anthropic.json’
 ‘auth-SLUG.json’
      OAuth tokens for each connection.  Mode 0600.
+
+‘profiles.json’
+     Named auth profiles.  Each one is a name, a runtime, and the
+     environment variable that holds the token.  The token is not in
+     this file.  *Note Profiles::.
 
 ‘sessions/PROJECT/ID/summary.json’
      The session's model, status, totals, plan flag, schedules that are
@@ -2809,7 +2871,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-27 Keys
+28 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2921,7 +2983,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-28 Trouble
+29 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2948,7 +3010,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-29 Manual
+30 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -3022,6 +3084,11 @@ Command Index
 * harmless-plan:                         Plan mode.            (line  6)
 * harmless-plugin-inspect:               Plugins.              (line  6)
 * harmless-plugin-install:               Plugins.              (line  6)
+* harmless-profile-add:                  Profiles.             (line  6)
+* harmless-profile-list:                 Profiles.             (line  6)
+* harmless-profile-remove:               Profiles.             (line  6)
+* harmless-profile-show:                 Profiles.             (line  6)
+* harmless-profile-switch:               Profiles.             (line  6)
 * harmless-prompt-mode:                  Prompt.               (line  6)
 * harmless-prompt-send:                  Prompt.               (line  6)
 * harmless-publish:                      Pages.                (line  6)
@@ -3145,55 +3212,56 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2415
-Node: Installation3146
-Node: Starting4750
-Node: Sessions5289
-Node: Transcript8470
-Node: Prompt12231
-Node: Permissions13472
-Node: Accounts20778
-Node: Models23023
-Node: Tools24119
-Node: File tools28627
-Node: Search33134
-Node: Shell35030
-Node: Questions37815
-Node: Subagents38585
-Node: Workflows42734
-Node: Worktrees47737
-Node: Messages50865
-Node: Web search52686
-Node: Fetch a page53541
-Node: X search54774
-Node: MCP57171
-Node: Computer use59875
-Node: Monitors61891
-Node: Schedules64895
-Node: Todos67361
-Node: Review70016
-Node: Language server73599
-Node: Instructions76786
-Node: Skills79894
-Node: Plugins84054
-Node: Output styles86906
-Node: Image generation88917
-Node: Headless90759
-Node: Pages93447
-Node: Team96284
-Node: Machines117174
-Node: People120041
-Node: Scope122325
-Node: Context126334
-Node: Memory129469
-Node: Plan mode132062
-Node: Usage135048
-Node: Files136067
-Node: Keys139463
-Node: Trouble141145
-Node: Manual142399
-Node: Command Index143104
-Node: Key Index152952
+Node: Introduction2472
+Node: Installation3203
+Node: Starting4807
+Node: Sessions5346
+Node: Transcript8527
+Node: Prompt12288
+Node: Permissions13529
+Node: Accounts20835
+Node: Models23080
+Node: Tools24176
+Node: File tools28684
+Node: Search33191
+Node: Shell35087
+Node: Questions37872
+Node: Subagents38642
+Node: Workflows42791
+Node: Worktrees47794
+Node: Messages50922
+Node: Web search52743
+Node: Fetch a page53598
+Node: X search54831
+Node: MCP57228
+Node: Computer use59932
+Node: Monitors61948
+Node: Schedules64952
+Node: Todos67418
+Node: Review70073
+Node: Language server73656
+Node: Instructions76843
+Node: Skills79951
+Node: Plugins84111
+Node: Output styles86963
+Node: Image generation88974
+Node: Headless90816
+Node: Pages93504
+Node: Team96341
+Node: Machines117420
+Node: People120287
+Node: Profiles122574
+Node: Scope125229
+Node: Context129240
+Node: Memory132375
+Node: Plan mode134968
+Node: Usage137954
+Node: Files138973
+Node: Keys142560
+Node: Trouble144242
+Node: Manual145496
+Node: Command Index146201
+Node: Key Index156414
 
 End Tag Table
 
