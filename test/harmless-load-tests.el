@@ -133,6 +133,7 @@
   (should (fboundp 'harmless-team-service-remove))
   (should (fboundp 'harmless-team-health))
   (should (fboundp 'harmless-team-recover))
+  (should (fboundp 'harmless-team-fleet))
   (should (fboundp 'harmless-scope-project))
   (should (fboundp 'harmless-scope-mission))
   (should (fboundp 'harmless-scope-slice))

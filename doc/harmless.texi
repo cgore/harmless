@@ -57,6 +57,7 @@ commands, keys, and files a user needs.
 * People::              A person address, a row, and a Slack receipt.
 * Profiles::            A named account for one runtime.
 * Health::              What is true, and a recovery when it is not.
+* Fleet::               Topology, health, and rows that need a person.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2940,6 +2941,26 @@ absolute}.  @code{/} and a drive root are refused:
 
 A broken rig is refused: @samp{team rig is not valid}.  That
 file is left unchanged.
+
+@node Fleet
+@chapter Fleet
+
+@cindex fleet
+@findex harmless-team-fleet
+@kbd{M-x harmless-team-fleet} shows one rig.  The view has
+three parts.  Topology is the launch order and the edges.
+Health is each seat and, beside those seats, each service.
+People is the rows waiting on a person.  A parked row with
+no summary is not in that list.
+
+The session dashboard still lists sessions by project.  The
+fleet buffer is @code{*harmless-fleet*}.  It is not that
+dashboard.  The command writes nothing and starts nothing.
+
+Nil, @code{""}, and whitespace are refused: @samp{team rig is
+empty}.  A missing rig is refused: @samp{team rig is missing}.
+The filesystem root is refused: @samp{Refusing to store a team
+at }, followed by that directory.
 
 @node Scope
 @chapter Scope

@@ -48,6 +48,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * People::              A person address, a row, and a Slack receipt.
 * Profiles::            A named account for one runtime.
 * Health::              What is true, and a recovery when it is not.
+* Fleet::               Topology, health, and rows that need a person.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2497,7 +2498,7 @@ refused at the filesystem root: ‘Refusing to store a profile at ’,
 followed by that directory.
 
 
-File: harmless.info,  Node: Health,  Next: Scope,  Prev: Profiles,  Up: Top
+File: harmless.info,  Node: Health,  Next: Fleet,  Prev: Profiles,  Up: Top
 
 22 Health
 *********
@@ -2537,9 +2538,28 @@ is the filesystem root’.  Zero is refused: ‘service ref is not a ref’.
 unchanged.
 
 
-File: harmless.info,  Node: Scope,  Next: Context,  Prev: Health,  Up: Top
+File: harmless.info,  Node: Fleet,  Next: Scope,  Prev: Health,  Up: Top
 
-23 Scope
+23 Fleet
+********
+
+‘M-x harmless-team-fleet’ shows one rig.  The view has three parts.
+Topology is the launch order and the edges.  Health is each seat and,
+beside those seats, each service.  People is the rows waiting on a
+person.  A parked row with no summary is not in that list.
+
+   The session dashboard still lists sessions by project.  The fleet
+buffer is ‘*harmless-fleet*’.  It is not that dashboard.  The command
+writes nothing and starts nothing.
+
+   Nil, ‘""’, and whitespace are refused: ‘team rig is empty’.  A
+missing rig is refused: ‘team rig is missing’.  The filesystem root is
+refused: ‘Refusing to store a team at ’, followed by that directory.
+
+
+File: harmless.info,  Node: Scope,  Next: Context,  Prev: Fleet,  Up: Top
+
+24 Scope
 ********
 
 A project directory holds missions, and a mission holds slices.  ‘M-x
@@ -2609,7 +2629,7 @@ by that path.
 
 File: harmless.info,  Node: Context,  Next: Memory,  Prev: Scope,  Up: Top
 
-24 Context
+25 Context
 **********
 
 A project holds context packs under ‘packs/NAME/PACK.md’.  ‘M-x
@@ -2664,7 +2684,7 @@ context at ’, followed by that path.
 
 File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Context,  Up: Top
 
-25 Memory
+26 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2732,7 +2752,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-26 Plan mode
+27 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2797,7 +2817,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-27 Usage
+28 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2821,7 +2841,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-28 Files
+29 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2912,7 +2932,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-29 Keys
+30 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -3024,7 +3044,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-30 Trouble
+31 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -3051,7 +3071,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-31 Manual
+32 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -3167,6 +3187,7 @@ Command Index
 * harmless-team-compacts:                Team.                 (line  6)
 * harmless-team-edge:                    Team.                 (line  6)
 * harmless-team-edges:                   Team.                 (line  6)
+* harmless-team-fleet:                   Fleet.                (line  6)
 * harmless-team-grow:                    Team.                 (line  6)
 * harmless-team-health:                  Health.               (line  6)
 * harmless-team-image:                   Team.                 (line  6)
@@ -3257,57 +3278,58 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2541
-Node: Installation3272
-Node: Starting4876
-Node: Sessions5415
-Node: Transcript8596
-Node: Prompt12357
-Node: Permissions13598
-Node: Accounts20904
-Node: Models23149
-Node: Tools24245
-Node: File tools28753
-Node: Search33260
-Node: Shell35156
-Node: Questions37941
-Node: Subagents38711
-Node: Workflows42860
-Node: Worktrees47863
-Node: Messages50991
-Node: Web search52812
-Node: Fetch a page53667
-Node: X search54900
-Node: MCP57297
-Node: Computer use60001
-Node: Monitors62017
-Node: Schedules65021
-Node: Todos67487
-Node: Review70142
-Node: Language server73725
-Node: Instructions76912
-Node: Skills80020
-Node: Plugins84180
-Node: Output styles87032
-Node: Image generation89043
-Node: Headless90885
-Node: Pages93573
-Node: Team96410
-Node: Machines117489
-Node: People120356
-Node: Profiles122643
-Node: Health125299
-Node: Scope127311
-Node: Context131320
-Node: Memory134455
-Node: Plan mode137048
-Node: Usage140034
-Node: Files141053
-Node: Keys144640
-Node: Trouble146322
-Node: Manual147576
-Node: Command Index148281
-Node: Key Index158786
+Node: Introduction2612
+Node: Installation3343
+Node: Starting4947
+Node: Sessions5486
+Node: Transcript8667
+Node: Prompt12428
+Node: Permissions13669
+Node: Accounts20975
+Node: Models23220
+Node: Tools24316
+Node: File tools28824
+Node: Search33331
+Node: Shell35227
+Node: Questions38012
+Node: Subagents38782
+Node: Workflows42931
+Node: Worktrees47934
+Node: Messages51062
+Node: Web search52883
+Node: Fetch a page53738
+Node: X search54971
+Node: MCP57368
+Node: Computer use60072
+Node: Monitors62088
+Node: Schedules65092
+Node: Todos67558
+Node: Review70213
+Node: Language server73796
+Node: Instructions76983
+Node: Skills80091
+Node: Plugins84251
+Node: Output styles87103
+Node: Image generation89114
+Node: Headless90956
+Node: Pages93644
+Node: Team96481
+Node: Machines117560
+Node: People120427
+Node: Profiles122714
+Node: Health125370
+Node: Fleet127382
+Node: Scope128148
+Node: Context132156
+Node: Memory135291
+Node: Plan mode137884
+Node: Usage140870
+Node: Files141889
+Node: Keys145476
+Node: Trouble147158
+Node: Manual148412
+Node: Command Index149117
+Node: Key Index159695
 
 End Tag Table
 

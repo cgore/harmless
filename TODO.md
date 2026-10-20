@@ -67,7 +67,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 - [x] The model can boot, inspect, message, snapshot, and restore the team through tools, with the same guards as the commands a person runs.
 - [x] Named auth profiles per runtime. Switch a seat to another account without stranding its conversation. The team record never stores the token.
 - [x] A health surface that says what is true, and a recovery command when a live session and the record disagree. A rig can also run services beside its seats and report those services' health separately.
-- [ ] One fleet view: topology, health, and the rows that need a person. The dashboard today lists sessions by project.
+- [x] One fleet view: topology, health, and the rows that need a person. The dashboard today lists sessions by project.
 
 ## 5. Processes
 

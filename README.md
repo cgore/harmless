@@ -613,6 +613,14 @@ A Harmless summary that names another real session is
 retargeted.  The live files stay.  An empty seat and a live
 seat are left unchanged.
 
+## Fleet
+
+`M-x harmless-team-fleet` shows one rig: its launch order, its
+edges, the health of its seats and services, and the rows that
+are waiting on a person.  Services stay beside the seats.  The
+session dashboard still lists sessions by project.  The fleet
+view writes nothing and starts nothing.
+
 ## Scope
 
 A project directory holds missions, and a mission holds slices.

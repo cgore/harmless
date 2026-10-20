@@ -135,6 +135,7 @@
 ;;   M-x harmless-team-service-remove ; forget a service, and keep its files
 ;;   M-x harmless-team-health ; read what is true for seats and services
 ;;   M-x harmless-team-recover ; match a seat's record to its live session
+;;   M-x harmless-team-fleet ; topology, health, and rows that need a person
 ;;   team_boot ; boot a rig from a spec
 ;;   team_inspect ; read seats, edges, order, and rows
 ;;   team_message ; send text to an occupied seat
@@ -202,6 +203,7 @@
 (require 'harmless-person)
 (require 'harmless-profile)
 (require 'harmless-health)
+(require 'harmless-fleet)
 (require 'harmless-scope)
 (require 'harmless-context)
 
