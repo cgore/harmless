@@ -54,6 +54,7 @@ commands, keys, and files a user needs.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
 * Machines::            Other hosts and one file copied between them.
+* People::              A person address, a row, and a Slack receipt.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2742,6 +2743,63 @@ refused: @samp{machine file escapes the machine}.  A missing
 file is refused: @samp{machine file is missing}.  A directory
 is refused: @samp{machine file is not a file}.  An existing
 destination is refused: @samp{machine file is already there}.
+
+@node People
+@chapter People
+
+@cindex people
+@findex harmless-person-add
+@findex harmless-person-list
+@findex harmless-person-show
+@findex harmless-person-remove
+@findex harmless-person-ask
+A person is an address, @code{name@@slack}.  Asking that person
+opens a queue row.  The row's history is the receipt.  Slack is
+the connector.  @kbd{M-x harmless-person-add} records the name
+and the channel.  A leading @code{#} on the channel is not
+stored.  The Slack token is not stored.
+
+@kbd{M-x harmless-person-list} returns the names.  A missing
+file is an empty list and writes nothing.
+@kbd{M-x harmless-person-show} returns one person.
+@kbd{M-x harmless-person-remove} forgets the name.  Rows already
+opened for that address stay.
+
+@kbd{M-x harmless-person-ask} opens a row whose seat is the
+address and whose body is the question.  The history records
+that the team asked, then whether Slack was posted.  The token
+is read from the environment variable @code{SLACK_BOT_TOKEN}
+only when a sender is set.  With no sender, the receipt says
+the message was not posted.  Nothing is started, and no
+connection is opened.
+
+The people file is @file{RIG.people.json} beside the rig file.
+It is not part of the rig.  A missing rig is refused:
+@samp{team rig is missing}.
+
+Nil, @code{""}, and whitespace are refused: @samp{person name
+is empty}.  A value that is not text is refused: @samp{person
+name must be a string}.  A path, @code{~}, a hyphen, and the
+filesystem root are refused: @samp{person name is not a name}.
+A second registration is refused: @samp{person is already
+registered: }, followed by the name.  A missing person is
+refused: @samp{no person named }, followed by the name.
+
+Nil, @code{""}, and whitespace are refused: @samp{person
+channel is empty}.  A value that is not text is refused:
+@samp{person channel must be a string}.  A path, @code{~}, a
+space, and a token are refused: @samp{person channel is not a
+channel}.
+
+Nil, @code{""}, and whitespace are refused: @samp{person
+question is empty}.  A value that is not text is refused:
+@samp{person question must be a string}.
+
+A broken people file is refused: @samp{people are not valid}.
+That file is left unchanged.  A token, a secret, or a password
+in that file is refused the same way.  The people file is
+refused at the filesystem root: @samp{Refusing to store a
+person at }, followed by that directory.
 
 @node Scope
 @chapter Scope

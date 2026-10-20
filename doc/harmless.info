@@ -45,6 +45,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Pages::               Publish Markdown or HTML as a page.
 * Team::                A rig of pods and named seats.
 * Machines::            Other hosts and one file copied between them.
+* People::              A person address, a row, and a Slack receipt.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2317,7 +2318,7 @@ seat is refused: ‘team seat is missing’.  A broken rig file is refused:
 team at ’, followed by that directory.
 
 
-File: harmless.info,  Node: Machines,  Next: Scope,  Prev: Team,  Up: Top
+File: harmless.info,  Node: Machines,  Next: People,  Prev: Team,  Up: Top
 
 19 Machines
 ***********
@@ -2373,9 +2374,55 @@ directory is refused: ‘machine file is not a file’.  An existing
 destination is refused: ‘machine file is already there’.
 
 
-File: harmless.info,  Node: Scope,  Next: Context,  Prev: Machines,  Up: Top
+File: harmless.info,  Node: People,  Next: Scope,  Prev: Machines,  Up: Top
 
-20 Scope
+20 People
+*********
+
+A person is an address, ‘name@slack’.  Asking that person opens a queue
+row.  The row's history is the receipt.  Slack is the connector.  ‘M-x
+harmless-person-add’ records the name and the channel.  A leading ‘#’ on
+the channel is not stored.  The Slack token is not stored.
+
+   ‘M-x harmless-person-list’ returns the names.  A missing file is an
+empty list and writes nothing.  ‘M-x harmless-person-show’ returns one
+person.  ‘M-x harmless-person-remove’ forgets the name.  Rows already
+opened for that address stay.
+
+   ‘M-x harmless-person-ask’ opens a row whose seat is the address and
+whose body is the question.  The history records that the team asked,
+then whether Slack was posted.  The token is read from the environment
+variable ‘SLACK_BOT_TOKEN’ only when a sender is set.  With no sender,
+the receipt says the message was not posted.  Nothing is started, and no
+connection is opened.
+
+   The people file is ‘RIG.people.json’ beside the rig file.  It is not
+part of the rig.  A missing rig is refused: ‘team rig is missing’.
+
+   Nil, ‘""’, and whitespace are refused: ‘person name is empty’.  A
+value that is not text is refused: ‘person name must be a string’.  A
+path, ‘~’, a hyphen, and the filesystem root are refused: ‘person name
+is not a name’.  A second registration is refused: ‘person is already
+registered: ’, followed by the name.  A missing person is refused: ‘no
+person named ’, followed by the name.
+
+   Nil, ‘""’, and whitespace are refused: ‘person channel is empty’.  A
+value that is not text is refused: ‘person channel must be a string’.  A
+path, ‘~’, a space, and a token are refused: ‘person channel is not a
+channel’.
+
+   Nil, ‘""’, and whitespace are refused: ‘person question is empty’.  A
+value that is not text is refused: ‘person question must be a string’.
+
+   A broken people file is refused: ‘people are not valid’.  That file
+is left unchanged.  A token, a secret, or a password in that file is
+refused the same way.  The people file is refused at the filesystem
+root: ‘Refusing to store a person at ’, followed by that directory.
+
+
+File: harmless.info,  Node: Scope,  Next: Context,  Prev: People,  Up: Top
+
+21 Scope
 ********
 
 A project directory holds missions, and a mission holds slices.  ‘M-x
@@ -2445,7 +2492,7 @@ by that path.
 
 File: harmless.info,  Node: Context,  Next: Memory,  Prev: Scope,  Up: Top
 
-21 Context
+22 Context
 **********
 
 A project holds context packs under ‘packs/NAME/PACK.md’.  ‘M-x
@@ -2500,7 +2547,7 @@ context at ’, followed by that path.
 
 File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Context,  Up: Top
 
-22 Memory
+23 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2568,7 +2615,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-23 Plan mode
+24 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2633,7 +2680,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-24 Usage
+25 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2657,7 +2704,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-25 Files
+26 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2743,7 +2790,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-26 Keys
+27 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2855,7 +2902,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-27 Trouble
+28 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -2882,7 +2929,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-28 Manual
+29 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -2947,6 +2994,11 @@ Command Index
 * harmless-menu:                         Keys.                 (line  6)
 * harmless-new:                          Sessions.             (line  6)
 * harmless-output-style:                 Output styles.        (line  6)
+* harmless-person-add:                   People.               (line  6)
+* harmless-person-ask:                   People.               (line  6)
+* harmless-person-list:                  People.               (line  6)
+* harmless-person-remove:                People.               (line  6)
+* harmless-person-show:                  People.               (line  6)
 * harmless-pick-model:                   Models.               (line  6)
 * harmless-plan:                         Plan mode.            (line  6)
 * harmless-plugin-inspect:               Plugins.              (line  6)
@@ -3074,54 +3126,55 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2345
-Node: Installation3076
-Node: Starting4680
-Node: Sessions5219
-Node: Transcript8400
-Node: Prompt12161
-Node: Permissions13402
-Node: Accounts20708
-Node: Models22953
-Node: Tools24049
-Node: File tools28397
-Node: Search32904
-Node: Shell34800
-Node: Questions37585
-Node: Subagents38355
-Node: Workflows42504
-Node: Worktrees47507
-Node: Messages50635
-Node: Web search52456
-Node: Fetch a page53311
-Node: X search54544
-Node: MCP56941
-Node: Computer use59645
-Node: Monitors61661
-Node: Schedules64665
-Node: Todos67131
-Node: Review69786
-Node: Language server73369
-Node: Instructions76556
-Node: Skills79664
-Node: Plugins83824
-Node: Output styles86676
-Node: Image generation88687
-Node: Headless90529
-Node: Pages93217
-Node: Team96054
-Node: Machines115952
-Node: Scope118818
-Node: Context122829
-Node: Memory125964
-Node: Plan mode128557
-Node: Usage131543
-Node: Files132562
-Node: Keys135958
-Node: Trouble137640
-Node: Manual138894
-Node: Command Index139599
-Node: Key Index149082
+Node: Introduction2415
+Node: Installation3146
+Node: Starting4750
+Node: Sessions5289
+Node: Transcript8470
+Node: Prompt12231
+Node: Permissions13472
+Node: Accounts20778
+Node: Models23023
+Node: Tools24119
+Node: File tools28467
+Node: Search32974
+Node: Shell34870
+Node: Questions37655
+Node: Subagents38425
+Node: Workflows42574
+Node: Worktrees47577
+Node: Messages50705
+Node: Web search52526
+Node: Fetch a page53381
+Node: X search54614
+Node: MCP57011
+Node: Computer use59715
+Node: Monitors61731
+Node: Schedules64735
+Node: Todos67201
+Node: Review69856
+Node: Language server73439
+Node: Instructions76626
+Node: Skills79734
+Node: Plugins83894
+Node: Output styles86746
+Node: Image generation88757
+Node: Headless90599
+Node: Pages93287
+Node: Team96124
+Node: Machines116022
+Node: People118889
+Node: Scope121173
+Node: Context125182
+Node: Memory128317
+Node: Plan mode130910
+Node: Usage133896
+Node: Files134915
+Node: Keys138311
+Node: Trouble139993
+Node: Manual141247
+Node: Command Index141952
+Node: Key Index151800
 
 End Tag Table
 

@@ -121,6 +121,11 @@
 ;;   M-x harmless-machine-remove ; forget a machine, and keep its files
 ;;   M-x harmless-machine-call ; run a team command on one machine
 ;;   M-x harmless-machine-copy ; copy one file from one machine to another
+;;   M-x harmless-person-add ; register a person by address
+;;   M-x harmless-person-list ; list those people
+;;   M-x harmless-person-show ; read one person
+;;   M-x harmless-person-remove ; forget a person, and keep the rows
+;;   M-x harmless-person-ask ; open a queue row and record the receipt
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:
@@ -179,6 +184,7 @@
 (require 'harmless-page)
 (require 'harmless-team)
 (require 'harmless-machine)
+(require 'harmless-person)
 (require 'harmless-scope)
 (require 'harmless-context)
 

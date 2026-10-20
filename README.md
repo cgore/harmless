@@ -543,6 +543,28 @@ are the `harmless-team-` commands.  The registry stays local.
 host to another.  A directory, a path that leaves the host, and
 a file that is already there are refused.  Nothing is started.
 
+## People
+
+A person is an address, `name@slack`.  `M-x harmless-person-add`
+records the name and a Slack channel.  A leading `#` is not
+stored.  `M-x harmless-person-list` returns the names.  A
+missing file is an empty list and writes nothing.
+`M-x harmless-person-show` returns one person.
+`M-x harmless-person-remove` forgets the name.  Rows already
+opened for that address stay.
+
+`M-x harmless-person-ask` opens a queue row to that address.
+The body is the question.  The row's history is the receipt:
+the ask, then whether Slack was posted.  The token is
+`SLACK_BOT_TOKEN` in the environment, and only when a sender
+is set.  It is not written into the rig or the people file.
+With no sender, the receipt says Slack was not posted.
+Nothing is started.
+
+The people file is `RIG.people.json` beside the rig.  It is
+not part of the rig.  A path, `~`, and the filesystem root
+are refused and are not expanded.
+
 ## Scope
 
 A project directory holds missions, and a mission holds slices.
