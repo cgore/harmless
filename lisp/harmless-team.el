@@ -75,8 +75,9 @@
 ;; Compacting deliberately records why and tells the room.
 ;; The transcript summary is M-x harmless-compact.  A seat may
 ;; name an auth profile.  The name is not a token.  A token
-;; key is not a valid rig.  This file does not register
-;; another machine.
+;; key is not a valid rig.  A service sits beside the seats.
+;; Health reads what is true and does not start it.  This
+;; file does not register another machine.
 
 ;;; Code:
 
@@ -745,6 +746,41 @@ Nil means the rig has no compact notice yet."
       found))
    (t nil)))
 
+(defun harmless-team--service-ref-p (ref)
+  "Return non-nil if REF is a stored service reference.
+A pid has no leading zero.  A path is absolute and is not
+the filesystem root."
+  (and (stringp ref)
+       (let ((case-fold-search nil))
+         (or (string-match-p "\\`[1-9][0-9]*\\'" ref)
+             (and (file-name-absolute-p ref)
+                  (not (string-prefix-p "~" ref))
+                  (not (harmless-team--root-text-p ref))
+                  (not (equal (file-truename ref)
+                              (file-truename "/"))))))))
+
+(defun harmless-team--services-ok-p (rig)
+  "Return non-nil if RIG's services are readable.
+Nil means the rig has no services.  A service is not a seat."
+  (let ((items (plist-get rig :services)))
+    (if (null items)
+        t
+      (let ((seen nil)
+            (ok t))
+        (while (and ok (consp items))
+          (let ((item (car items)))
+            (if (and (harmless-plist-p item)
+                     (harmless-team--member-name-p
+                      (plist-get item :name))
+                     (not (harmless-team--seen-p
+                           (plist-get item :name) seen))
+                     (harmless-team--service-ref-p
+                      (plist-get item :ref)))
+                (setq seen (cons (plist-get item :name) seen)
+                      items (cdr items))
+              (setq ok nil))))
+        (and ok (null items))))))
+
 (defun harmless-team--structure-p (rig)
   "Return non-nil if RIG is a rig plist this file can reread."
   (and (harmless-plist-p rig)
@@ -768,7 +804,8 @@ Nil means the rig has no compact notice yet."
        (harmless-team--workflows-ok-p rig)
        (harmless-team--watchdogs-ok-p rig)
        (harmless-team--boundaries-ok-p rig)
-       (harmless-team--compacts-ok-p rig)))
+       (harmless-team--compacts-ok-p rig)
+       (harmless-team--services-ok-p rig)))
 
 (defconst harmless-team--edge-kinds
   '("delegates_to" "spawned_by" "can_observe"

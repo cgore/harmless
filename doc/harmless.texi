@@ -56,6 +56,7 @@ commands, keys, and files a user needs.
 * Machines::            Other hosts and one file copied between them.
 * People::              A person address, a row, and a Slack receipt.
 * Profiles::            A named account for one runtime.
+* Health::              What is true, and a recovery when it is not.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2891,6 +2892,54 @@ in the rig is refused: @samp{team rig is not valid}.  That
 file is left unchanged.  The profile file is refused at the
 filesystem root: @samp{Refusing to store a profile at },
 followed by that directory.
+
+@node Health
+@chapter Health
+
+@cindex health
+@findex harmless-team-health
+@findex harmless-team-service
+@findex harmless-team-service-remove
+@findex harmless-team-recover
+@kbd{M-x harmless-team-health} reads the rig and the files it
+names.  It writes nothing and starts nothing.  Each seat is
+@code{empty}, @code{live}, @code{missing}, or @code{disagree}.
+A service is @code{up} or @code{down}.  Services are listed
+beside the seats.  A service is not a seat.
+
+@kbd{M-x harmless-team-service} records a name and a reference.
+The reference is a process id or an absolute path.  A missing
+path is not created.  A process is not started.
+@kbd{M-x harmless-team-service-remove} forgets the name and
+leaves the path and the process in place.
+
+@kbd{M-x harmless-team-recover} rewrites one seat when the live
+session and the record disagree.  A missing session is cleared.
+The seat keeps its work and its profile.  A Harmless summary
+that names another real session is retargeted, and the old
+directory stays.  An empty seat and a live seat are refused:
+@samp{team health agrees}.  A disagreement this command cannot
+see through is refused: @samp{team health cannot recover}.
+That refusal writes nothing.
+
+Nil, @code{""}, and whitespace are refused: @samp{service name
+is empty}.  A value that is not text is refused: @samp{service
+name must be a string}.  A path, @code{~}, and the filesystem
+root are refused: @samp{service name is not a name}.  A second
+service is refused: @samp{service is already registered: },
+followed by the name.  A missing service is refused:
+@samp{no service named }, followed by the name.
+
+Nil, @code{""}, and whitespace are refused: @samp{service ref
+is empty}.  A value that is not text is refused: @samp{service
+ref must be a string}.  A relative path, including @code{~},
+is refused and is not expanded: @samp{service ref must be
+absolute}.  @code{/} and a drive root are refused:
+@samp{service ref is the filesystem root}.  Zero is refused:
+@samp{service ref is not a ref}.
+
+A broken rig is refused: @samp{team rig is not valid}.  That
+file is left unchanged.
 
 @node Scope
 @chapter Scope

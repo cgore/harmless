@@ -595,6 +595,24 @@ The profile file is `profiles.json` under the local Harmless
 data directory.  It is not part of the rig.  A path, `~`, and
 the filesystem root are refused and are not expanded.
 
+## Health
+
+`M-x harmless-team-health` reads what is true.  A seat is
+`empty`, `live`, `missing`, or `disagree`.  A service is `up`
+or `down`, and it is reported beside the seats, not as one of
+them.  The command writes nothing and starts nothing.
+
+`M-x harmless-team-service` records a name and a process id or
+an absolute path.  A missing path is not created.  A process
+is not started.  `M-x harmless-team-service-remove` forgets the
+name and leaves the path and the process in place.
+
+`M-x harmless-team-recover` rewrites a seat when the live
+session and the record disagree.  A missing session is cleared.
+A Harmless summary that names another real session is
+retargeted.  The live files stay.  An empty seat and a live
+seat are left unchanged.
+
 ## Scope
 
 A project directory holds missions, and a mission holds slices.

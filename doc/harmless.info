@@ -47,6 +47,7 @@ in the file ‘LICENSE’ at the root of the source tree.
 * Machines::            Other hosts and one file copied between them.
 * People::              A person address, a row, and a Slack receipt.
 * Profiles::            A named account for one runtime.
+* Health::              What is true, and a recovery when it is not.
 * Scope::               Missions, slices, and derived progress.
 * Context::             Packs, sections, and a token total.
 * Memory::              Notes that outlive one session.
@@ -2444,7 +2445,7 @@ refused the same way.  The people file is refused at the filesystem
 root: ‘Refusing to store a person at ’, followed by that directory.
 
 
-File: harmless.info,  Node: Profiles,  Next: Scope,  Prev: People,  Up: Top
+File: harmless.info,  Node: Profiles,  Next: Health,  Prev: People,  Up: Top
 
 21 Profiles
 ***********
@@ -2496,9 +2497,49 @@ refused at the filesystem root: ‘Refusing to store a profile at ’,
 followed by that directory.
 
 
-File: harmless.info,  Node: Scope,  Next: Context,  Prev: Profiles,  Up: Top
+File: harmless.info,  Node: Health,  Next: Scope,  Prev: Profiles,  Up: Top
 
-22 Scope
+22 Health
+*********
+
+‘M-x harmless-team-health’ reads the rig and the files it names.  It
+writes nothing and starts nothing.  Each seat is ‘empty’, ‘live’,
+‘missing’, or ‘disagree’.  A service is ‘up’ or ‘down’.  Services are
+listed beside the seats.  A service is not a seat.
+
+   ‘M-x harmless-team-service’ records a name and a reference.  The
+reference is a process id or an absolute path.  A missing path is not
+created.  A process is not started.  ‘M-x harmless-team-service-remove’
+forgets the name and leaves the path and the process in place.
+
+   ‘M-x harmless-team-recover’ rewrites one seat when the live session
+and the record disagree.  A missing session is cleared.  The seat keeps
+its work and its profile.  A Harmless summary that names another real
+session is retargeted, and the old directory stays.  An empty seat and a
+live seat are refused: ‘team health agrees’.  A disagreement this
+command cannot see through is refused: ‘team health cannot recover’.
+That refusal writes nothing.
+
+   Nil, ‘""’, and whitespace are refused: ‘service name is empty’.  A
+value that is not text is refused: ‘service name must be a string’.  A
+path, ‘~’, and the filesystem root are refused: ‘service name is not a
+name’.  A second service is refused: ‘service is already registered: ’,
+followed by the name.  A missing service is refused: ‘no service named
+’, followed by the name.
+
+   Nil, ‘""’, and whitespace are refused: ‘service ref is empty’.  A
+value that is not text is refused: ‘service ref must be a string’.  A
+relative path, including ‘~’, is refused and is not expanded: ‘service
+ref must be absolute’.  ‘/’ and a drive root are refused: ‘service ref
+is the filesystem root’.  Zero is refused: ‘service ref is not a ref’.
+
+   A broken rig is refused: ‘team rig is not valid’.  That file is left
+unchanged.
+
+
+File: harmless.info,  Node: Scope,  Next: Context,  Prev: Health,  Up: Top
+
+23 Scope
 ********
 
 A project directory holds missions, and a mission holds slices.  ‘M-x
@@ -2568,7 +2609,7 @@ by that path.
 
 File: harmless.info,  Node: Context,  Next: Memory,  Prev: Scope,  Up: Top
 
-23 Context
+24 Context
 **********
 
 A project holds context packs under ‘packs/NAME/PACK.md’.  ‘M-x
@@ -2623,7 +2664,7 @@ context at ’, followed by that path.
 
 File: harmless.info,  Node: Memory,  Next: Plan mode,  Prev: Context,  Up: Top
 
-24 Memory
+25 Memory
 *********
 
 Memory is Markdown under ‘harmless-directory’, in ‘memory’.  Global
@@ -2691,7 +2732,7 @@ session is refused: ‘No Harmless session’.
 
 File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
-25 Plan mode
+26 Plan mode
 ************
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
@@ -2756,7 +2797,7 @@ Shell::.
 
 File: harmless.info,  Node: Usage,  Next: Files,  Prev: Plan mode,  Up: Top
 
-26 Usage
+27 Usage
 ********
 
 ‘M-x harmless-usage’ shows two blocks.
@@ -2780,7 +2821,7 @@ are not in batch Emacs.  This report is not an account credit balance.
 
 File: harmless.info,  Node: Files,  Next: Keys,  Prev: Usage,  Up: Top
 
-27 Files
+28 Files
 ********
 
 Harmless keeps its own files under ‘harmless-directory’.  The default is
@@ -2871,7 +2912,7 @@ Trouble::.
 
 File: harmless.info,  Node: Keys,  Next: Trouble,  Prev: Files,  Up: Top
 
-28 Keys
+29 Keys
 *******
 
 ‘M-x harmless-menu’ opens a transient with the common commands.  You can
@@ -2983,7 +3024,7 @@ the usage buffer.
 
 File: harmless.info,  Node: Trouble,  Next: Manual,  Prev: Keys,  Up: Top
 
-29 Trouble
+30 Trouble
 **********
 
 ‘M-x harmless-abort’, or ‘a’ in the transcript, or ‘C-c C-a’ in the
@@ -3010,7 +3051,7 @@ Reloading does not rebuild this manual.  *Note Manual::.
 
 File: harmless.info,  Node: Manual,  Next: Command Index,  Prev: Trouble,  Up: Top
 
-30 Manual
+31 Manual
 *********
 
 This book is an Info manual.  Open it with ‘M-x harmless-info’, with ‘h’
@@ -3127,6 +3168,7 @@ Command Index
 * harmless-team-edge:                    Team.                 (line  6)
 * harmless-team-edges:                   Team.                 (line  6)
 * harmless-team-grow:                    Team.                 (line  6)
+* harmless-team-health:                  Health.               (line  6)
 * harmless-team-image:                   Team.                 (line  6)
 * harmless-team-image-start:             Team.                 (line  6)
 * harmless-team-intake:                  Team.                 (line  6)
@@ -3140,6 +3182,7 @@ Command Index
 * harmless-team-packet:                  Team.                 (line  6)
 * harmless-team-packet-apply:            Team.                 (line  6)
 * harmless-team-preview:                 Team.                 (line  6)
+* harmless-team-recover:                 Health.               (line  6)
 * harmless-team-release:                 Team.                 (line  6)
 * harmless-team-remove:                  Team.                 (line  6)
 * harmless-team-room-history:            Team.                 (line  6)
@@ -3156,6 +3199,8 @@ Command Index
 * harmless-team-rows:                    Team.                 (line  6)
 * harmless-team-seat:                    Team.                 (line  6)
 * harmless-team-send:                    Team.                 (line  6)
+* harmless-team-service:                 Health.               (line  6)
+* harmless-team-service-remove:          Health.               (line  6)
 * harmless-team-snapshot:                Team.                 (line  6)
 * harmless-team-snapshot-check:          Team.                 (line  6)
 * harmless-team-snapshot-restore:        Team.                 (line  6)
@@ -3212,56 +3257,57 @@ Key Index
 
 Tag Table:
 Node: Top371
-Node: Introduction2472
-Node: Installation3203
-Node: Starting4807
-Node: Sessions5346
-Node: Transcript8527
-Node: Prompt12288
-Node: Permissions13529
-Node: Accounts20835
-Node: Models23080
-Node: Tools24176
-Node: File tools28684
-Node: Search33191
-Node: Shell35087
-Node: Questions37872
-Node: Subagents38642
-Node: Workflows42791
-Node: Worktrees47794
-Node: Messages50922
-Node: Web search52743
-Node: Fetch a page53598
-Node: X search54831
-Node: MCP57228
-Node: Computer use59932
-Node: Monitors61948
-Node: Schedules64952
-Node: Todos67418
-Node: Review70073
-Node: Language server73656
-Node: Instructions76843
-Node: Skills79951
-Node: Plugins84111
-Node: Output styles86963
-Node: Image generation88974
-Node: Headless90816
-Node: Pages93504
-Node: Team96341
-Node: Machines117420
-Node: People120287
-Node: Profiles122574
-Node: Scope125229
-Node: Context129240
-Node: Memory132375
-Node: Plan mode134968
-Node: Usage137954
-Node: Files138973
-Node: Keys142560
-Node: Trouble144242
-Node: Manual145496
-Node: Command Index146201
-Node: Key Index156414
+Node: Introduction2541
+Node: Installation3272
+Node: Starting4876
+Node: Sessions5415
+Node: Transcript8596
+Node: Prompt12357
+Node: Permissions13598
+Node: Accounts20904
+Node: Models23149
+Node: Tools24245
+Node: File tools28753
+Node: Search33260
+Node: Shell35156
+Node: Questions37941
+Node: Subagents38711
+Node: Workflows42860
+Node: Worktrees47863
+Node: Messages50991
+Node: Web search52812
+Node: Fetch a page53667
+Node: X search54900
+Node: MCP57297
+Node: Computer use60001
+Node: Monitors62017
+Node: Schedules65021
+Node: Todos67487
+Node: Review70142
+Node: Language server73725
+Node: Instructions76912
+Node: Skills80020
+Node: Plugins84180
+Node: Output styles87032
+Node: Image generation89043
+Node: Headless90885
+Node: Pages93573
+Node: Team96410
+Node: Machines117489
+Node: People120356
+Node: Profiles122643
+Node: Health125299
+Node: Scope127311
+Node: Context131320
+Node: Memory134455
+Node: Plan mode137048
+Node: Usage140034
+Node: Files141053
+Node: Keys144640
+Node: Trouble146322
+Node: Manual147576
+Node: Command Index148281
+Node: Key Index158786
 
 End Tag Table
 

@@ -131,6 +131,10 @@
 ;;   M-x harmless-profile-show ; read one profile, not its token
 ;;   M-x harmless-profile-remove ; forget a profile, and keep the seat
 ;;   M-x harmless-profile-switch ; switch a seat and keep its conversation
+;;   M-x harmless-team-service ; record a service beside the seats
+;;   M-x harmless-team-service-remove ; forget a service, and keep its files
+;;   M-x harmless-team-health ; read what is true for seats and services
+;;   M-x harmless-team-recover ; match a seat's record to its live session
 ;;   team_boot ; boot a rig from a spec
 ;;   team_inspect ; read seats, edges, order, and rows
 ;;   team_message ; send text to an occupied seat
@@ -197,6 +201,7 @@
 (require 'harmless-machine)
 (require 'harmless-person)
 (require 'harmless-profile)
+(require 'harmless-health)
 (require 'harmless-scope)
 (require 'harmless-context)
 
