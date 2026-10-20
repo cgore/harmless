@@ -589,6 +589,9 @@ A worktree in ARGS is an isolated checkout.  The parent stays put."
            :parent-id (harmless-session-id session)
            :source 'agent
            :permission-mode (harmless-session-permission-mode session)
+           :shell-sandbox
+           (let ((mode (harmless-session-shell-sandbox session)))
+             (if (harmless-shell-sandbox-p mode) mode 'off))
            :title (harmless-agent--title args spec prompt)
            (cond
             (worktree

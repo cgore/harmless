@@ -147,7 +147,10 @@ and signals.  SESSION is not modified."
                   :parent-id (harmless-session-id session)
                   :source 'fork
                   :permission-mode
-                  (harmless-session-permission-mode session))
+                  (harmless-session-permission-mode session)
+                  :shell-sandbox
+                  (let ((mode (harmless-session-shell-sandbox session)))
+                    (if (harmless-shell-sandbox-p mode) mode 'off)))
             (and title (list :title title))
             (if (null cwd)
                 (list :detached t)

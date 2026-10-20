@@ -385,6 +385,29 @@ prompt.  Accepting edits does not ask.  *Note Schedules::.
 session.  The menu key is ‘p’.  New sessions take the value of
 ‘harmless-permission-mode’, which defaults to ‘ask’.
 
+   The shell sandbox is separate from the permission mode.  It defaults
+to ‘off’.  ‘read-only’ and ‘workspace-write’ use Landlock on Linux.
+‘M-x harmless-set-shell-sandbox’ sets it for the current session.  The
+menu key is ‘S’.  New sessions take ‘harmless-shell-sandbox’, which
+defaults to ‘off’.  Nil, ‘""’, and an unknown name are refused: ‘shell
+sandbox must be off, read-only, or workspace-write’.  A saved value
+Harmless does not know is loaded as ‘off’.  ‘off’ is not written into
+the session summary.
+
+   ‘run_shell’ takes ‘network’.  It is a boolean.  Omit it, or pass
+false, and a sandbox that is on denies new network connections.  Pass
+true and the call asks as a network tool before it runs.  A value that
+is not a boolean is refused when the sandbox is on: ‘Error: network must
+be a boolean’.  When the sandbox is ‘off’, ‘network’ is ignored and a
+read-only command still does not ask.  A kernel that cannot restrict the
+network is refused rather than left open: ‘Error: Landlock cannot
+restrict the network on this kernel’.
+
+   A read-only subagent keeps a read-only Landlock sandbox when the
+session sandbox is not ‘off’.  When the session sandbox is ‘off’, that
+subagent is not sandboxed.  The subagent's own ‘sandbox’ field still
+chooses which tools it may call.  *Note Subagents::.  *Note Shell::.
+
    When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
@@ -846,6 +869,50 @@ write is refused’.  Nil, ‘""’, and a blank command are not that refusal.
 A read-only command still runs.  ‘shell_kill’ still asks.  *Note Plan
 mode::.
 
+   When ‘harmless-shell-sandbox’ is ‘off’, the default, the shell is not
+sandboxed and ‘network’ is ignored.  The process is your shell.  It is
+not the Landlock helper.
+
+   ‘read-only’ and ‘workspace-write’ run that command through
+‘harmless-landlock’ on Linux.  The program is the one beside the Lisp
+sources, or ‘harmless-landlock-program’ when that is an absolute
+executable.  The shell can read and execute from the filesystem root.
+‘read-only’ adds no write rule.  A redirect into the project, into
+‘/tmp’, or into ‘/dev/null’ fails, and the file is not created.
+
+   ‘workspace-write’ can write the project, each directory added for the
+session, ‘temporary-file-directory’, ‘TMPDIR’ when that is an absolute
+directory, ‘/tmp’, ‘/var/tmp’, and ‘/dev/shm’ when those exist and are
+not the filesystem root.  It can also write ‘/dev/null’, ‘/dev/zero’,
+‘/dev/full’, ‘/dev/tty’, ‘/dev/urandom’, and ‘/dev/random’ when they
+exist and their real path stays under ‘/dev’.  It does not receive a
+write rule for the filesystem root.  The Harmless data directory is not
+a write root of its own, nor is a directory inside it, unless that path
+is the project or strictly inside the project.  A data directory inside
+the project stays writable, because a write rule cannot carve a hole
+inside the project.  A directory outside those roots is not created.
+Changing directory is not a write.  A ‘cd’ that leaves the project is
+still not remembered.
+
+   ‘network’ true asks for permission and then allows network
+connections.  Omit it, or pass false, and new TCP connections are
+denied.  UDP is denied when the kernel can restrict it.  An empty
+command is still ‘Error: command is empty’, before the sandbox.  In plan
+mode a command that can write is still refused before the sandbox.
+
+   On a system that is not Linux the sandbox is refused: ‘Error:
+Landlock sandbox requires Linux’.  A missing helper, a relative path, or
+a program that is not executable is refused: ‘Error: Landlock helper is
+missing’.  A kernel without Landlock is refused: ‘Error: Landlock is not
+available’.  A path the helper cannot open is refused: ‘Error: Landlock
+could not open ’, followed by that path.  A relative sandbox path is
+refused: ‘Error: sandbox path must be absolute’.  A write of the
+filesystem root is refused: ‘Error: refusing to sandbox-write the
+filesystem root’.  A helper that cannot restrict the process reports
+‘Error: Landlock could not restrict this process’.  A command the helper
+cannot run reports ‘Error: Landlock could not run’, followed by the
+program when it has one.  *Note Permissions::.
+
 
 File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Shell,  Up: Tools
 
@@ -932,7 +999,11 @@ MCP::.  A read-only child is not offered computer control.  *Note
 Computer use::.  It may watch a file or a read-only command.  A command
 that can write is refused.  *Note Monitors::.  A read-only child is not
 offered a scheduled prompt.  A workspace child may schedule one.  *Note
-Schedules::.  A workspace child uses the parent's permission mode.
+Schedules::.  A workspace child uses the parent's permission mode.  The
+child keeps the parent's shell sandbox.  A read-only child whose session
+sandbox is not ‘off’ is forced to a read-only Landlock sandbox.  A
+read-only child whose session sandbox is ‘off’ is not sandboxed.  *Note
+Shell::.
 
    In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is ‘always-approve’: ‘Plan
@@ -3007,6 +3078,9 @@ also open it with ‘m’ in the transcript or ‘C-c C-k’ in the prompt.
 ‘p’
      Permission mode.
 
+‘S’
+     Shell sandbox.
+
 ‘l’
      Log in.
 
@@ -3170,6 +3244,7 @@ Command Index
 * harmless-set-model:                    Models.               (line  6)
 * harmless-set-permission-mode:          Permissions.          (line  6)
 * harmless-set-reasoning-effort:         Models.               (line  6)
+* harmless-set-shell-sandbox:            Permissions.          (line 42)
 * harmless-setup:                        Installation.         (line  6)
 * harmless-skill-loadout:                Skills.               (line 57)
 * harmless-steer:                        Prompt.               (line  6)
@@ -3265,9 +3340,11 @@ Key Index
 * M-x harmless:                          Starting.             (line  6)
 * M-x harmless-login:                    Accounts.             (line  6)
 * M-x harmless-logout:                   Accounts.             (line  6)
+* M-x harmless-set-shell-sandbox:        Permissions.          (line 42)
 * n (permission):                        Permissions.          (line  6)
 * R (Harmless menu):                     Review.               (line  6)
 * RIGHT (transcript):                    Transcript.           (line  6)
+* S (Harmless menu):                     Permissions.          (line 42)
 * S-TAB (transcript):                    Transcript.           (line  6)
 * t (transcript):                        Sessions.             (line 31)
 * TAB (transcript):                      Transcript.           (line  6)
@@ -3286,51 +3363,51 @@ Node: Sessions5486
 Node: Transcript8667
 Node: Prompt12428
 Node: Permissions13669
-Node: Accounts20975
-Node: Models23220
-Node: Tools24316
-Node: File tools28824
-Node: Search33331
-Node: Shell35227
-Node: Questions38105
-Node: Subagents38875
-Node: Workflows43024
-Node: Worktrees48027
-Node: Messages51155
-Node: Web search52976
-Node: Fetch a page53831
-Node: X search55064
-Node: MCP57461
-Node: Computer use60165
-Node: Monitors62181
-Node: Schedules65185
-Node: Todos67651
-Node: Review70306
-Node: Language server73889
-Node: Instructions77076
-Node: Skills80184
-Node: Plugins84344
-Node: Output styles87196
-Node: Image generation89207
-Node: Headless91049
-Node: Pages93737
-Node: Team96574
-Node: Machines117653
-Node: People120520
-Node: Profiles122807
-Node: Health125463
-Node: Fleet127475
-Node: Scope128241
-Node: Context132249
-Node: Memory135384
-Node: Plan mode137977
-Node: Usage140963
-Node: Files141982
-Node: Keys145569
-Node: Trouble147251
-Node: Manual148505
-Node: Command Index149210
-Node: Key Index159788
+Node: Accounts22373
+Node: Models24618
+Node: Tools25714
+Node: File tools30222
+Node: Search34729
+Node: Shell36625
+Node: Questions42226
+Node: Subagents42996
+Node: Workflows47379
+Node: Worktrees52382
+Node: Messages55510
+Node: Web search57331
+Node: Fetch a page58186
+Node: X search59419
+Node: MCP61816
+Node: Computer use64520
+Node: Monitors66536
+Node: Schedules69540
+Node: Todos72006
+Node: Review74661
+Node: Language server78244
+Node: Instructions81431
+Node: Skills84539
+Node: Plugins88699
+Node: Output styles91551
+Node: Image generation93562
+Node: Headless95404
+Node: Pages98092
+Node: Team100929
+Node: Machines122008
+Node: People124875
+Node: Profiles127162
+Node: Health129818
+Node: Fleet131830
+Node: Scope132596
+Node: Context136604
+Node: Memory139739
+Node: Plan mode142332
+Node: Usage145318
+Node: Files146337
+Node: Keys149924
+Node: Trouble151635
+Node: Manual152889
+Node: Command Index153594
+Node: Key Index164245
 
 End Tag Table
 

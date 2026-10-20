@@ -39,7 +39,8 @@
 ;; run_shell: async `make-process' in the session cwd.  The tool function
 ;; takes a callback so the turn loop can keep Emacs responsive.  A command
 ;; that is still running at its timeout stays running in the background.
-;; shell_output reads that job.  shell_kill stops it.
+;; shell_output reads that job.  shell_kill stops it.  When the session
+;; shell sandbox is not off, Landlock wraps the process.
 
 ;;; Code:
 
@@ -49,6 +50,7 @@
 (require 'harmless-session)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
+(require 'harmless-landlock)
 
 (defcustom harmless-shell-output-max-bytes 20000
   "Maximum bytes of shell output returned to the model.
@@ -279,12 +281,19 @@ refuses before asking for permission."
        (string-match-p "[^ \t\n\r]" command)
        (eq (harmless-shell-command-kind command) 'write)))
 
-(defun harmless-shell-run-class (_session args)
-  "Return `read' or `shell' for a run_shell call in ARGS."
-  (if (eq 'read (harmless-shell-command-kind
+(defun harmless-shell-run-class (session args)
+  "Return the permission class for a run_shell call in ARGS.
+`network' when the sandbox is on and ARGS allows the network.
+A read-only command is `read'.  Anything else is `shell'."
+  (let ((mode (harmless-shell-sandbox-effective session)))
+    (cond
+     ((and (eq (harmless-tool-arg args :network) t)
+           (not (eq mode 'off)))
+      'network)
+     ((eq 'read (harmless-shell-command-kind
                  (harmless-tool-arg args :command)))
-      'read
-    'shell))
+      'read)
+     (t 'shell))))
 
 (defun harmless-shell--digits-p (chars)
   "Return non-nil when every character in CHARS is a digit.
@@ -947,6 +956,18 @@ is not a positive number is refused."
        (harmless-shell--append-output buf text)))
     job))
 
+(defun harmless-shell--command (session kind wrapped args)
+  "Return the process argv for WRAPPED, or an error string.
+KIND is the shell family.  When the sandbox is off, ARGS
+`network' is ignored and the shell is not wrapped."
+  (if (eq (harmless-shell-sandbox-effective session) 'off)
+      (harmless-shell--argv kind wrapped)
+    (let ((network (harmless-landlock--network args)))
+      (if (stringp network)
+          network
+        (harmless-landlock-wrap session (eq network 'allow)
+                                (harmless-shell--argv kind wrapped))))))
+
 (defun harmless-tools-shell--run (session args callback)
   "Run ARGS command in SESSION and call CALLBACK with the output string.
 A positive `timeout' waits that many seconds, then leaves the process
@@ -966,60 +987,68 @@ are refused."
          (t
           (let* ((background (harmless-json-true-p
                               (harmless-tool-arg args :background)))
-                 (buf (generate-new-buffer " *harmless-shell*"))
                  (kind (harmless-shell-kind))
-                 (proc (let ((default-directory cwd))
-                         (make-process
-                          :name "harmless-shell"
-                          :buffer buf
-                          :command (harmless-shell--argv
-                                    kind
-                                    (harmless-shell--wrap
-                                     kind
-                                     (harmless-shell-directory session)
-                                     command))
-                          :coding '(utf-8-unix . utf-8-unix)
-                          :connection-type 'pipe
-                          :sentinel #'ignore)))
-                 (job (harmless-shell--adopt session command proc buf background)))
-            (unless background
-              (harmless-session-track-process session proc)
-              (setf (harmless-shell-job-timer job)
-                    (run-at-time
-                     timeout nil
-                     (lambda ()
-                       (when (and (eq (harmless-shell-job-status job) 'running)
-                                  (not (harmless-shell-job-delivered job))
-                                  (process-live-p proc))
-                         (setf (harmless-shell-job-background job) t
-                               (harmless-shell-job-delivered job) t)
-                         (harmless-session-untrack-process session proc)
-                         (funcall callback
-                                  (harmless-shell--background-text job)))))))
-            (set-process-sentinel
-             proc
-             (lambda (p _change)
-               (unless (or (process-live-p p)
-                           (not (eq (harmless-shell-job-status job) 'running)))
-                 (harmless-shell--finish session job)
-                 (cond
-                  ((harmless-shell-job-delivered job)
-                   (harmless-shell--notify session job))
-                  (t
-                   (setf (harmless-shell-job-delivered job) t)
-                   (funcall callback
-                            (if (harmless-shell-job-background job)
-                                (progn
-                                  (setf (harmless-shell-job-notified job) t)
-                                  (harmless-shell--background-text job))
-                              (harmless-shell--foreground-text job))))))))
-            (unless (process-live-p proc)
-              (funcall (process-sentinel proc) proc "exited"))
-            (when (and background
-                       (not (harmless-shell-job-delivered job)))
-              (setf (harmless-shell-job-delivered job) t)
-              (funcall callback (harmless-shell--background-text job)))
-            proc)))))))
+                 (wrapped (harmless-shell--wrap
+                           kind
+                           (harmless-shell-directory session)
+                           command))
+                 (argv (condition-case err
+                           (harmless-shell--command
+                            session kind wrapped args)
+                         (error
+                          (format "Error: %s"
+                                  (error-message-string err))))))
+            (if (stringp argv)
+                (funcall callback argv)
+              (let* ((buf (generate-new-buffer " *harmless-shell*"))
+                     (proc (let ((default-directory cwd))
+                             (make-process
+                              :name "harmless-shell"
+                              :buffer buf
+                              :command argv
+                              :coding '(utf-8-unix . utf-8-unix)
+                              :connection-type 'pipe
+                              :sentinel #'ignore)))
+                     (job (harmless-shell--adopt
+                           session command proc buf background)))
+                (unless background
+                  (harmless-session-track-process session proc)
+                  (setf (harmless-shell-job-timer job)
+                        (run-at-time
+                         timeout nil
+                         (lambda ()
+                           (when (and (eq (harmless-shell-job-status job) 'running)
+                                      (not (harmless-shell-job-delivered job))
+                                      (process-live-p proc))
+                             (setf (harmless-shell-job-background job) t
+                                   (harmless-shell-job-delivered job) t)
+                             (harmless-session-untrack-process session proc)
+                             (funcall callback
+                                      (harmless-shell--background-text job)))))))
+                (set-process-sentinel
+                 proc
+                 (lambda (p _change)
+                   (unless (or (process-live-p p)
+                               (not (eq (harmless-shell-job-status job) 'running)))
+                     (harmless-shell--finish session job)
+                     (cond
+                      ((harmless-shell-job-delivered job)
+                       (harmless-shell--notify session job))
+                      (t
+                       (setf (harmless-shell-job-delivered job) t)
+                       (funcall callback
+                                (if (harmless-shell-job-background job)
+                                    (progn
+                                      (setf (harmless-shell-job-notified job) t)
+                                      (harmless-shell--background-text job))
+                                  (harmless-shell--foreground-text job))))))))
+                (unless (process-live-p proc)
+                  (funcall (process-sentinel proc) proc "exited"))
+                (when (and background
+                           (not (harmless-shell-job-delivered job)))
+                  (setf (harmless-shell-job-delivered job) t)
+                  (funcall callback (harmless-shell--background-text job)))
+                proc)))))))))
 
 (defun harmless-tools-shell--output (session args callback)
   "Call CALLBACK with the output of the background shell in ARGS.
@@ -1078,7 +1107,7 @@ An unknown id, an empty id, and a shell that is not running are refused."
   (harmless-register-tool
    (harmless-tool-create
     :name "run_shell"
-    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. A read-only command does not ask for permission. In plan mode a command that can write is refused. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill."
+    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. A read-only command does not ask for permission. In plan mode a command that can write is refused. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill. network true allows the network when the shell sandbox is on and asks first. Omit network to deny it. The sandbox is off unless the session sets one."
     :class 'shell
     :classify #'harmless-shell-run-class
     :async t
@@ -1088,7 +1117,9 @@ An unknown id, an empty id, and a shell that is not running are refused."
                            :timeout (:type "number"
                                     :description "Seconds to wait before leaving the command in the background. A positive number. Omit it for the default.")
                            :background (:type "boolean"
-                                       :description "Return a background id immediately."))
+                                       :description "Return a background id immediately.")
+                           :network (:type "boolean"
+                                     :description "Allow the network when the shell sandbox is on. Omit it to deny the network. Ignored when the sandbox is off."))
               :required ["command"])
     :fn #'harmless-tools-shell--run))
   (harmless-register-tool

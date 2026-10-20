@@ -56,6 +56,7 @@
 (declare-function harmless-pick-model "harmless")
 (declare-function harmless-set-reasoning-effort "harmless")
 (declare-function harmless-set-permission-mode "harmless")
+(declare-function harmless-set-shell-sandbox "harmless")
 (declare-function harmless-login "harmless-auth")
 (declare-function harmless-logout "harmless-auth")
 (declare-function harmless-info "harmless")
@@ -96,6 +97,7 @@
     ("m" "Model" harmless-pick-model)
     ("e" "Effort" harmless-set-reasoning-effort)
     ("p" "Permissions" harmless-set-permission-mode)
+    ("S" "Shell sandbox" harmless-set-shell-sandbox)
     ("+" "Add directory" harmless-add-directory)]
    ["Account"
     ("l" "Log in" harmless-login)

@@ -1,5 +1,6 @@
 *.elc
 lisp/harmless-autoloads.el
+src/harmless-landlock
 *~
 \#*\#
 .dir-locals.el

@@ -51,6 +51,9 @@
 ;; and :depends.  It is saved.  It is not a queue row.  `review'
 ;; is the latest read-only review: :kind, :base, :commit, and
 ;; :findings.  It is saved.  Findings are not applied as edits.
+;; `shell-sandbox' is `off', `read-only', or `workspace-write'.
+;; `off' is the default and is not saved.  A read-only subagent
+;; uses `read-only' when the session sandbox is not `off'.
 
 ;;; Code:
 
@@ -112,6 +115,33 @@ Nil, \"\", and an unknown name are `ask'.  `auto' is kept."
                  (const auto))
   :group 'harmless)
 
+(defcustom harmless-shell-sandbox 'off
+  "Default OS sandbox for the shell of a new session.
+`off' does not restrict the shell.  `read-only' and
+`workspace-write' use Landlock on Linux.  `off' is the default."
+  :type '(choice (const off)
+                 (const read-only)
+                 (const workspace-write))
+  :group 'harmless)
+
+(defun harmless-shell-sandbox-p (mode)
+  "Return non-nil when MODE is a shell sandbox mode."
+  (memq mode '(off read-only workspace-write)))
+
+(defun harmless-shell-sandbox-from-summary (value)
+  "Return a shell sandbox loaded from VALUE.
+Nil, \"\", and an unknown name are `off'."
+  (let ((mode (cond
+               ((or (null value)
+                    (and (stringp value) (string-empty-p value)))
+                'off)
+               ((keywordp value)
+                (intern (substring (symbol-name value) 1)))
+               ((symbolp value) value)
+               ((stringp value) (intern value))
+               (t 'off))))
+    (if (harmless-shell-sandbox-p mode) mode 'off)))
+
 (defvar harmless--sessions (make-hash-table :test 'equal)
   "Live sessions keyed by id.")
 
@@ -159,7 +189,23 @@ Nil, \"\", and an unknown name are `ask'.  `auto' is kept."
   rules
   extra-dirs
   todos
-  review)
+  review
+  shell-sandbox)
+
+(defun harmless-shell-sandbox-effective (session)
+  "Return the Landlock mode SESSION should apply.
+Nil and an unknown slot are `off'.  A read-only subagent is
+`read-only' when the session sandbox is not `off'."
+  (let ((mode (and (harmless-session-p session)
+                   (harmless-session-shell-sandbox session))))
+    (unless (harmless-shell-sandbox-p mode)
+      (setq mode 'off))
+    (if (or (eq mode 'off)
+            (not (eq (harmless-session-source session) 'agent))
+            (not (eq (plist-get (harmless-session-agent session) :sandbox)
+                     'read-only)))
+        mode
+      'read-only)))
 
 (defun harmless-emit (session event)
   "Notify observers that EVENT happened on SESSION."
@@ -338,7 +384,9 @@ A missing or relative directory is an error.  It is not replaced with /."
 (defun harmless-session-new (&rest args)
   "Create, register, and persist a new session.
 Keyword ARGS: :cwd :detached :provider :model :reasoning-effort
-:parent-id :source :permission-mode :title.
+:parent-id :source :permission-mode :shell-sandbox :title.
+:shell-sandbox is off, read-only, or workspace-write.  Nil is
+refused.  Omitted uses `harmless-shell-sandbox'.
 :detached starts a chat with no project directory.  It cannot be
 combined with :cwd."
   (let* ((provider (or (plist-get args :provider) (harmless-default-provider)))
@@ -376,6 +424,13 @@ combined with :cwd."
                                                mode)
                                         (error "permission mode is not a mode"))
                                       mode)
+                   :shell-sandbox (let ((mode
+                                         (if (plist-member args :shell-sandbox)
+                                             (plist-get args :shell-sandbox)
+                                           harmless-shell-sandbox)))
+                                     (unless (harmless-shell-sandbox-p mode)
+                                       (error "shell sandbox must be off, read-only, or workspace-write"))
+                                     mode)
                    :allow-classes nil
                    :prompt-tokens 0
                    :completion-tokens 0
@@ -542,6 +597,7 @@ Timers are not included."
          :title-locked (and (harmless-session-title-locked session) t)
          :plan-mode (and (harmless-session-plan-mode session) t)
          :shell-cwd (harmless-session-shell-cwd session))
+   (harmless-session--shell-sandbox-summary session)
    (harmless-session--agent-summary session)
    (harmless-session--worktree-summary session)
    (harmless-session--schedules-summary session)
@@ -553,6 +609,14 @@ Timers are not included."
      (harmless-review-summary session))
    (when (fboundp 'harmless-output-style-summary)
      (harmless-output-style-summary session))))
+
+(defun harmless-session--shell-sandbox-summary (session)
+  "Return a :shell-sandbox entry, or nil when SESSION is off.
+Nil and an unknown mode are omitted, the same as `off'."
+  (let ((mode (harmless-session-shell-sandbox session)))
+    (when (and (harmless-shell-sandbox-p mode)
+               (not (eq mode 'off)))
+      (list :shell-sandbox (symbol-name mode)))))
 
 (defun harmless-session--file (session name)
   "Return the path of NAME inside SESSION's directory.
@@ -660,6 +724,9 @@ Signal when that path would be /NAME or outside the sessions root."
                                   (and (stringp cwd)
                                        (not (string-empty-p cwd))
                                        cwd))
+                     :shell-sandbox
+                     (harmless-shell-sandbox-from-summary
+                      (plist-get summary :shell-sandbox))
                      :agent (harmless-session--agent-from-summary summary)
                      :worktree (harmless-session--worktree-from-summary
                                 summary))))

@@ -449,6 +449,40 @@ still does not ask.
 session.  The menu key is @kbd{p}.  New sessions take the value of
 @code{harmless-permission-mode}, which defaults to @code{ask}.
 
+@findex harmless-set-shell-sandbox
+@vindex harmless-shell-sandbox
+@vindex harmless-landlock-program
+@cindex shell sandbox
+@cindex Landlock
+@kindex S @r{(Harmless menu)}
+@kindex M-x harmless-set-shell-sandbox
+The shell sandbox is separate from the permission mode.  It
+defaults to @code{off}.  @code{read-only} and
+@code{workspace-write} use Landlock on Linux.
+@kbd{M-x harmless-set-shell-sandbox} sets it for the current
+session.  The menu key is @kbd{S}.  New sessions take
+@code{harmless-shell-sandbox}, which defaults to @code{off}.
+Nil, @code{""}, and an unknown name are refused: @samp{shell
+sandbox must be off, read-only, or workspace-write}.  A saved
+value Harmless does not know is loaded as @code{off}.
+@code{off} is not written into the session summary.
+
+@code{run_shell} takes @code{network}.  It is a boolean.  Omit
+it, or pass false, and a sandbox that is on denies new network
+connections.  Pass true and the call asks as a network tool
+before it runs.  A value that is not a boolean is refused when
+the sandbox is on: @samp{Error: network must be a boolean}.
+When the sandbox is @code{off}, @code{network} is ignored and a
+read-only command still does not ask.  A kernel that cannot
+restrict the network is refused rather than left open:
+@samp{Error: Landlock cannot restrict the network on this kernel}.
+
+A read-only subagent keeps a read-only Landlock sandbox when
+the session sandbox is not @code{off}.  When the session
+sandbox is @code{off}, that subagent is not sandboxed.  The
+subagent's own @code{sandbox} field still chooses which tools
+it may call.  @xref{Subagents}.  @xref{Shell}.
+
 When a tool needs a decision, the prompt shows the class and a short
 description of the call.  For an edit, that description is the path.
 For a shell command, it is the command.  For a web search, it is the
@@ -958,6 +992,61 @@ Nil, @code{""}, and a blank command are not that refusal.  A
 read-only command still runs.  @code{shell_kill} still asks.
 @xref{Plan mode}.
 
+@vindex harmless-shell-sandbox
+@vindex harmless-landlock-program
+When @code{harmless-shell-sandbox} is @code{off}, the default,
+the shell is not sandboxed and @code{network} is ignored.  The
+process is your shell.  It is not the Landlock helper.
+
+@code{read-only} and @code{workspace-write} run that command
+through @command{harmless-landlock} on Linux.  The program is
+the one beside the Lisp sources, or
+@code{harmless-landlock-program} when that is an absolute
+executable.  The shell can read and execute from the filesystem
+root.  @code{read-only} adds no write rule.  A redirect into
+the project, into @file{/tmp}, or into @file{/dev/null} fails,
+and the file is not created.
+
+@code{workspace-write} can write the project, each directory
+added for the session, @code{temporary-file-directory},
+@code{TMPDIR} when that is an absolute directory, @file{/tmp},
+@file{/var/tmp}, and @file{/dev/shm} when those exist and are
+not the filesystem root.  It can also write @file{/dev/null},
+@file{/dev/zero}, @file{/dev/full}, @file{/dev/tty},
+@file{/dev/urandom}, and @file{/dev/random} when they exist and
+their real path stays under @file{/dev}.  It does not receive a
+write rule for the filesystem root.  The Harmless data
+directory is not a write root of its own, nor is a directory
+inside it, unless that path is the project or strictly inside
+the project.  A data directory inside the project stays
+writable, because a write rule cannot carve a hole inside the
+project.  A directory outside those roots is not created.
+Changing directory is not a write.  A @code{cd} that leaves the
+project is still not remembered.
+
+@code{network} true asks for permission and then allows network
+connections.  Omit it, or pass false, and new TCP connections
+are denied.  UDP is denied when the kernel can restrict it.
+An empty command is still @samp{Error: command is empty},
+before the sandbox.  In plan mode a command that can write is
+still refused before the sandbox.
+
+On a system that is not Linux the sandbox is refused:
+@samp{Error: Landlock sandbox requires Linux}.  A missing
+helper, a relative path, or a program that is not executable
+is refused: @samp{Error: Landlock helper is missing}.  A kernel
+without Landlock is refused: @samp{Error: Landlock is not
+available}.  A path the helper cannot open is refused:
+@samp{Error: Landlock could not open }, followed by that path.
+A relative sandbox path is refused: @samp{Error: sandbox path
+must be absolute}.  A write of the filesystem root is refused:
+@samp{Error: refusing to sandbox-write the filesystem root}.
+A helper that cannot restrict the process reports
+@samp{Error: Landlock could not restrict this process}.  A
+command the helper cannot run reports @samp{Error: Landlock
+could not run}, followed by the program when it has one.
+@xref{Permissions}.
+
 @node Questions
 @section Questions
 
@@ -1059,6 +1148,10 @@ write is refused.  @xref{Monitors}.
 A read-only child is not offered a scheduled prompt.  A workspace
 child may schedule one.  @xref{Schedules}.
 A workspace child uses the parent's permission mode.
+The child keeps the parent's shell sandbox.  A read-only
+child whose session sandbox is not @code{off} is forced to a
+read-only Landlock sandbox.  A read-only child whose session
+sandbox is @code{off} is not sandboxed.  @xref{Shell}.
 
 In plan mode, a subagent that can write is refused before the
 permission question, including when the mode is @code{always-approve}:
@@ -3476,6 +3569,9 @@ Reasoning effort.
 
 @item p
 Permission mode.
+
+@item S
+Shell sandbox.
 
 @item l
 Log in.

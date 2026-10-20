@@ -699,6 +699,29 @@ An unknown mode is refused and the session is left unchanged."
     (harmless-session-save session)
     (message "Harmless permissions: %s" mode)))
 
+;;;###autoload
+(defun harmless-set-shell-sandbox (mode)
+  "Set the current session's shell sandbox MODE.
+MODE is `off', `read-only', or `workspace-write'.
+An unknown mode is refused and the session is left unchanged."
+  (interactive
+   (list (intern (completing-read
+                  "Shell sandbox: "
+                  '("off" "read-only" "workspace-write")
+                  nil t
+                  (format "%s"
+                          (let ((session (harmless--context-session)))
+                            (and session
+                                 (or (harmless-session-shell-sandbox session)
+                                     'off))))))))
+  (let ((session (or (harmless--context-session)
+                     (user-error "No Harmless session"))))
+    (unless (harmless-shell-sandbox-p mode)
+      (error "shell sandbox must be off, read-only, or workspace-write"))
+    (setf (harmless-session-shell-sandbox session) mode)
+    (harmless-session-save session)
+    (message "Harmless shell sandbox: %s" mode)))
+
 (defun harmless--lisp-directory ()
   "Return the directory holding the Harmless `.el' sources.
 This is the directory of `harmless.el' on `load-path', so a reload

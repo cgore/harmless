@@ -82,7 +82,7 @@ A message informs. A queue row obligates. A seat outlives the session occupying 
 
 ## 6. Permissions and safety
 
-The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `accept-edits`, `always-approve`). "Always" lasts for the session. File tools stay inside the project. The shell does not.
+The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `accept-edits`, `always-approve`). "Always" lasts for the session. File tools stay inside the project. The shell does not, unless that session's Landlock sandbox is on.
 
 - [x] Allow and deny rules for commands, paths, and fetch domains. Claude Code writes these as `Bash(npm run *)` and `Edit(/src/**)`.
 - [x] A per-project allow list that survives the session.
@@ -90,7 +90,7 @@ The policy is three classes (`read`, `edit`, `shell`) and three modes (`ask`, `a
 - [x] Classify read-only shell commands so they can skip a prompt. A command Harmless does not recognize still asks. A redirect, a command substitution, and a subshell still ask.
 - [x] Auto-review. A reviewer model or a classifier decides an escalation (Codex auto-review, Claude Code auto mode, Grok Build auto-review).
 - [x] Hooks that can block a tool call, or replace the result the model sees. Claude Code also runs a hook as an HTTP request, an MCP call, a prompt, or a subagent.
-- [ ] An OS sandbox for the shell (Landlock on Linux). Codex defaults to workspace-write and asks before the network. Grok Build's sandbox is off unless asked.
+- [x] An OS sandbox for the shell (Landlock on Linux). The default is `off`. `read-only` and `workspace-write` use Landlock. `network` true asks before a connection is allowed. A read-only subagent is forced to read-only Landlock when the session sandbox is on.
 - [x] Extra directories, outside the project root, that this session may read or edit (Claude Code `--add-dir`).
 
 ## 7. Planning and tracking
