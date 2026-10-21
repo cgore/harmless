@@ -218,6 +218,27 @@
   (let ((dir (expand-file-name "nested" (make-temp-file "harmless-mkdir-" t))))
     (should (file-directory-p (harmless-ensure-directory dir)))))
 
+(ert-deftest harmless-absolute-directory-keeps-a-leading-slash-on-windows ()
+  "A leading slash must stay a leading slash when Emacs is on Windows.
+`expand-file-name' pastes the current drive onto it."
+  (let ((system-type 'windows-nt))
+    (should (equal "/" (harmless-absolute-directory "/")))
+    (should (equal "/" (harmless-absolute-directory "//")))
+    (should (equal "/" (harmless-absolute-directory "/.")))
+    (should (equal "/" (harmless-absolute-directory "/sessions/..")))
+    (should (equal "/tmp/" (harmless-absolute-directory "/tmp/")))
+    (should (equal "/tmp" (harmless-absolute-directory "/tmp")))
+    (should (equal "/proj/demo" (harmless-absolute-directory "/proj/demo")))
+    (should (equal "/demo/"
+                   (harmless-absolute-directory "/proj/../demo/")))
+    (should (equal "/readme"
+                   (harmless-expand-file-name "readme" "/")))
+    (should (equal "/proj/a"
+                   (harmless-expand-file-name "a/../a" "/proj")))
+    (should (equal "c:/proj"
+                   (let ((system-type 'gnu/linux))
+                     (harmless-expand-file-name "c:/proj" "/"))))))
+
 (ert-deftest harmless-data-directory-refuses-root ()
   (let ((default-directory "/"))
     (harmless-test-error "Refusing to store Harmless data"
@@ -376,7 +397,14 @@
          (harmless-directory nil)
          (harmless--sessions (make-hash-table :test 'equal))
          (default-directory "/")
-         (provider (harmless-test-provider)))
+         (provider (harmless-test-provider))
+         (root-sessions "/sessions")
+         (sessions-existed (file-directory-p root-sessions))
+         (sessions-before
+          (when sessions-existed
+            (sort (directory-files root-sessions nil
+                                   directory-files-no-dot-files-regexp)
+                  #'string<))))
     (cl-letf (((symbol-function 'locate-user-emacs-file)
                (lambda (&rest _) fallback)))
       (let ((session (harmless-session-new :cwd "/proj/demo"
@@ -386,7 +414,12 @@
         (should (string-prefix-p (file-name-as-directory fallback)
                                  (harmless-sessions-root)))
         (should (harmless-session-resume (harmless-session-id session)))))
-    (should-not (file-directory-p "/sessions"))))
+    (should (eq sessions-existed (file-directory-p root-sessions)))
+    (should (equal sessions-before
+                   (when (file-directory-p root-sessions)
+                     (sort (directory-files root-sessions nil
+                                            directory-files-no-dot-files-regexp)
+                           #'string<))))))
 
 (ert-deftest harmless-session-load-and-list-refuse-root ()
   (let ((harmless-directory (make-temp-file "harmless-test-" t))

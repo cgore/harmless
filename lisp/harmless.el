@@ -765,18 +765,19 @@ filesystem root, and this function does not create one."
                (file-name-absolute-p sources))
     (error "Harmless Lisp directory must be absolute, not %S" sources))
   (let* ((lisp (file-name-as-directory
-                (harmless-collapse-path (expand-file-name sources))))
+                (harmless-collapse-path
+                 (harmless-expand-file-name sources))))
          (root (file-name-directory (directory-file-name lisp))))
     (when (or (not (stringp root))
               (harmless-filesystem-root-p lisp)
               (harmless-filesystem-root-p root))
       (error "Cannot place the Harmless manual at the filesystem root"))
-    (file-name-as-directory (expand-file-name "doc" root))))
+    (file-name-as-directory (harmless-expand-file-name "doc" root))))
 
 (defun harmless-manual-file (&optional sources)
   "Return the absolute path of the Harmless Info file.
 SOURCES defaults to the directory of the loaded `harmless.el'."
-  (expand-file-name
+  (harmless-expand-file-name
    "harmless.info"
    (harmless-manual-directory
     (or sources (harmless--lisp-directory)))))

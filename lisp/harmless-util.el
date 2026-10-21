@@ -250,14 +250,57 @@ string of only backslashes collapses to \"/\"."
        (parts (concat "/" (mapconcat #'identity parts "/")))
        (t "/")))))
 
+(defun harmless-leading-slash-p (path)
+  "Return non-nil if PATH starts with / and is not a drive path.
+\"~\" is not a leading slash.  On Windows `expand-file-name' pastes
+the current drive onto this path, so \"/\" becomes \"d:/\"."
+  (and (stringp path)
+       (> (length path) 0)
+       (eq (aref path 0) ?/)
+       (not (string-prefix-p "~" path))
+       (not (harmless-foreign-absolute-p path))))
+
+(defun harmless-expand-file-name (name &optional dir)
+  "Return NAME expanded against DIR, which defaults to `default-directory'.
+A Windows drive path is expanded on Windows and collapsed as text
+elsewhere, because `expand-file-name' would join it onto this system.
+A string of only backslashes collapses to \"/\".  A leading slash stays
+a leading slash on Windows: `expand-file-name' would paste the current
+drive onto it, and \"/\" would stop being the filesystem root.  \"~\"
+is expanded."
+  (setq dir (or dir default-directory))
+  (cond
+   ((not (and (stringp name) (not (string-empty-p name))))
+    (expand-file-name name dir))
+   ((string-prefix-p "~" name)
+    (expand-file-name name dir))
+   ((harmless-foreign-absolute-p name)
+    (if (and (memq system-type '(windows-nt ms-dos))
+             (string-match-p "\\`[A-Za-z]:" name))
+        (expand-file-name name)
+      (harmless-collapse-path name)))
+   ((and (memq system-type '(windows-nt ms-dos))
+         (harmless-leading-slash-p name))
+    (if (harmless-filesystem-root-p name)
+        "/"
+      (let ((collapsed (harmless-collapse-path name)))
+        (if (or (string-suffix-p "/" name)
+                (string-suffix-p "\\" name))
+            (file-name-as-directory collapsed)
+          collapsed))))
+   ((and (memq system-type '(windows-nt ms-dos))
+         (harmless-leading-slash-p dir))
+    (harmless-expand-file-name
+     (concat (if (harmless-filesystem-root-p dir)
+                 "/"
+               (file-name-as-directory (harmless-collapse-path dir)))
+             name)))
+   (t (expand-file-name name dir))))
+
 (defun harmless-expand-kept (path)
-  "Return PATH expanded without joining a Windows path onto this system.
-A drive path or a string of only backslashes is collapsed as text.
-`expand-file-name' and `file-truename' paste those onto
-`default-directory' where they are not absolute."
-  (if (harmless-foreign-absolute-p path)
-      (harmless-collapse-path path)
-    (expand-file-name path)))
+  "Return PATH expanded without joining a foreign path onto this system.
+See `harmless-expand-file-name'."
+  (harmless-expand-file-name path))
 
 (defun harmless-filesystem-root-p (path)
   "Return non-nil if PATH is the filesystem root.
@@ -286,12 +329,14 @@ the root.  PATH is not trimmed."
 
 (defun harmless-absolute-directory (dir)
   "Return DIR expanded, requiring it to already be absolute.
-Nil, \"\", and relative names signal instead of using `default-directory'."
+Nil, \"\", and relative names signal instead of using `default-directory'.
+On Windows a leading slash is kept.  `expand-file-name' would paste the
+current drive onto it."
   (unless (and (stringp dir)
                (not (string-empty-p dir))
                (file-name-absolute-p dir))
     (error "Directory must be absolute, not %S" dir))
-  (expand-file-name dir))
+  (harmless-expand-file-name dir))
 
 (defun harmless-same-directory-p (a b)
   "Return non-nil if absolute directories A and B are the same.
@@ -300,8 +345,8 @@ not match, so they are not compared by expanding them against /."
   (and (stringp a) (stringp b)
        (not (string-empty-p a)) (not (string-empty-p b))
        (file-name-absolute-p a) (file-name-absolute-p b)
-       (string= (directory-file-name (expand-file-name a))
-                (directory-file-name (expand-file-name b)))))
+       (string= (directory-file-name (harmless-expand-file-name a))
+                (directory-file-name (harmless-expand-file-name b)))))
 
 (defun harmless-directory-strictly-under-p (dir parent)
   "Return non-nil if DIR is strictly inside PARENT.
@@ -328,7 +373,8 @@ A relative directory or the filesystem root is an error."
     (unless (and (stringp chosen) (file-name-absolute-p chosen))
       (error "Harmless data directory must be absolute, not %S" chosen))
     (let ((dir (file-name-as-directory
-                (harmless-collapse-path (expand-file-name chosen)))))
+                (harmless-collapse-path
+                 (harmless-expand-file-name chosen)))))
       (when (harmless-filesystem-root-p dir)
         (error "Refusing to store Harmless data at %s" dir))
       dir)))

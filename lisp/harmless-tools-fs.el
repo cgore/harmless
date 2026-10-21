@@ -58,22 +58,32 @@
   :type 'integer
   :group 'harmless)
 
+(defun harmless-tools-fs--textual-p (path)
+  "Return non-nil if PATH must be compared as text, not `file-truename'.
+On Windows a leading slash is text: `file-truename' pastes the current
+drive, and a missing file keeps the slash while \"/\" becomes \"d:/\".
+Elsewhere a drive path is text, because `file-truename' would join it
+onto this system."
+  (if (memq system-type '(windows-nt ms-dos))
+      (harmless-leading-slash-p path)
+    (harmless-foreign-absolute-p path)))
+
 (defun harmless-tools-fs-inside-p (root path)
   "Return non-nil if PATH is inside ROOT after resolving `..'.
-A Windows drive path is never inside a path on this system.  Two
-drive paths are compared as text, because `file-truename' would
-join them onto `default-directory'."
-  (let ((foreign (or (harmless-foreign-absolute-p root)
-                     (harmless-foreign-absolute-p path))))
-    (when (or (not foreign)
-              (and (harmless-foreign-absolute-p root)
-                   (harmless-foreign-absolute-p path)))
+A Windows drive path is never inside a leading-slash path.  Two
+drive paths on Windows are compared with `file-truename'.  Two
+leading slashes are compared as text."
+  (let ((text (or (harmless-tools-fs--textual-p root)
+                  (harmless-tools-fs--textual-p path))))
+    (when (or (not text)
+              (and (harmless-tools-fs--textual-p root)
+                   (harmless-tools-fs--textual-p path)))
       (let* ((root (file-name-as-directory
-                    (if foreign
-                        (harmless-collapse-path root)
+                    (if text
+                        (harmless-collapse-path (harmless-expand-kept root))
                       (file-truename root))))
-             (path (if foreign
-                       (harmless-collapse-path path)
+             (path (if text
+                       (harmless-collapse-path (harmless-expand-kept path))
                      (file-truename path))))
         (or (string-prefix-p root path)
             (string-prefix-p root (file-name-as-directory path))
@@ -223,9 +233,7 @@ PATH may stay inside the project or an extra directory."
   (unless (and path (not (string-empty-p path)))
     (error "Path is empty"))
   (let* ((cwd (harmless-session-require-project session))
-         (full (if (harmless-foreign-absolute-p path)
-                   (harmless-collapse-path path)
-                 (expand-file-name path cwd))))
+         (full (harmless-expand-file-name path cwd)))
     (unless (harmless-tools-fs-allowed-p session full)
       (error "Path escapes project: %s" path))
     full))
@@ -446,7 +454,7 @@ see earlier replacements.  Nothing is written if any hunk fails."
     (unless (file-directory-p path)
       (error "Not a directory: %s" path))
     (mapconcat (lambda (name)
-                 (let ((full (expand-file-name name path)))
+                 (let ((full (harmless-expand-file-name name path)))
                    (if (file-directory-p full)
                        (concat name "/")
                      name)))

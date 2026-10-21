@@ -845,6 +845,15 @@ A relative path is not expanded."
       (error "session directory must be absolute"))
      (t (file-name-as-directory (directory-file-name cwd))))))
 
+(defun harmless-session--export-on-system-p (path)
+  "Return non-nil if PATH names a file on this operating system.
+A Windows drive path is on the system only when Emacs is running
+on Windows.  Elsewhere it stays text: `file-directory-p' would
+join it onto the current directory."
+  (or (not (harmless-foreign-absolute-p path))
+      (and (memq system-type '(windows-nt ms-dos))
+           (string-match-p "\\`[A-Za-z]:" path))))
+
 (defun harmless-session--export-absolute (path)
   "Return absolute file PATH, or signal.
 The parent must already exist.  It is not created."
@@ -852,7 +861,7 @@ The parent must already exist.  It is not created."
             (string-suffix-p "/" path)
             (string-suffix-p "\\" path))
     (error "session export path is not a file"))
-  (when (and (not (harmless-foreign-absolute-p path))
+  (when (and (harmless-session--export-on-system-p path)
              (file-exists-p path)
              (equal (file-truename path) (file-truename "/")))
     (error "session export path is the filesystem root"))
@@ -860,7 +869,7 @@ The parent must already exist.  It is not created."
     (unless (and (stringp parent)
                  (not (harmless-session--root-text-p parent)))
       (error "session export path is the filesystem root"))
-    (unless (or (harmless-foreign-absolute-p parent)
+    (unless (or (not (harmless-session--export-on-system-p parent))
                 (file-directory-p parent))
       (error "session export path is missing")))
   path)
@@ -868,7 +877,7 @@ The parent must already exist.  It is not created."
 (defun harmless-session--export-relative (session raw)
   "Return RAW expanded inside SESSION's project, or signal."
   (let* ((project (harmless-session--export-project session))
-         (full (expand-file-name raw project)))
+         (full (harmless-expand-file-name raw project)))
     (when (or (directory-name-p full)
               (string-suffix-p "/" raw)
               (string-suffix-p "\\" raw))
