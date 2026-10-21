@@ -241,11 +241,12 @@
                        (harmless-x-parse-posts nil)
                      (error (error-message-string err)))
                    "X search failed"))
-    (should (equal (condition-case err
-                       (harmless-x-parse-posts "{")
-                     (error (error-message-string err)))
-                   (concat "X search failed: "
-                           "End of file while parsing JSON: 1, nil, 1")))
+    (let ((failed (condition-case err
+                      (harmless-x-parse-posts "{")
+                    (error (error-message-string err)))))
+      (should (member failed
+                      '("X search failed: End of file while parsing JSON: 1, nil, 1"
+                        "X search failed: End of file while parsing JSON: 1, 1, 1"))))
     (should (equal (car users)
                    (list :id "9" :username "ada" :name "Ada"
                          :description "lisp")))
@@ -390,11 +391,12 @@
           (lambda (_url)
             (setq calls (1+ calls))
             "{")))
-    (should (equal (condition-case err
-                       (harmless-x-thread-default "55")
-                     (error (error-message-string err)))
-                   (concat "X search failed: "
-                           "End of file while parsing JSON: 1, nil, 1")))
+    (let ((failed (condition-case err
+                      (harmless-x-thread-default "55")
+                    (error (error-message-string err)))))
+      (should (member failed
+                      '("X search failed: End of file while parsing JSON: 1, nil, 1"
+                        "X search failed: End of file while parsing JSON: 1, 1, 1"))))
     (should (= calls 1))))
 
 (ert-deftest harmless-x-formats-results ()

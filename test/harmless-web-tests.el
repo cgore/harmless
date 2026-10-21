@@ -147,10 +147,12 @@
                          :key (lambda (item) (plist-get item :url))
                          :test #'equal))
     (should (equal (harmless-web-parse-duckduckgo "{}") nil))
-    (should (equal (condition-case err
-                       (harmless-web-parse-duckduckgo "{")
-                     (error (error-message-string err)))
-                   "web search failed: End of file while parsing JSON: 1, nil, 1"))
+    (let ((failed (condition-case err
+                      (harmless-web-parse-duckduckgo "{")
+                    (error (error-message-string err)))))
+      (should (member failed
+                      '("web search failed: End of file while parsing JSON: 1, nil, 1"
+                        "web search failed: End of file while parsing JSON: 1, 1, 1"))))
     (should (equal (harmless-web-search-url "emacs lisp")
                    (concat "https://api.duckduckgo.com/?format=json"
                            "&no_html=1&skip_disambig=1&q=emacs%20lisp")))
