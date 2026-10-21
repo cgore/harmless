@@ -1,4 +1,4 @@
-This is harmless.info, produced by makeinfo version 7.2 from
+This is harmless.info, produced by texi2any version 7.3+nc from
 harmless.texi.
 
 Copyright © 2026 Christopher Mark Gore.
@@ -90,6 +90,13 @@ File: harmless.info,  Node: Installation,  Next: Starting,  Prev: Introduction, 
 Put the ‘lisp’ directory on ‘load-path’ and load the package.
 
      (add-to-list 'load-path "~/programming/emacs/harmless/lisp")
+     (require 'harmless)
+
+   On Windows, Emacs sets ‘~’ to the ‘AppData/Roaming’ directory when
+‘HOME’ is unset.  ‘~/programming’ is not ‘D:/Programming’.  Put the real
+checkout on ‘load-path’.
+
+     (add-to-list 'load-path "d:/Programming/Emacs/harmless/lisp")
      (require 'harmless)
 
    Choose the connections Harmless may use.  Most people need one.
@@ -522,10 +529,11 @@ xAI
 ===
 
 Browser login opens ‘auth.x.ai’.  Harmless listens on port 56121.
-Tokens are stored under ‘harmless-directory’, mode 0600, and refresh on
-their own.  A prefix argument uses the device-code flow.  Harmless also
-uses that flow when port 56121 is already taken, for example by Grok
-Build.
+Tokens are stored under ‘harmless-directory’ and refresh on their own.
+Harmless asks for mode 0600.  On Windows the file stays in the user
+profile; that filesystem does not store those mode bits.  A prefix
+argument uses the device-code flow.  Harmless also uses that flow when
+port 56121 is already taken, for example by Grok Build.
 
    If you have already run ‘grok login’ and ‘harmless-xai-use-grok-auth’
 is non-nil, Harmless reuses ‘~/.grok/auth.json’ until you sign in or out
@@ -2929,7 +2937,9 @@ replaced with ‘/’.
 ‘auth-openai.json’
 ‘auth-anthropic.json’
 ‘auth-SLUG.json’
-     OAuth tokens for each connection.  Mode 0600.
+     OAuth tokens for each connection.  Harmless asks for mode 0600.  On
+     Windows the file stays in the user profile; that filesystem does
+     not store those mode bits.
 
 ‘profiles.json’
      Named auth profiles.  Each one is a name, a runtime, and the
@@ -3204,10 +3214,10 @@ Command Index
 * harmless-machine-list:                 Machines.             (line  6)
 * harmless-machine-remove:               Machines.             (line  6)
 * harmless-machine-show:                 Machines.             (line  6)
-* harmless-make-anthropic:               Installation.         (line 17)
-* harmless-make-openai:                  Installation.         (line 17)
-* harmless-make-openai-compat:           Installation.         (line 17)
-* harmless-make-xai:                     Installation.         (line 17)
+* harmless-make-anthropic:               Installation.         (line 24)
+* harmless-make-openai:                  Installation.         (line 24)
+* harmless-make-openai-compat:           Installation.         (line 24)
+* harmless-make-xai:                     Installation.         (line 24)
 * harmless-menu:                         Keys.                 (line  6)
 * harmless-new:                          Sessions.             (line  6)
 * harmless-output-style:                 Output styles.        (line  6)
@@ -3355,59 +3365,59 @@ Key Index
 
 
 Tag Table:
-Node: Top371
-Node: Introduction2612
-Node: Installation3343
-Node: Starting4947
-Node: Sessions5486
-Node: Transcript8667
-Node: Prompt12428
-Node: Permissions13669
-Node: Accounts22373
-Node: Models24618
-Node: Tools25714
-Node: File tools30222
-Node: Search34729
-Node: Shell36625
-Node: Questions42226
-Node: Subagents42996
-Node: Workflows47379
-Node: Worktrees52382
-Node: Messages55510
-Node: Web search57331
-Node: Fetch a page58186
-Node: X search59419
-Node: MCP61816
-Node: Computer use64520
-Node: Monitors66536
-Node: Schedules69540
-Node: Todos72006
-Node: Review74661
-Node: Language server78244
-Node: Instructions81431
-Node: Skills84539
-Node: Plugins88699
-Node: Output styles91551
-Node: Image generation93562
-Node: Headless95404
-Node: Pages98092
-Node: Team100929
-Node: Machines122008
-Node: People124875
-Node: Profiles127162
-Node: Health129818
-Node: Fleet131830
-Node: Scope132596
-Node: Context136604
-Node: Memory139739
-Node: Plan mode142332
-Node: Usage145318
-Node: Files146337
-Node: Keys149924
-Node: Trouble151635
-Node: Manual152889
-Node: Command Index153594
-Node: Key Index164245
+Node: Top374
+Node: Introduction2615
+Node: Installation3346
+Node: Starting5236
+Node: Sessions5775
+Node: Transcript8956
+Node: Prompt12717
+Node: Permissions13958
+Node: Accounts22662
+Node: Models25020
+Node: Tools26116
+Node: File tools30624
+Node: Search35131
+Node: Shell37027
+Node: Questions42628
+Node: Subagents43398
+Node: Workflows47781
+Node: Worktrees52784
+Node: Messages55912
+Node: Web search57733
+Node: Fetch a page58588
+Node: X search59821
+Node: MCP62218
+Node: Computer use64922
+Node: Monitors66938
+Node: Schedules69942
+Node: Todos72408
+Node: Review75063
+Node: Language server78646
+Node: Instructions81833
+Node: Skills84941
+Node: Plugins89101
+Node: Output styles91953
+Node: Image generation93964
+Node: Headless95806
+Node: Pages98494
+Node: Team101331
+Node: Machines122410
+Node: People125277
+Node: Profiles127564
+Node: Health130220
+Node: Fleet132232
+Node: Scope132998
+Node: Context137006
+Node: Memory140141
+Node: Plan mode142734
+Node: Usage145720
+Node: Files146739
+Node: Keys150450
+Node: Trouble152161
+Node: Manual153415
+Node: Command Index154120
+Node: Key Index164771
 
 End Tag Table
 

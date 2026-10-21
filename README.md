@@ -24,6 +24,15 @@ Requires **GNU Emacs 31**.
 (require 'harmless)
 ```
 
+On Windows, Emacs sets `~` to `%APPDATA%` when `HOME` is unset, so
+`~/programming` is not `D:/Programming`.  Put the real checkout on
+`load-path`:
+
+```elisp
+(add-to-list 'load-path "d:/Programming/Emacs/harmless/lisp")
+(require 'harmless)
+```
+
 ## One-provider setup (xAI / Grok)
 
 Browser login is the same flow as Grok Build: Harmless opens `auth.x.ai`,

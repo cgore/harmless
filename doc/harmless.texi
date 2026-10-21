@@ -100,6 +100,15 @@ Put the @file{lisp} directory on @code{load-path} and load the package.
 (require 'harmless)
 @end example
 
+On Windows, Emacs sets @code{~} to the @file{AppData/Roaming} directory
+when @env{HOME} is unset.  @file{~/programming} is not
+@file{D:/Programming}.  Put the real checkout on @code{load-path}.
+
+@example
+(add-to-list 'load-path "d:/Programming/Emacs/harmless/lisp")
+(require 'harmless)
+@end example
+
 @vindex harmless-providers
 @vindex harmless-default-model
 @vindex harmless-default-reasoning-effort
@@ -616,8 +625,10 @@ Build, Claude Code, or Codex.
 
 @vindex harmless-xai-use-grok-auth
 Browser login opens @code{auth.x.ai}.  Harmless listens on port 56121.
-Tokens are stored under @code{harmless-directory}, mode 0600, and
-refresh on their own.  A prefix argument uses the device-code flow.
+Tokens are stored under @code{harmless-directory} and refresh on
+their own.  Harmless asks for mode 0600.  On Windows the file stays
+in the user profile; that filesystem does not store those mode bits.
+A prefix argument uses the device-code flow.
 Harmless also uses that flow when port 56121 is already taken, for
 example by Grok Build.
 
@@ -3414,7 +3425,9 @@ Optional configuration, loaded once.
 @itemx auth-openai.json
 @itemx auth-anthropic.json
 @itemx auth-@var{slug}.json
-OAuth tokens for each connection.  Mode 0600.
+OAuth tokens for each connection.  Harmless asks for mode 0600.
+On Windows the file stays in the user profile; that filesystem
+does not store those mode bits.
 
 @item profiles.json
 Named auth profiles.  Each one is a name, a runtime, and the

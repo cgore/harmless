@@ -38,7 +38,9 @@
                       :issuer "https://auth.x.ai"
                       :client-id "cid")))
     (harmless-xai--write-store plist)
-    (should (= #o600 (logand (file-modes (harmless-xai-auth-file)) #o777)))
+    ;; Windows keeps only the read-only bit, so 0600 is reported as 0666.
+    (should (= (if (memq system-type '(windows-nt ms-dos)) #o666 #o600)
+               (logand (file-modes (harmless-xai-auth-file)) #o777)))
     (let ((got (harmless-xai--read-store)))
       (should (string= "tok" (plist-get got :access-token)))
       (should (string= "ref" (plist-get got :refresh-token))))

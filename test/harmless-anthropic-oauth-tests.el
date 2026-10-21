@@ -33,7 +33,9 @@
                       :client-id "cid"))
          (harmless-anthropic-use-claude-auth nil))
     (harmless-anthropic--write-store plist)
-    (should (= #o600 (logand (file-modes (harmless-anthropic-auth-file)) #o777)))
+    ;; Windows keeps only the read-only bit, so 0600 is reported as 0666.
+    (should (= (if (memq system-type '(windows-nt ms-dos)) #o666 #o600)
+               (logand (file-modes (harmless-anthropic-auth-file)) #o777)))
     (let ((got (harmless-anthropic--read-store)))
       (should (string= "tok" (plist-get got :access-token))))
     (should (string= "tok" (harmless-anthropic-token)))))

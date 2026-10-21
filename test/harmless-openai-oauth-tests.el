@@ -50,7 +50,9 @@
                       :expires-at "2099-01-01T00:00:00Z"
                       :client-id "cid")))
     (harmless-openai--write-store plist)
-    (should (= #o600 (logand (file-modes (harmless-openai-auth-file)) #o777)))
+    ;; Windows keeps only the read-only bit, so 0600 is reported as 0666.
+    (should (= (if (memq system-type '(windows-nt ms-dos)) #o666 #o600)
+               (logand (file-modes (harmless-openai-auth-file)) #o777)))
     (should (string= "tok" (harmless-openai-token)))
     (should (string= "acct" (harmless-openai-account-id)))))
 

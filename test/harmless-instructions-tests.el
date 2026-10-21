@@ -248,7 +248,12 @@
     (harmless-instructions-test-write
      (expand-file-name "docs/a.md" root) "kept\n")
     (make-directory (expand-file-name "docs" root) t)
-    (make-symbolic-link secret (expand-file-name "link.md" root))
+    ;; Creating the link needs permission Windows does not grant here.
+    ;; The escape check runs when the link exists.
+    (let ((link (expand-file-name "link.md" root)))
+      (condition-case nil
+          (make-symbolic-link secret link)
+        (file-error nil)))
     (dolist (bad (list nil ""))
       (should (equal "Instruction import is empty"
                      (harmless-instructions-test-error
@@ -295,10 +300,11 @@
     (should (equal "Instruction import escapes the project: /etc/passwd"
                    (harmless-instructions-test-error
                     `(harmless-instructions-text ,root ,root))))
-    (harmless-instructions-test-write agents "@link.md\n")
-    (should (equal "Instruction import escapes the project: link.md"
-                   (harmless-instructions-test-error
-                    `(harmless-instructions-text ,root ,root))))
+    (when (file-symlink-p (expand-file-name "link.md" root))
+      (harmless-instructions-test-write agents "@link.md\n")
+      (should (equal "Instruction import escapes the project: link.md"
+                     (harmless-instructions-test-error
+                      `(harmless-instructions-text ,root ,root)))))
     (harmless-instructions-test-write agents "@AGENTS.md\n")
     (should (equal "Instruction import is a cycle: AGENTS.md"
                    (harmless-instructions-test-error

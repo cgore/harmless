@@ -284,6 +284,8 @@
                 session '(:pattern "needle" :engine "elisp")))))))
 
 (ert-deftest harmless-tools-grep-rg-and-ag ()
+  ;; Missing programs already signal in harmless-tools-grep-refuses-bad-requests.
+  (skip-unless (and (executable-find "rg") (executable-find "ag")))
   (let* ((dir (make-temp-file "harmless-grep-ext-" t))
          (session (harmless-test--session dir))
          (context "n.txt-1-alpha\nn.txt:2:needle here\nn.txt-3-omega"))
