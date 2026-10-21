@@ -215,10 +215,7 @@ The data directory stays inside that project for BODY."
                                    (harmless-landlock-test--contents file)))))))
 
 (ert-deftest harmless-landlock-menu-key ()
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu
-                                        'harmless-set-shell-sandbox))
-                 "S")))
+  (should (equal (harmless-menu-key 'harmless-set-shell-sandbox) "S")))
 
 (ert-deftest harmless-landlock-summary-round-trip ()
   (harmless-landlock-test--with session

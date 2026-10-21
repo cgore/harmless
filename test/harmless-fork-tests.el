@@ -183,9 +183,7 @@ ARGS are passed to `harmless-session-new'."
               #'harmless-fork))
   (should-not (eq (lookup-key harmless-prompt-mode-map (kbd "f"))
                   #'harmless-fork))
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu 'harmless-fork))
-                 "f")))
+  (should (equal (harmless-menu-key 'harmless-fork) "f")))
 
 (ert-deftest harmless-fork-copies-through-the-chosen-turn ()
   (harmless-fork-test-env

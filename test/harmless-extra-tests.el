@@ -315,10 +315,7 @@
               #'harmless-add-directory))
   (should-not (eq (lookup-key harmless-prompt-mode-map (kbd "+"))
                   #'harmless-add-directory))
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu
-                                        'harmless-add-directory))
-                 "+"))
+  (should (equal (harmless-menu-key 'harmless-add-directory) "+"))
   (let ((calls 0))
     (cl-letf (((symbol-function 'harmless--context-session) (lambda () nil))
               ((symbol-function 'expand-file-name)

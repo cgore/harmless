@@ -148,9 +148,7 @@ ARGS are passed to `harmless-session-new'."
               #'harmless-rewind))
   (should-not (eq (lookup-key harmless-prompt-mode-map (kbd "w"))
                   #'harmless-rewind))
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu 'harmless-rewind))
-                 "w")))
+  (should (equal (harmless-menu-key 'harmless-rewind) "w")))
 
 (ert-deftest harmless-rewind-drops-later-turns ()
   (harmless-rewind-test-env

@@ -128,9 +128,7 @@
   (should-not (eq (lookup-key harmless-prompt-mode-map (kbd "h"))
                   #'harmless-info))
   (should (commandp #'harmless-info))
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu 'harmless-info))
-                 "h")))
+  (should (equal (harmless-menu-key 'harmless-info) "h")))
 
 (ert-deftest harmless-manual-info-contains-every-texi-node ()
   (let* ((root (harmless-manual-test-root))

@@ -106,6 +106,19 @@
     ("r" "Remember" harmless-remember)
     ("D" "Dream" harmless-dream)]])
 
+(defun harmless-menu-key (command)
+  "Return the key that runs COMMAND from `harmless-menu'.
+Emacs 31 names the reader `transient--suffix-key'.  Emacs 30
+names it `transient--spec-key'."
+  (let ((suffix (transient-get-suffix 'harmless-menu command))
+        (reader (cond ((fboundp 'transient--suffix-key)
+                       (symbol-function 'transient--suffix-key))
+                      ((fboundp 'transient--spec-key)
+                       (symbol-function 'transient--spec-key)))))
+    (if reader
+        (funcall reader suffix)
+      (error "Cannot read a Transient suffix key"))))
+
 (provide 'harmless-transient)
 
 ;;; harmless-transient.el ends here

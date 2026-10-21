@@ -222,9 +222,7 @@ the process name for that call."
               #'harmless-compact))
   (should-not (eq (lookup-key harmless-prompt-mode-map (kbd "k"))
                   #'harmless-compact))
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu 'harmless-compact))
-                 "k"))
+  (should (equal (harmless-menu-key 'harmless-compact) "k"))
   (should (= 2 harmless-compact-keep-turns))
   (should (= 80 harmless-compact-threshold))
   (should (equal harmless-compact-instructions

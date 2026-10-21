@@ -180,9 +180,7 @@ ARGS are passed to `harmless-session-new'."
                   #'harmless-edit-prompt))
   (should-not (eq (lookup-key harmless-prompt-mode-map (kbd "E"))
                   #'harmless-edit-prompt))
-  (should (equal (transient--suffix-key
-                  (transient-get-suffix 'harmless-menu 'harmless-edit-prompt))
-                 "E")))
+  (should (equal (harmless-menu-key 'harmless-edit-prompt) "E")))
 
 (ert-deftest harmless-edit-starts-from-the-old-prompt ()
   (let (prompt)
