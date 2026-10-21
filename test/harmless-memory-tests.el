@@ -145,7 +145,10 @@
      (should (string-match-p "topics/emacs.md"
                              (plist-get (car messages) :content)))
      (should (string-match-p "Prefer two spaces"
-                             (plist-get (car messages) :content))))))
+                             (plist-get (car messages) :content))))
+   (should (string-match-p
+            "—"
+            (harmless-memory-read "workspace" "/proj/harmless" "MEMORY.md")))))
 
 (ert-deftest harmless-memory-observe-writes-after-a-turn ()
   (let* ((base (make-temp-file "harmless-memory-obs-" t))
