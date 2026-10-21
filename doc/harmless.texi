@@ -793,11 +793,15 @@ It can see the screen, click, type, and open a browser.
 It can schedule a prompt.  @xref{Schedules}.
 It can keep a todo list.  @xref{Todos}.
 
+A project session can run an Emacs Lisp script that calls these tools.
+@xref{Code execution}.
+
 @menu
 * File tools::  Read, list, write, replace, patch, and notebooks.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Checkpoints:: Snapshot the tree before an edit.
+* Code execution::  Run Emacs Lisp that calls tools.
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
@@ -1157,6 +1161,80 @@ A restore or a diff needs git.  A missing git is refused:
 @samp{checkpoint needs git}.  A git command that fails is refused:
 @samp{checkpoint git failed}.  An automatic snapshot reports neither
 failure, and the edit still proceeds.
+
+@node Code execution
+@section Code execution
+
+@cindex execute_code
+@vindex harmless-execute-timeout-seconds
+@vindex harmless-execute-max-calls
+@vindex harmless-execute-max-bytes
+@code{execute_code} evaluates Emacs Lisp in a separate Emacs process.
+The script is not evaluated in the Emacs that is running Harmless.
+Only what the script prints is returned.  @code{princ}, @code{prin1},
+@code{print}, and @code{message} print that output.  A tool's return
+value is data for the script.  It is printed only when the script
+prints it.  Calling a tool does not add a message to the transcript.
+
+The script calls a tool by name:
+@code{(read_file :path "a.txt")}, or
+@code{(tool "read_file" :path "a.txt")}.
+@code{tool} accepts the name as text or as a symbol.  @code{tool} is
+defined again for each script.  A function the script defines with
+@code{defun}, and a variable it sets with @code{setq}, stay for the
+next script in that session.
+
+The script cannot call @code{execute_code}, @code{spawn_agent},
+@code{run_workflow}, or a tool whose name starts with @code{mcp_}.
+Those calls are refused:
+@samp{execute code cannot call execute_code},
+@samp{execute code cannot call spawn_agent},
+@samp{execute code cannot call run_workflow}, and
+@samp{execute code cannot call an MCP tool}.
+A name that is not a tool is refused:
+@samp{execute code cannot call }, followed by that name.
+Calling @code{execute_code} as a function is a script error, because
+that function is not defined in the interpreter.
+
+One script may make 50 tool calls
+(@code{harmless-execute-max-calls}).  The next call is refused:
+@samp{execute code tool cap}.  The next script starts the count over.
+Printed output is cut at 50000 bytes
+(@code{harmless-execute-max-bytes}).  The cut text ends with
+@samp{[truncated]}.
+
+The default limit is 300 seconds
+(@code{harmless-execute-timeout-seconds}).  A positive @code{timeout}
+overrides it for that call.  Nil uses the default.  When the limit
+passes, Harmless kills the interpreter and signals
+@samp{Script timed out after Ns and was killed.}, where N is that
+many seconds.  Time spent inside a tool call is counted when that
+call returns.  @code{reset} true kills the interpreter before the
+script.  The next script then starts a fresh Emacs.  A script that
+signals returns @samp{execute code failed: }, followed by the Emacs
+message, and the interpreter stays up.
+
+Names that contain @code{KEY}, @code{TOKEN}, @code{SECRET},
+@code{PASSWORD}, @code{CREDENTIAL}, @code{PASSWD}, or @code{AUTH}
+are removed from the interpreter's environment.  @code{PATH} is kept.
+The interpreter does not receive the user's Emacs Lisp state.
+
+Nil, @code{""}, and whitespace are refused: @samp{code is empty}.
+A value that is not text is refused: @samp{code must be a string}.
+Zero, a negative number, and a value that is not a number are
+refused: @samp{timeout must be a positive number}.  Those checks
+happen before a process starts.  No session is refused:
+@samp{No Harmless session}.  A missing Emacs, or a missing
+interpreter file, is refused: @samp{execute code needs emacs}.
+An interpreter that exits is refused:
+@samp{execute code failed: interpreter exited}.
+
+This tool is a shell.  A read-only subagent does not keep it.  A
+detached chat is not offered it.  Plan mode does not refuse the
+script.  An edit the script attempts is still refused by that edit
+tool, and the script receives the refusal as text.  A later call in
+the same session reuses the interpreter until @code{reset} or a
+timeout.
 
 @node Questions
 @section Questions

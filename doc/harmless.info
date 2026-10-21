@@ -678,12 +678,16 @@ and accounts.  *Note X search::.  It can list and read MCP resources.
 *Note Computer use::.  It can schedule a prompt.  *Note Schedules::.  It
 can keep a todo list.  *Note Todos::.
 
+   A project session can run an Emacs Lisp script that calls these
+tools.  *Note Code execution::.
+
 * Menu:
 
 * File tools::  Read, list, write, replace, patch, and notebooks.
 * Search::      Find files and lines.
 * Shell::       Run a command.
 * Checkpoints:: Snapshot the tree before an edit.
+* Code execution::  Run Emacs Lisp that calls tools.
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
@@ -940,7 +944,7 @@ cannot run reports ‘Error: Landlock could not run’, followed by the
 program when it has one.  *Note Permissions::.
 
 
-File: harmless.info,  Node: Checkpoints,  Next: Questions,  Prev: Shell,  Up: Tools
+File: harmless.info,  Node: Checkpoints,  Next: Code execution,  Prev: Shell,  Up: Tools
 
 10.4 Checkpoints
 ================
@@ -1012,9 +1016,72 @@ failed’.  An automatic snapshot reports neither failure, and the edit
 still proceeds.
 
 
-File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Checkpoints,  Up: Tools
+File: harmless.info,  Node: Code execution,  Next: Questions,  Prev: Checkpoints,  Up: Tools
 
-10.5 Questions
+10.5 Code execution
+===================
+
+‘execute_code’ evaluates Emacs Lisp in a separate Emacs process.  The
+script is not evaluated in the Emacs that is running Harmless.  Only
+what the script prints is returned.  ‘princ’, ‘prin1’, ‘print’, and
+‘message’ print that output.  A tool's return value is data for the
+script.  It is printed only when the script prints it.  Calling a tool
+does not add a message to the transcript.
+
+   The script calls a tool by name: ‘(read_file :path "a.txt")’, or
+‘(tool "read_file" :path "a.txt")’.  ‘tool’ accepts the name as text or
+as a symbol.  ‘tool’ is defined again for each script.  A function the
+script defines with ‘defun’, and a variable it sets with ‘setq’, stay
+for the next script in that session.
+
+   The script cannot call ‘execute_code’, ‘spawn_agent’, ‘run_workflow’,
+or a tool whose name starts with ‘mcp_’.  Those calls are refused:
+‘execute code cannot call execute_code’, ‘execute code cannot call
+spawn_agent’, ‘execute code cannot call run_workflow’, and ‘execute code
+cannot call an MCP tool’.  A name that is not a tool is refused:
+‘execute code cannot call ’, followed by that name.  Calling
+‘execute_code’ as a function is a script error, because that function is
+not defined in the interpreter.
+
+   One script may make 50 tool calls (‘harmless-execute-max-calls’).
+The next call is refused: ‘execute code tool cap’.  The next script
+starts the count over.  Printed output is cut at 50000 bytes
+(‘harmless-execute-max-bytes’).  The cut text ends with ‘[truncated]’.
+
+   The default limit is 300 seconds
+(‘harmless-execute-timeout-seconds’).  A positive ‘timeout’ overrides it
+for that call.  Nil uses the default.  When the limit passes, Harmless
+kills the interpreter and signals ‘Script timed out after Ns and was
+killed.’, where N is that many seconds.  Time spent inside a tool call
+is counted when that call returns.  ‘reset’ true kills the interpreter
+before the script.  The next script then starts a fresh Emacs.  A script
+that signals returns ‘execute code failed: ’, followed by the Emacs
+message, and the interpreter stays up.
+
+   Names that contain ‘KEY’, ‘TOKEN’, ‘SECRET’, ‘PASSWORD’,
+‘CREDENTIAL’, ‘PASSWD’, or ‘AUTH’ are removed from the interpreter's
+environment.  ‘PATH’ is kept.  The interpreter does not receive the
+user's Emacs Lisp state.
+
+   Nil, ‘""’, and whitespace are refused: ‘code is empty’.  A value that
+is not text is refused: ‘code must be a string’.  Zero, a negative
+number, and a value that is not a number are refused: ‘timeout must be a
+positive number’.  Those checks happen before a process starts.  No
+session is refused: ‘No Harmless session’.  A missing Emacs, or a
+missing interpreter file, is refused: ‘execute code needs emacs’.  An
+interpreter that exits is refused: ‘execute code failed: interpreter
+exited’.
+
+   This tool is a shell.  A read-only subagent does not keep it.  A
+detached chat is not offered it.  Plan mode does not refuse the script.
+An edit the script attempts is still refused by that edit tool, and the
+script receives the refusal as text.  A later call in the same session
+reuses the interpreter until ‘reset’ or a timeout.
+
+
+File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Code execution,  Up: Tools
+
+10.6 Questions
 ==============
 
 ‘ask_user’ asks one question.  ‘question’ is the prompt.  ‘choices’ are
@@ -1034,7 +1101,7 @@ it.  Plan mode can use it.
 
 File: harmless.info,  Node: Subagents,  Next: Workflows,  Prev: Questions,  Up: Tools
 
-10.6 Subagents
+10.7 Subagents
 ==============
 
 ‘spawn_agent’ starts a child session and waits for its last reply.  The
@@ -1129,7 +1196,7 @@ child with no definition.  A named definition needs a project directory.
 
 File: harmless.info,  Node: Workflows,  Next: Worktrees,  Prev: Subagents,  Up: Tools
 
-10.7 Workflows
+10.8 Workflows
 ==============
 
 ‘run_workflow’ runs one script.  The script starts child sessions.  The
@@ -1230,7 +1297,7 @@ script.  A named script needs a project directory.  Nil, ‘""’, ‘sub’,
 
 File: harmless.info,  Node: Worktrees,  Next: Messages,  Prev: Workflows,  Up: Tools
 
-10.8 Worktrees
+10.9 Worktrees
 ==============
 
 ‘enter_worktree’ points this session at an isolated checkout of the same
@@ -1286,8 +1353,8 @@ Aborting a turn does not delete a checkout.
 
 File: harmless.info,  Node: Messages,  Next: Web search,  Prev: Worktrees,  Up: Tools
 
-10.9 Messages
-=============
+10.10 Messages
+==============
 
 ‘list_sessions’ lists the sessions that are live in this Emacs.  Each
 line is the id, the status, and the title.  A session that is only on
@@ -1338,7 +1405,7 @@ may list sessions and send a finding.
 
 File: harmless.info,  Node: Web search,  Next: Fetch a page,  Prev: Messages,  Up: Tools
 
-10.10 Web search
+10.11 Web search
 ================
 
 ‘web_search’ looks up ‘query’ on the web.  The query is sent to
@@ -1359,7 +1426,7 @@ search.  A failed request is ‘web search failed’.
 
 File: harmless.info,  Node: Fetch a page,  Next: X search,  Prev: Web search,  Up: Tools
 
-10.11 Fetch a page
+10.12 Fetch a page
 ==================
 
 ‘web_fetch’ reads one page at ‘url’.  Only ‘http’ and ‘https’ are
@@ -1385,7 +1452,7 @@ fetch a page.  A failed request is ‘web request failed’.
 
 File: harmless.info,  Node: X search,  Next: MCP,  Prev: Fetch a page,  Up: Tools
 
-10.12 X search
+10.13 X search
 ==============
 
 ‘x_keyword_search’ finds recent posts on X. The search covers the last 7
@@ -1432,7 +1499,7 @@ the project.
 
 File: harmless.info,  Node: MCP,  Next: Computer use,  Prev: X search,  Up: Tools
 
-10.13 MCP
+10.14 MCP
 =========
 
 Harmless calls tools on a local MCP server and reads that server's
@@ -1480,7 +1547,7 @@ into the project.
 
 File: harmless.info,  Node: Computer use,  Next: Monitors,  Prev: MCP,  Up: Tools
 
-10.14 Computer use
+10.15 Computer use
 ==================
 
 Harmless can see the screen, click, type, and open a browser the user
@@ -1522,7 +1589,7 @@ detached chat is offered them.  Nothing is written into the project.
 
 File: harmless.info,  Node: Monitors,  Next: Schedules,  Prev: Computer use,  Up: Tools
 
-10.15 Monitors
+10.16 Monitors
 ==============
 
 ‘monitor’ watches one source until a line matches ‘pattern’.  The source
@@ -1576,7 +1643,7 @@ forgotten when Emacs exits.
 
 File: harmless.info,  Node: Schedules,  Next: Todos,  Prev: Monitors,  Up: Tools
 
-10.16 Schedules
+10.17 Schedules
 ===============
 
 ‘schedule’ sends ‘prompt’ once, at a later time.  Pass ‘delay’ in
@@ -1622,7 +1689,7 @@ session does not copy its schedules.
 
 File: harmless.info,  Node: Todos,  Next: Review,  Prev: Schedules,  Up: Tools
 
-10.17 Todos
+10.18 Todos
 ===========
 
 ‘todo_write’ keeps a list of work on the session.  Each item has an id,
@@ -1670,7 +1737,7 @@ pending or in progress.
 
 File: harmless.info,  Node: Review,  Next: Language server,  Prev: Todos,  Up: Tools
 
-10.18 Review
+10.19 Review
 ============
 
 ‘M-x harmless-review’ reads the working tree, a base branch, or one
@@ -1733,7 +1800,7 @@ findings are recorded.
 
 File: harmless.info,  Node: Language server,  Prev: Review,  Up: Tools
 
-10.19 Language server
+10.20 Language server
 =====================
 
 ‘lsp’ asks a language server that is already running in Emacs.  The
@@ -3542,49 +3609,50 @@ Node: Permissions14822
 Node: Accounts23526
 Node: Models25884
 Node: Tools26980
-Node: File tools31538
-Node: Search36223
-Node: Shell38119
-Node: Checkpoints43854
-Node: Questions47839
-Node: Subagents48615
-Node: Workflows52998
-Node: Worktrees58001
-Node: Messages61129
-Node: Web search64004
-Node: Fetch a page64861
-Node: X search66094
-Node: MCP68491
-Node: Computer use71195
-Node: Monitors73211
-Node: Schedules76215
-Node: Todos78681
-Node: Review81336
-Node: Language server84919
-Node: Instructions88106
-Node: Skills92628
-Node: Plugins96788
-Node: Output styles99640
-Node: Image generation101693
-Node: Headless103535
-Node: Pages106223
-Node: Team109060
-Node: Machines130139
-Node: People133006
-Node: Profiles135293
-Node: Health137949
-Node: Fleet139961
-Node: Scope140727
-Node: Context144735
-Node: Memory147870
-Node: Plan mode151609
-Node: Usage154595
-Node: Files155614
-Node: Keys159748
-Node: Trouble161459
-Node: Manual162713
-Node: Command Index163418
-Node: Key Index174069
+Node: File tools31691
+Node: Search36376
+Node: Shell38272
+Node: Checkpoints44007
+Node: Code execution47997
+Node: Questions51434
+Node: Subagents52213
+Node: Workflows56596
+Node: Worktrees61599
+Node: Messages64727
+Node: Web search67604
+Node: Fetch a page68461
+Node: X search69694
+Node: MCP72091
+Node: Computer use74795
+Node: Monitors76811
+Node: Schedules79815
+Node: Todos82281
+Node: Review84936
+Node: Language server88519
+Node: Instructions91706
+Node: Skills96228
+Node: Plugins100388
+Node: Output styles103240
+Node: Image generation105293
+Node: Headless107135
+Node: Pages109823
+Node: Team112660
+Node: Machines133739
+Node: People136606
+Node: Profiles138893
+Node: Health141549
+Node: Fleet143561
+Node: Scope144327
+Node: Context148335
+Node: Memory151470
+Node: Plan mode155209
+Node: Usage158195
+Node: Files159214
+Node: Keys163348
+Node: Trouble165059
+Node: Manual166313
+Node: Command Index167018
+Node: Key Index177669
 
 End Tag Table
 

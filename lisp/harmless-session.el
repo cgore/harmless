@@ -231,7 +231,7 @@ Nil and an unknown slot are `off'.  A read-only subagent is
   nil)
 
 (defun harmless-session-kill-processes (session)
-  "Stop SESSION's in-flight HTTP request and foreground shells."
+  "Stop SESSION's in-flight HTTP request, foreground shells, and interpreter."
   (let ((procs (copy-sequence (harmless-session-processes session))))
     (when (and (processp (harmless-session-process session))
                (not (memq (harmless-session-process session) procs)))
@@ -244,7 +244,9 @@ Nil and an unknown slot are `off'.  A read-only subagent is
               (harmless-tools-shell-kill proc))
           (harmless-provider-abort (harmless-session-provider session) proc))))
     (setf (harmless-session-processes session) nil
-          (harmless-session-process session) nil)))
+          (harmless-session-process session) nil))
+  (when (fboundp 'harmless-execute-stop)
+    (harmless-execute-stop session)))
 
 (defun harmless-session-effective-reasoning-effort (session)
   "Return SESSION's reasoning effort, falling back to the default."
@@ -809,6 +811,8 @@ permission is refused.  The filesystem root is not deleted."
   (when (memq (harmless-session-status session)
               '(streaming waiting-permission))
     (error "session is busy"))
+  (when (fboundp 'harmless-execute-stop)
+    (harmless-execute-stop session))
   (let ((dir (harmless-session-directory session))
         (id (harmless-session-id session)))
     (when (stringp dir)

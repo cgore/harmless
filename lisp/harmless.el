@@ -170,6 +170,7 @@
 (require 'harmless-image)
 (require 'harmless-tools-shell)
 (require 'harmless-checkpoint)
+(require 'harmless-execute)
 (require 'harmless-perm)
 (require 'harmless-turn)
 (require 'harmless-plan)

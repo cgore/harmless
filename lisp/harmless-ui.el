@@ -282,6 +282,7 @@ directory, which lives under the Harmless data directory.  Setting
     ("replace" "edit")
     ("checkpoint_restore" "restore")
     ("checkpoint_diff" "diff")
+    ("execute_code" "run")
     ("run_shell" "shell")
     ("shell_output" "shell")
     ("shell_kill" "shell")
@@ -369,6 +370,12 @@ directory, which lives under the Harmless data directory.  Setting
             ("session_search" (or (harmless-tool-arg args :query) ""))
             ((or "checkpoint_diff" "checkpoint_restore")
              (or (harmless-tool-arg args :id) ""))
+            ("execute_code"
+             (let ((code (harmless-tool-arg args :code)))
+               (if (not (stringp code))
+                   ""
+                 (let ((end (string-search "\n" code)))
+                   (string-trim (if end (substring code 0 end) code))))))
             ("web_search" (or (harmless-tool-arg args :query) ""))
             ("web_fetch" (let ((url (harmless-tool-arg args :url)))
                            (if (stringp url) url "")))

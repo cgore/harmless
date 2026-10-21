@@ -25,6 +25,7 @@
   (should (harmless-tool-by-name "session_search"))
   (should (harmless-tool-by-name "checkpoint_diff"))
   (should (harmless-tool-by-name "checkpoint_restore"))
+  (should (harmless-tool-by-name "execute_code"))
   (should (harmless-tool-by-name "send_message"))
   (should (harmless-tool-by-name "web_search"))
   (should (harmless-tool-by-name "web_fetch"))
