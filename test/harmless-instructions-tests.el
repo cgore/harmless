@@ -325,3 +325,169 @@
       (should (equal "Instruction import escapes the project: outside.md"
                      (harmless-instructions-test-error
                       `(harmless-instructions-text ,session ,parent)))))))
+
+(ert-deftest harmless-instructions-read-cursor-rules ()
+  (let* ((base (make-temp-file "harmless-cursor-" t))
+         (root (expand-file-name "proj" base))
+         (child (expand-file-name "sub" root))
+         (outside (make-temp-file "harmless-cursor-out-" t))
+         (harmless-directory (expand-file-name ".harmless-state" base))
+         (harmless-claude-md nil)
+         (link (expand-file-name ".cursor/rules/escape.mdc" root)))
+    (harmless-instructions-test-write
+     (expand-file-name ".cursorrules" root) "cursor-root\n")
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/b.mdc" root) "rule-b\n")
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/a.mdc" root)
+     "---\ndescription: cursor rule\n---\nrule-a\n")
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/skip.md" root) "skip-me\n")
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/nested/z.mdc" root) "nested-rule\n")
+    (make-directory (expand-file-name ".cursor/rules/dir.mdc" root) t)
+    (harmless-instructions-test-write
+     (expand-file-name "AGENTS.md" root) "agents-rules\n")
+    (harmless-instructions-test-write
+     (expand-file-name "HARMLESS.md" root) "harmless-rules\n")
+    (harmless-instructions-test-write
+     (expand-file-name "CLAUDE.md" root) "claude-rules\n")
+    (harmless-instructions-test-write
+     (expand-file-name "USER.md" root) "PROJECT-USER-PROFILE\n")
+    (harmless-instructions-test-write
+     (expand-file-name "SOUL.md" root) "project-soul\n")
+    (harmless-instructions-test-write
+     (expand-file-name "keep.md" root) "kept-body\n")
+    (harmless-instructions-test-write
+     (expand-file-name "AGENTS.md" child) "child-agents\n")
+    (harmless-instructions-test-write
+     (expand-file-name ".cursorrules" child) "child-cursor\n")
+    (harmless-instructions-test-write
+     (expand-file-name "secret.mdc" outside) "secret-cursor\n")
+    (should (equal (mapcar #'file-name-nondirectory
+                           (harmless-instruction--cursor-files root))
+                   '(".cursorrules" "a.mdc" "b.mdc")))
+    (should (equal (mapcar #'file-truename
+                           (harmless-instruction--cursor-files root))
+                   (mapcar #'file-truename
+                           (harmless-instruction--cursor-files
+                            (file-name-as-directory root)))))
+    (should (equal (mapcar #'file-name-nondirectory
+                           (harmless-instruction-candidates root))
+                   '(".cursorrules" "a.mdc" "b.mdc"
+                     "AGENTS.md" "HARMLESS.md" "HARMLESS.md")))
+    (should (equal (mapcar #'file-name-nondirectory
+                           (harmless-instruction-files root root))
+                   '(".cursorrules" "a.mdc" "b.mdc" "AGENTS.md" "HARMLESS.md")))
+    (let ((text (harmless-instructions-text root root)))
+      (should (string-match-p "description: cursor rule" text))
+      (should (< (string-match "cursor-root" text)
+                 (string-match "rule-a" text)))
+      (should (< (string-match "rule-a" text)
+                 (string-match "rule-b" text)))
+      (should (< (string-match "rule-b" text)
+                 (string-match "agents-rules" text)))
+      (should (< (string-match "agents-rules" text)
+                 (string-match "harmless-rules" text)))
+      (should-not (string-match-p "skip-me" text))
+      (should-not (string-match-p "nested-rule" text))
+      (should-not (string-match-p "claude-rules" text))
+      (should-not (string-match-p "PROJECT-USER-PROFILE" text))
+      (should-not (string-match-p "project-soul" text)))
+    (let ((harmless-claude-md t))
+      (should (equal (mapcar #'file-name-nondirectory
+                             (harmless-instruction-candidates root "grok-4.6"))
+                     '(".cursorrules" "a.mdc" "b.mdc" "CLAUDE.md"
+                       "AGENTS.md" "HARMLESS.md" "HARMLESS.md")))
+      (let ((text (harmless-instructions-text root root "grok-4.6")))
+        (should (< (string-match "rule-b" text)
+                   (string-match "claude-rules" text)))
+        (should (< (string-match "claude-rules" text)
+                   (string-match "agents-rules" text)))))
+    (let ((text (harmless-instructions-text child root)))
+      (should (< (string-match "cursor-root" text)
+                 (string-match "child-cursor" text)))
+      (should (< (string-match "child-cursor" text)
+                 (string-match "child-agents" text))))
+    (let ((default-directory root))
+      (should (string-match-p "child-cursor"
+                              (harmless-instructions-text "sub/" root)))
+      (should (string-match-p "child-cursor"
+                              (harmless-instructions-text "sub" root))))
+    (let* ((blank (make-temp-file "harmless-cursor-blank-" t))
+           (harmless-claude-md nil))
+      (harmless-instructions-test-write
+       (expand-file-name ".cursorrules" blank) "  \n")
+      (harmless-instructions-test-write
+       (expand-file-name ".cursor/rules/a.mdc" blank) "from-mdc\n")
+      (let ((text (harmless-instructions-text blank blank)))
+        (should (string-match-p "from-mdc" text))
+        (should-not (string-match-p
+                     (regexp-quote (expand-file-name ".cursorrules" blank))
+                     text))))
+    (let ((odd (make-temp-file "harmless-cursor-odd-" t)))
+      (make-directory (expand-file-name ".cursorrules" odd) t)
+      (harmless-instructions-test-write
+       (expand-file-name ".cursor/rules" odd) "not-a-directory\n")
+      (should-not (harmless-instruction--cursor-files odd))
+      (should-not (harmless-instructions-text odd odd)))
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/a.mdc" root)
+     "---\ndescription: cursor rule\n---\nSee @../../keep.md\n")
+    (let ((text (harmless-instructions-text root root)))
+      (should (string-match-p "kept-body" text))
+      (should (string-match-p "description: cursor rule" text))
+      (should-not (string-match-p "@../../keep.md" text)))
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/a.mdc" root) "@../../../secret.md\n")
+    (should (equal "Instruction import escapes the project: ../../../secret.md"
+                   (harmless-instructions-test-error
+                    `(harmless-instructions-text ,root ,root))))
+    (make-directory (file-name-directory link) t)
+    (condition-case nil
+        (make-symbolic-link (expand-file-name "secret.mdc" outside) link)
+      (file-error nil))
+    (when (file-symlink-p link)
+      (should-not (member "escape.mdc"
+                          (mapcar #'file-name-nondirectory
+                                  (harmless-instruction--cursor-files root)))))
+    (harmless-instructions-test-write
+     (expand-file-name ".cursor/rules/a.mdc" root) "rule-a\n")
+    (when (file-symlink-p link)
+      (let ((text (or (harmless-instructions-text root root) "")))
+        (should-not (string-match-p "secret-cursor" text))))
+    (let ((attached (harmless-context-messages root nil root))
+          (detached (harmless-context-messages nil nil)))
+      (should (string-match-p "cursor-root"
+                              (harmless-messages-system-text attached)))
+      (should (string-prefix-p harmless-harness-prompt
+                              (harmless-messages-system-text attached)))
+      (should-not (string-match-p "cursor-root"
+                                  (or (harmless-messages-system-text detached)
+                                      ""))))))
+
+(ert-deftest harmless-instructions-do-not-create-cursor-files-at-root ()
+  (let ((paths '("/.cursorrules" "/.cursor" "/CLAUDE.md" "/AGENTS.md"
+                 "c:/.cursorrules" "c:/.cursor" "c:/CLAUDE.md"
+                 "c:\\.cursorrules" "c:\\.cursor"))
+        (before nil))
+    (dolist (path paths)
+      (push (cons path (file-exists-p path)) before))
+    (harmless-instruction-candidates "/")
+    (harmless-instruction-files "/" "/")
+    (harmless-instructions-text "/" "/")
+    (dolist (dir '("c:/" "c:\\" "C:/" "\\"))
+      (harmless-instruction-candidates dir)
+      (harmless-instructions-text dir dir))
+    (let ((default-directory (file-name-as-directory
+                              (make-temp-file "harmless-cursor-rel-" t))))
+      (harmless-instruction-candidates "notes")
+      (harmless-instruction-candidates "")
+      (harmless-instructions-text "" "")
+      (should-not (file-exists-p (expand-file-name "notes" default-directory)))
+      (should-not (file-exists-p
+                   (expand-file-name ".cursorrules" default-directory)))
+      (should-not (file-exists-p
+                   (expand-file-name ".cursor" default-directory))))
+    (dolist (pair before)
+      (should (eq (cdr pair) (file-exists-p (car pair)))))))

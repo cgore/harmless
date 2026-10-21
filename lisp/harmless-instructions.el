@@ -115,22 +115,45 @@ and does not continue above it.  It also stops at the filesystem root."
                            (directory-file-name parent)))))))
     acc))
 
+(defun harmless-instruction--cursor-files (dir)
+  "Return Cursor instruction files in DIR, in read order.
+`.cursorrules' comes first.  `.cursor/rules/*.mdc' follows, sorted
+by name.  A directory, a missing file, a nested file, and a symlink
+that leaves DIR are left out.  Nothing is created."
+  (let ((rules (expand-file-name ".cursorrules" dir))
+        (folder (expand-file-name "rules" (expand-file-name ".cursor" dir)))
+        (files nil))
+    (when (and (file-regular-p rules)
+               (file-readable-p rules)
+               (harmless-instruction--inside-p dir rules))
+      (setq files (list rules)))
+    (when (and (file-directory-p folder)
+               (harmless-instruction--inside-p dir folder))
+      (dolist (path (sort (directory-files folder t "\\.mdc\\'" t) #'string<))
+        (when (and (file-regular-p path)
+                   (file-readable-p path)
+                   (harmless-instruction--inside-p dir path))
+          (setq files (append files (list path))))))
+    files))
+
 (defun harmless-instruction-candidates (dir &optional model)
   "Return instruction paths for DIR, in the order they should be read.
-`CLAUDE.md' comes first when `harmless-claude-md-p' is non-nil for
-MODEL.  Then `AGENTS.md', `HARMLESS.md', and `.harmless/HARMLESS.md'."
-  (let ((paths (list (expand-file-name "AGENTS.md" dir)
-                     (expand-file-name "HARMLESS.md" dir)
-                     (expand-file-name "HARMLESS.md"
-                                       (expand-file-name ".harmless" dir)))))
-    (if (harmless-claude-md-p model)
-        (cons (expand-file-name "CLAUDE.md" dir) paths)
-      paths)))
+`.cursorrules' and `.cursor/rules/*.mdc' come first.  `CLAUDE.md'
+follows when `harmless-claude-md-p' is non-nil for MODEL.  Then
+`AGENTS.md', `HARMLESS.md', and `.harmless/HARMLESS.md'."
+  (append (harmless-instruction--cursor-files dir)
+          (when (harmless-claude-md-p model)
+            (list (expand-file-name "CLAUDE.md" dir)))
+          (list (expand-file-name "AGENTS.md" dir)
+                (expand-file-name "HARMLESS.md" dir)
+                (expand-file-name "HARMLESS.md"
+                                  (expand-file-name ".harmless" dir)))))
 
 (defun harmless-instruction-files (dir &optional stop model)
   "Return instruction files that apply to DIR, outermost first.
-At each directory, `CLAUDE.md' comes first when it applies to MODEL,
-then `AGENTS.md', then `HARMLESS.md', then `.harmless/HARMLESS.md'.
+At each directory, `.cursorrules' and `.cursor/rules/*.mdc' come
+first, then `CLAUDE.md' when it applies to MODEL, then `AGENTS.md',
+then `HARMLESS.md', then `.harmless/HARMLESS.md'.
 STOP is passed to `harmless-instruction-directories'."
   (let (files)
     (dolist (ancestor (harmless-instruction-directories dir stop))

@@ -1940,6 +1940,7 @@ turn, and it must not edit the project.
 @chapter Instructions
 
 @cindex project instructions
+@cindex .cursorrules
 @cindex AGENTS.md
 @cindex HARMLESS.md
 @cindex CLAUDE.md
@@ -1948,6 +1949,12 @@ Harmless reads these names in each directory, from your home directory
 down to the session directory:
 
 @enumerate
+@item
+@file{.cursorrules}
+
+@item
+@file{.cursor/rules/*.mdc}, sorted by name, in that directory only
+
 @item
 @file{CLAUDE.md}, when @code{harmless-claude-md} says to read it
 
@@ -1965,8 +1972,14 @@ down to the session directory:
 @file{CLAUDE.md}.  @code{t} always reads it.  @code{anthropic}, the
 default, reads it only when the session model id starts with
 @code{claude-}.  A model such as @code{grok-4.6} does not match.
-@file{CLAUDE.md} is read before the other three names, so those later
-files win when they disagree.
+@file{.cursorrules} and the @file{.mdc} files are read first, so
+@file{CLAUDE.md}, @file{AGENTS.md}, and @file{HARMLESS.md} still win
+when they disagree.  A rule in a subdirectory of
+@file{.cursor/rules/} is not read.  A directory, a missing file, and
+a symlink that leaves the directory are skipped.  Nothing is
+created.  An @file{.mdc} file is sent as written, including its
+frontmatter.  An @code{@@path} import in that file uses the same
+rules as the other instruction files.
 
 A file applies to its directory and everything under it.  Outer
 directories come first.  At one directory, the files are read in the
@@ -2006,14 +2019,33 @@ The rule text is added to the system message for that turn.  It is not
 copied into the transcript.  When two rules disagree, the later file in
 sorted path order wins.
 
+@heading Identity
+@cindex SOUL.md
+@file{SOUL.md} in the Harmless data directory is the identity block.
+It is sent before the standing harness prompt.  A project chat and a
+detached chat both receive it.  The project is not searched, so a
+@file{SOUL.md} in the project is not this file.  A missing file, or a
+blank one, leaves the harness prompt first.  The block is not copied
+into the transcript.
+
+Nil uses the Harmless data directory.  @code{""} and whitespace are
+refused: @samp{SOUL.md path is empty}.  A value that is not text is
+refused with that same text.  @code{/}, a drive root, and a string of
+only backslashes are refused: @samp{SOUL.md path is the filesystem
+root}.  A relative path, including @code{~}, is refused and is not
+expanded: @samp{SOUL.md path must be absolute}.  A directory at that
+path is refused: @samp{SOUL.md is a directory}.
+
 @heading Standing prompt
 @cindex harness prompt
-Every turn starts with a standing harness prompt.  It states which
-tool to use, when to verify, and when to delegate.  A project chat and
-a detached chat both receive it.  Project instructions, path-scoped
-rules, and, in plan mode, the plan rules are sent after it.  When they
-disagree with the harness prompt, they win.  The prompt is not copied
-into the transcript.  Nil, an empty string, and a relative directory
+Every turn includes a standing harness prompt.  It states which
+tool to use, when to verify, and when to delegate.  When
+@file{SOUL.md} has text, that block is first and this prompt follows
+it.  Otherwise this prompt is first.  A project chat and a detached
+chat both receive it.  Project instructions, path-scoped rules, and,
+in plan mode, the plan rules are sent after it.  When they disagree
+with the harness prompt, they win.  The prompt is not copied into
+the transcript.  Nil, an empty string, and a relative directory
 still receive the prompt, and they still do not walk
 @code{default-directory}.
 
@@ -2178,8 +2210,8 @@ already installed: }, followed by the id.
 @findex harmless-output-style
 An output style is a role, tone, and format for one session.
 @kbd{M-x harmless-output-style} switches it.  Switching does not
-edit @file{AGENTS.md}, @file{HARMLESS.md}, @file{.harmless/HARMLESS.md},
-or @file{CLAUDE.md}.
+edit @file{.cursorrules}, @file{.cursor/rules/}, @file{AGENTS.md},
+@file{HARMLESS.md}, @file{.harmless/HARMLESS.md}, or @file{CLAUDE.md}.
 
 A style file is markdown.  Optional frontmatter holds @code{name}
 and @code{description}.  The body is the text later turns send.
@@ -3246,6 +3278,7 @@ A context path at the filesystem root is refused:
 @findex harmless-remember
 @findex harmless-dream
 @cindex memory
+@cindex USER.md
 Memory is Markdown under @code{harmless-directory}, in @file{memory}.
 Global notes apply to every project.  Workspace notes belong to one
 project.  A detached chat has workspace memory unavailable and global
@@ -3266,6 +3299,27 @@ Inbox files that @code{harmless-dream} has folded.
 
 @file{MEMORY.md} in each scope is a generated index.  A turn receives
 the index, not the notes.
+
+@file{USER.md} in global memory is a profile of the person.  It is
+not @file{MEMORY.md}, it is not a topic, and it is not a project
+instruction.  A project file named @file{USER.md} is not read as
+this profile.  A turn receives the profile with the memory index,
+under @samp{User profile:}.  A missing or blank file is left out.
+Writing the profile does not rewrite @file{MEMORY.md}.
+
+The model writes it with @code{memory_write_topic} when @code{topic}
+is @code{USER.md}.  @code{scope} and the project directory are
+ignored for that write.  The file is @file{memory/global/USER.md}.
+@code{memory_read} of @code{USER.md} in the global scope reads it
+back.
+
+Nil uses the Harmless data directory.  @code{""} and whitespace are
+refused: @samp{USER.md path is empty}.  @code{/}, a drive root, and
+a string of only backslashes are refused: @samp{USER.md path is the
+filesystem root}.  Nil contents and whitespace are refused:
+@samp{USER.md is empty}.  A value that is not text is refused:
+@samp{USER.md must be a string}.  A directory at that path is
+refused: @samp{USER.md is a directory}.
 
 @table @kbd
 @item M-x harmless-remember
@@ -3290,6 +3344,7 @@ Append a fact to the inbox.  @code{topic} is an optional slug, such as
 
 @item memory_write_topic
 Replace one topic file with the full Markdown you supply.
+@code{topic} @code{USER.md} writes the global profile instead.
 @end table
 
 A finished turn can write one inbox observation.  Set
@@ -3506,9 +3561,14 @@ already running, with a different runtime.
 @item worktrees/@var{repository}/@var{name}/
 An isolated checkout of that repository.  @xref{Worktrees}.
 
+@item SOUL.md
+The identity block sent before the standing prompt.  A missing
+file leaves that prompt first.  @xref{Instructions}.
+
 @item memory/global/
 @itemx memory/workspaces/@var{project}/
-Notes.  @xref{Memory}.
+Notes.  @file{memory/global/USER.md} is the person's profile.
+@xref{Memory}.
 
 @item computer/
 Screenshots from @code{computer_screenshot}.  @xref{Computer use}.

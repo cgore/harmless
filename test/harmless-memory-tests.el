@@ -437,3 +437,183 @@
             (should (= seen 0))
             (should (eq 'error (harmless-session-status live)))))
       (ignore-errors (delete-directory base t)))))
+
+(ert-deftest harmless-memory-user-profile ()
+  (harmless-memory-test-with-root
+   (let* ((cwd "/proj/harmless")
+          (project (make-temp-file "harmless-user-proj-" t))
+          (path (harmless-memory-write-user "Prefers two spaces.")))
+     (should (equal path
+                    (expand-file-name "memory/global/USER.md" harmless-directory)))
+     (should (file-regular-p path))
+     (should (file-name-absolute-p path))
+     (should (harmless-directory-strictly-under-p path harmless-directory))
+     (should-not (equal (file-truename path) (file-truename "/")))
+     (should (equal "Prefers two spaces.\n" (harmless-memory-test-text path)))
+     (should-not (file-exists-p
+                  (expand-file-name "memory/global/MEMORY.md" harmless-directory)))
+     (should-not (file-directory-p
+                  (expand-file-name "memory/global/topics" harmless-directory)))
+     (should (equal "Prefers two spaces." (harmless-memory-user-text)))
+     (let ((note (concat "Prefers caf" (char-to-string #xE9) ".")))
+       (should (equal path (harmless-memory-write-user note)))
+       (should (equal (concat note "\n")
+                      (with-temp-buffer
+                        (let ((coding-system-for-read 'utf-8-unix))
+                          (insert-file-contents path))
+                        (buffer-string))))
+       (should (equal note (harmless-memory-user-text))))
+     (should (equal "Wrote USER.md"
+                    (harmless-memory-write-topic
+                     "workspace" cwd " USER.md " "Prefers two spaces.\n")))
+     (should (equal "Prefers two spaces.\n" (harmless-memory-test-text path)))
+     (should (equal "Wrote USER.md"
+                    (harmless-memory-write-topic nil nil "USER.md" "Global only.")))
+     (should (equal "Global only.\n" (harmless-memory-test-text path)))
+     (should (equal "Global only.\n"
+                    (harmless-memory-read "global" nil "USER.md")))
+     (should-not (file-exists-p
+                  (expand-file-name "memory/global/MEMORY.md" harmless-directory)))
+     (should (equal "No such memory file: USER.md"
+                    (harmless-memory-test-signal
+                     (lambda ()
+                       (harmless-memory-read "workspace" cwd "USER.md")))))
+     (should-not (file-exists-p
+                  (expand-file-name
+                   "USER.md" (harmless-memory-scope-dir "workspace" cwd))))
+     (let ((session (harmless-memory-test-session "user-tool" cwd)))
+       (should (equal "Wrote USER.md"
+                      (harmless-memory--tool-write-topic
+                       session '(:topic "USER.md"
+                                 :contents "From the tool."
+                                 :scope "workspace"))))
+       (should (equal "From the tool.\n" (harmless-memory-test-text path)))
+       (should (equal "From the tool.\n"
+                      (harmless-memory--tool-read
+                       session '(:path "USER.md" :scope "global"))))
+       (should (equal "USER.md is empty"
+                      (harmless-memory-test-signal
+                       (lambda ()
+                         (harmless-memory--tool-write-topic
+                          session '(:topic "USER.md" :scope "workspace")))))))
+     (should (equal "Wrote topics/user-md.md"
+                    (harmless-memory-write-topic
+                     "global" nil "user.md" "not the profile\n")))
+     (should (equal "From the tool.\n" (harmless-memory-test-text path)))
+     (should (string-match-p
+              "not the profile"
+              (harmless-memory-read "global" nil "topics/user-md.md")))
+     (let ((catalog (harmless-memory-catalog nil)))
+       (should (string-match-p "User profile:" catalog))
+       (should (string-match-p "From the tool." catalog))
+       (should (string-match-p "not project instructions" catalog))
+       (should (string-match-p "topics/user-md.md" catalog)))
+     (with-temp-file (expand-file-name "USER.md" project)
+       (insert "PROJECT-USER-PROFILE\n"))
+     (let ((text (plist-get
+                  (car (harmless-context-messages project nil project))
+                  :content)))
+       (should (string-prefix-p harmless-harness-prompt text))
+       (should (string-match-p "User profile:" text))
+       (should (string-match-p "From the tool." text))
+       (should (< (string-match "Harmless harness policy" text)
+                  (string-match "User profile:" text)))
+       (should-not (string-match-p "PROJECT-USER-PROFILE" text)))
+     (let ((text (plist-get
+                  (car (harmless-context-messages nil nil))
+                  :content)))
+       (should (string-match-p "User profile:" text))
+       (should (string-match-p "From the tool." text))
+       (should (string-match-p "detached chat" text))
+       (should-not (string-match-p "PROJECT-USER-PROFILE" text)))
+     (dolist (bad (list nil "" "   " "\n"))
+       (should (equal "USER.md is empty"
+                      (harmless-memory-test-signal
+                       (lambda () (harmless-memory-write-user bad))))))
+     (should (equal "USER.md must be a string"
+                    (harmless-memory-test-signal
+                     (lambda () (harmless-memory-write-user 42)))))
+     (should (equal "From the tool.\n" (harmless-memory-test-text path))))))
+
+(ert-deftest harmless-memory-user-refuses-empty-and-roots ()
+  (let ((paths '("/" "/USER.md" "/SOUL.md" "/memory"
+                 "c:/" "c:/USER.md" "c:/SOUL.md" "c:/memory"
+                 "c:\\" "c:\\USER.md" "c:\\SOUL.md" "c:\\memory"
+                 "C:/USER.md" "C:/SOUL.md"))
+        (before nil)
+        (real (file-exists-p
+               (expand-file-name
+                "harmless/memory/global/USER.md" user-emacs-directory))))
+    (dolist (path paths)
+      (push (cons path (file-exists-p path)) before))
+    (dolist (dir (list "" "   "))
+      (let ((harmless-directory dir))
+        (should (equal "USER.md path is empty"
+                       (harmless-memory-test-signal
+                        (lambda () (harmless-memory-user-file)))))
+        (should (equal "USER.md path is empty"
+                       (harmless-memory-test-signal
+                        (lambda () (harmless-memory-write-user "nope")))))))
+    (dolist (dir (list "/" "c:/" "c:\\" "C:/" "\\" "c:" "//" "/."))
+      (let ((harmless-directory dir))
+        (should (equal "USER.md path is the filesystem root"
+                       (harmless-memory-test-signal
+                        (lambda () (harmless-memory-user-file)))))
+        (should (equal "USER.md path is the filesystem root"
+                       (harmless-memory-test-signal
+                        (lambda () (harmless-memory-write-user "nope")))))))
+    (let ((default-directory (file-name-as-directory
+                              (make-temp-file "harmless-user-rel-" t)))
+          (harmless-directory "notes"))
+      (should (equal "Harmless data directory must be absolute, not \"notes\""
+                     (harmless-memory-test-signal
+                      (lambda () (harmless-memory-user-file)))))
+      (should-not (file-exists-p (expand-file-name "notes" default-directory)))
+      (should-not (file-exists-p (expand-file-name "USER.md" default-directory))))
+    (let* ((fallback (make-temp-file "harmless-user-nil-" t))
+           (harmless-directory nil))
+      (cl-letf (((symbol-function 'locate-user-emacs-file)
+                 (lambda (&rest _) fallback)))
+        (let ((path (harmless-memory-write-user "Nil dir.")))
+          (should (equal path
+                         (expand-file-name
+                          "memory/global/USER.md" fallback)))
+          (should (file-regular-p path))
+          (should (harmless-directory-strictly-under-p path fallback))
+          (should (equal "Nil dir.\n" (harmless-memory-test-text path)))
+          (should-not (file-exists-p (expand-file-name "USER.md" fallback))))))
+    (let ((harmless-directory (file-name-as-directory
+                               (make-temp-file "harmless-user-slash-" t))))
+      (let ((path (harmless-memory-write-user "Slash dir.")))
+        (should (equal path
+                       (expand-file-name
+                        "memory/global/USER.md"
+                        (directory-file-name harmless-directory))))
+        (should (equal "Slash dir.\n" (harmless-memory-test-text path)))))
+    (harmless-memory-test-with-root
+     (let ((dir (harmless-memory-user-file)))
+       (should-not (file-exists-p dir))
+       (make-directory dir t)
+       (should (equal "USER.md is a directory"
+                      (harmless-memory-test-signal
+                       (lambda () (harmless-memory-write-user "nope")))))
+       (should (equal "USER.md is a directory"
+                      (harmless-memory-test-signal
+                       (lambda () (harmless-memory-user-text)))))
+       (should (file-directory-p dir))
+       (should-not (file-regular-p dir)))
+     (let ((path (harmless-memory-user-file)))
+       (should (file-directory-p path))
+       (delete-directory path)
+       (with-temp-file path (insert "  \n"))
+       (should-not (harmless-memory-user-text))
+       (should-not (harmless-memory-catalog "/proj/harmless"))
+       (should-not (file-exists-p
+                    (expand-file-name
+                     "memory/global/MEMORY.md" harmless-directory)))))
+    (should (eq real
+                (file-exists-p
+                 (expand-file-name
+                  "harmless/memory/global/USER.md" user-emacs-directory))))
+    (dolist (pair before)
+      (should (eq (cdr pair) (file-exists-p (car pair)))))))

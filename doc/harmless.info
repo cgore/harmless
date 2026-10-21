@@ -1707,19 +1707,28 @@ File: harmless.info,  Node: Instructions,  Next: Skills,  Prev: Tools,  Up: Top
 Harmless reads these names in each directory, from your home directory
 down to the session directory:
 
-  1. ‘CLAUDE.md’, when ‘harmless-claude-md’ says to read it
+  1. ‘.cursorrules’
 
-  2. ‘AGENTS.md’
+  2. ‘.cursor/rules/*.mdc’, sorted by name, in that directory only
 
-  3. ‘HARMLESS.md’
+  3. ‘CLAUDE.md’, when ‘harmless-claude-md’ says to read it
 
-  4. ‘.harmless/HARMLESS.md’
+  4. ‘AGENTS.md’
+
+  5. ‘HARMLESS.md’
+
+  6. ‘.harmless/HARMLESS.md’
 
    ‘harmless-claude-md’ has three values.  ‘nil’ never reads
 ‘CLAUDE.md’.  ‘t’ always reads it.  ‘anthropic’, the default, reads it
 only when the session model id starts with ‘claude-’.  A model such as
-‘grok-4.6’ does not match.  ‘CLAUDE.md’ is read before the other three
-names, so those later files win when they disagree.
+‘grok-4.6’ does not match.  ‘.cursorrules’ and the ‘.mdc’ files are read
+first, so ‘CLAUDE.md’, ‘AGENTS.md’, and ‘HARMLESS.md’ still win when
+they disagree.  A rule in a subdirectory of ‘.cursor/rules/’ is not
+read.  A directory, a missing file, and a symlink that leaves the
+directory are skipped.  Nothing is created.  An ‘.mdc’ file is sent as
+written, including its frontmatter.  An ‘@path’ import in that file uses
+the same rules as the other instruction files.
 
    A file applies to its directory and everything under it.  Outer
 directories come first.  At one directory, the files are read in the
@@ -1757,16 +1766,35 @@ and the filesystem root are not searched.
 not copied into the transcript.  When two rules disagree, the later file
 in sorted path order wins.
 
+Identity
+========
+
+‘SOUL.md’ in the Harmless data directory is the identity block.  It is
+sent before the standing harness prompt.  A project chat and a detached
+chat both receive it.  The project is not searched, so a ‘SOUL.md’ in
+the project is not this file.  A missing file, or a blank one, leaves
+the harness prompt first.  The block is not copied into the transcript.
+
+   Nil uses the Harmless data directory.  ‘""’  and whitespace are
+refused: ‘SOUL.md path is empty’.  A value that is not text is refused
+with that same text.  ‘/’, a drive root, and a string of only
+backslashes are refused: ‘SOUL.md path is the filesystem root’.  A
+relative path, including ‘~’, is refused and is not expanded: ‘SOUL.md
+path must be absolute’.  A directory at that path is refused: ‘SOUL.md
+is a directory’.
+
 Standing prompt
 ===============
 
-Every turn starts with a standing harness prompt.  It states which tool
-to use, when to verify, and when to delegate.  A project chat and a
-detached chat both receive it.  Project instructions, path-scoped rules,
-and, in plan mode, the plan rules are sent after it.  When they disagree
-with the harness prompt, they win.  The prompt is not copied into the
-transcript.  Nil, an empty string, and a relative directory still
-receive the prompt, and they still do not walk ‘default-directory’.
+Every turn includes a standing harness prompt.  It states which tool to
+use, when to verify, and when to delegate.  When ‘SOUL.md’ has text,
+that block is first and this prompt follows it.  Otherwise this prompt
+is first.  A project chat and a detached chat both receive it.  Project
+instructions, path-scoped rules, and, in plan mode, the plan rules are
+sent after it.  When they disagree with the harness prompt, they win.
+The prompt is not copied into the transcript.  Nil, an empty string, and
+a relative directory still receive the prompt, and they still do not
+walk ‘default-directory’.
 
 
 File: harmless.info,  Node: Skills,  Next: Plugins,  Prev: Instructions,  Up: Top
@@ -1914,7 +1942,8 @@ File: harmless.info,  Node: Output styles,  Next: Image generation,  Prev: Plugi
 
 An output style is a role, tone, and format for one session.  ‘M-x
 harmless-output-style’ switches it.  Switching does not edit
-‘AGENTS.md’, ‘HARMLESS.md’, ‘.harmless/HARMLESS.md’, or ‘CLAUDE.md’.
+‘.cursorrules’, ‘.cursor/rules/’, ‘AGENTS.md’, ‘HARMLESS.md’,
+‘.harmless/HARMLESS.md’, or ‘CLAUDE.md’.
 
    A style file is markdown.  Optional frontmatter holds ‘name’ and
 ‘description’.  The body is the text later turns send.  The name is a
@@ -2800,6 +2829,25 @@ available.
    ‘MEMORY.md’ in each scope is a generated index.  A turn receives the
 index, not the notes.
 
+   ‘USER.md’ in global memory is a profile of the person.  It is not
+‘MEMORY.md’, it is not a topic, and it is not a project instruction.  A
+project file named ‘USER.md’ is not read as this profile.  A turn
+receives the profile with the memory index, under ‘User profile:’.  A
+missing or blank file is left out.  Writing the profile does not rewrite
+‘MEMORY.md’.
+
+   The model writes it with ‘memory_write_topic’ when ‘topic’ is
+‘USER.md’.  ‘scope’ and the project directory are ignored for that
+write.  The file is ‘memory/global/USER.md’.  ‘memory_read’ of ‘USER.md’
+in the global scope reads it back.
+
+   Nil uses the Harmless data directory.  ‘""’  and whitespace are
+refused: ‘USER.md path is empty’.  ‘/’, a drive root, and a string of
+only backslashes are refused: ‘USER.md path is the filesystem root’.
+Nil contents and whitespace are refused: ‘USER.md is empty’.  A value
+that is not text is refused: ‘USER.md must be a string’.  A directory at
+that path is refused: ‘USER.md is a directory’.
+
 ‘M-x harmless-remember’
      Save a title and a note in workspace memory.  A prefix argument
      saves it in global memory.
@@ -2818,7 +2866,8 @@ index, not the notes.
      ‘emacs’.
 
 ‘memory_write_topic’
-     Replace one topic file with the full Markdown you supply.
+     Replace one topic file with the full Markdown you supply.  ‘topic’
+     ‘USER.md’ writes the global profile instead.
 
    A finished turn can write one inbox observation.  Set
 ‘harmless-memory-observe-function’ to a function of the session.  It
@@ -3012,9 +3061,14 @@ replaced with ‘/’.
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
 
+‘SOUL.md’
+     The identity block sent before the standing prompt.  A missing file
+     leaves that prompt first.  *Note Instructions::.
+
 ‘memory/global/’
 ‘memory/workspaces/PROJECT/’
-     Notes.  *Note Memory::.
+     Notes.  ‘memory/global/USER.md’ is the person's profile.  *Note
+     Memory::.
 
 ‘computer/’
      Screenshots from ‘computer_screenshot’.  *Note Computer use::.
@@ -3409,29 +3463,29 @@ Node: Todos73272
 Node: Review75927
 Node: Language server79510
 Node: Instructions82697
-Node: Skills85805
-Node: Plugins89965
-Node: Output styles92817
-Node: Image generation94828
-Node: Headless96670
-Node: Pages99358
-Node: Team102195
-Node: Machines123274
-Node: People126141
-Node: Profiles128428
-Node: Health131084
-Node: Fleet133096
-Node: Scope133862
-Node: Context137870
-Node: Memory141005
-Node: Plan mode143598
-Node: Usage146584
-Node: Files147603
-Node: Keys151314
-Node: Trouble153025
-Node: Manual154279
-Node: Command Index154984
-Node: Key Index165635
+Node: Skills87219
+Node: Plugins91379
+Node: Output styles94231
+Node: Image generation96284
+Node: Headless98126
+Node: Pages100814
+Node: Team103651
+Node: Machines124730
+Node: People127597
+Node: Profiles129884
+Node: Health132540
+Node: Fleet134552
+Node: Scope135318
+Node: Context139326
+Node: Memory142461
+Node: Plan mode146200
+Node: Usage149186
+Node: Files150205
+Node: Keys154117
+Node: Trouble155828
+Node: Manual157082
+Node: Command Index157787
+Node: Key Index168438
 
 End Tag Table
 

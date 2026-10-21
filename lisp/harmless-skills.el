@@ -54,6 +54,7 @@
 (require 'subr-x)
 (require 'harmless-util)
 (require 'harmless-instructions)
+(require 'harmless-harness)
 (require 'harmless-memory)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
@@ -269,12 +270,16 @@ STOP is passed to `harmless-skills-discover'."
     messages))
 
 (defun harmless-context--finish (messages session)
-  "Return MESSAGES with SESSION's output style, then the harness.
-The harness stays first.  The style is a role, tone, and format.
-Project text that follows it wins when they disagree."
+  "Return MESSAGES with SOUL.md, the harness, and SESSION's style.
+SOUL.md, when it has text, is first.  A missing file leaves the
+harness first.  The style is a role, tone, and format.  Project
+text that follows it wins when they disagree."
   (when (fboundp 'harmless-output-style-place)
     (setq messages (harmless-output-style-place messages session)))
-  (harmless-context--with-harness messages))
+  (setq messages (harmless-context--with-harness messages))
+  (if (fboundp 'harmless-soul-prepend)
+      (harmless-soul-prepend messages)
+    messages))
 
 (defun harmless-context-messages (dir messages &optional stop model session)
   "Return MESSAGES with the harness prompt, instructions, and context.
@@ -282,10 +287,11 @@ STOP bounds the instruction and skill walks.  MODEL selects whether
 `CLAUDE.md' is included.  Path rules, when loaded, come from
 `.claude/rules/' in DIR.  SESSION's loaded skill, if any, is included.
 SESSION's output style, if any, comes after the harness and before
-project text.  The harness prompt is first.  Later project text wins
-when it disagrees.  The transcript is not modified.  A missing or
-relative DIR is a detached chat: it does not walk `default-directory',
-so a missing directory is not /."
+project text.  SOUL.md is first when that file has text.  Otherwise
+the harness prompt is first.  Later project text wins when it
+disagrees.  The transcript is not modified.  A missing or relative
+DIR is a detached chat: it does not walk `default-directory', so a
+missing directory is not /."
   (if (not (and (stringp dir)
                 (not (string-empty-p dir))
                 (file-name-absolute-p dir)))

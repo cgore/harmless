@@ -218,7 +218,17 @@ TOPIC is an optional slug hint.  Return the path relative to the scope."
       (buffer-string))))
 
 (defun harmless-memory-write-topic (scope cwd topic contents)
-  "Replace the topic named TOPIC in SCOPE with CONTENTS."
+  "Replace the topic named TOPIC in SCOPE with CONTENTS.
+TOPIC `USER.md' writes the global profile instead of a topic.
+SCOPE and CWD are ignored for that profile."
+  (if (and (stringp topic) (equal (string-trim topic) "USER.md"))
+      (progn
+        (harmless-memory-write-user contents)
+        "Wrote USER.md")
+    (harmless-memory-write-topic--file scope cwd topic contents)))
+
+(defun harmless-memory-write-topic--file (scope cwd topic contents)
+  "Replace the topic file named TOPIC in SCOPE with CONTENTS."
   (when (string-empty-p (string-trim (or contents "")))
     (error "Topic contents are required"))
   (let* ((slug (harmless-memory--slug topic))
@@ -312,18 +322,92 @@ TOPIC is an optional slug hint.  Return the path relative to the scope."
            "\n")
           "\n"))))))
 
+(defun harmless-memory-user-file ()
+  "Return the global USER.md path.
+The profile is not MEMORY.md and it is not a topic.  Nil is the
+default data directory.  \"\", \"/\", and a drive root are refused."
+  (when (and (stringp harmless-directory)
+             (string-empty-p (string-trim harmless-directory)))
+    (error "USER.md path is empty"))
+  (when (and (stringp harmless-directory)
+             (harmless-memory--root-text-p harmless-directory))
+    (error "USER.md path is the filesystem root"))
+  (let ((root (condition-case err
+                  (harmless-memory-root)
+                (error
+                 (if (string-prefix-p "Refusing to store Harmless data"
+                                      (error-message-string err))
+                     (error "USER.md path is the filesystem root")
+                   (signal (car err) (cdr err)))))))
+    (when (or (not (stringp root))
+              (string-empty-p (string-trim root))
+              (harmless-filesystem-root-p root)
+              (harmless-memory--root-text-p root))
+      (error "USER.md path is the filesystem root"))
+    (let* ((dir (expand-file-name "global" root))
+           (path (expand-file-name "USER.md" dir)))
+      (when (or (harmless-filesystem-root-p dir)
+                (harmless-filesystem-root-p path)
+                (harmless-memory--root-text-p dir)
+                (harmless-memory--root-text-p path))
+        (error "USER.md path is the filesystem root"))
+      path)))
+
+(defun harmless-memory-user-text ()
+  "Return the global USER.md profile, or nil when it is missing.
+A blank file is missing.  A directory is refused.  The text is not
+project instructions."
+  (let ((path (harmless-memory-user-file)))
+    (cond
+     ((not (file-exists-p path)) nil)
+     ((file-directory-p path) (error "USER.md is a directory"))
+     ((not (file-readable-p path)) nil)
+     (t (let ((text (with-temp-buffer
+                      (let ((coding-system-for-read 'utf-8-unix))
+                        (insert-file-contents path))
+                      (string-trim (buffer-string)))))
+          (unless (string-empty-p text) text))))))
+
+(defun harmless-memory-write-user (contents)
+  "Replace the global USER.md profile with CONTENTS.
+Nil and \"\" are refused.  A non-string is refused.  MEMORY.md is
+not rewritten.  Return the absolute path that was written."
+  (cond
+   ((null contents) (error "USER.md is empty"))
+   ((not (stringp contents)) (error "USER.md must be a string"))
+   ((string-empty-p (string-trim contents)) (error "USER.md is empty")))
+  (let ((path (harmless-memory-user-file)))
+    (when (and (file-exists-p path) (file-directory-p path))
+      (error "USER.md is a directory"))
+    (when (or (harmless-filesystem-root-p (file-name-directory path))
+              (harmless-memory--root-text-p (file-name-directory path)))
+      (error "USER.md path is the filesystem root"))
+    (harmless-ensure-directory (file-name-directory path))
+    (let ((coding-system-for-write 'utf-8-unix)
+          (buffer-file-coding-system 'utf-8-unix))
+      (with-temp-file path
+        (setq buffer-file-coding-system 'utf-8-unix)
+        (insert contents)
+        (unless (string-suffix-p "\n" contents)
+          (insert "\n"))))
+    path))
+
 (defun harmless-memory-catalog (cwd)
-  "Return the memory index for CWD, or nil when memory is empty."
-  (let ((parts (delq nil
+  "Return the memory index for CWD, or nil when memory is empty.
+USER.md, when present, is included with the index.  It is not a
+project instruction."
+  (let ((user (harmless-memory-user-text))
+        (parts (delq nil
                      (list (harmless-memory--scope-index "global" cwd)
                            (and (stringp cwd)
                                 (not (string-empty-p cwd))
                                 (file-name-absolute-p cwd)
                                 (harmless-memory--scope-index "workspace" cwd))))))
-    (when parts
+    (when (or user parts)
       (concat
-       "Memory from earlier sessions.  This index is a map.  Read a note with memory_read before relying on it.  Record a durable fact with memory_remember.  Replace a curated topic with memory_write_topic.  Do not edit MEMORY.md.  Do not store secrets, credentials, or one-off task state.  Use workspace for this project and global for a preference that applies everywhere.\n\n"
-       (mapconcat #'identity parts "\n")))))
+       "Memory from earlier sessions.  This index is a map.  Read a note with memory_read before relying on it.  Record a durable fact with memory_remember.  Replace a curated topic with memory_write_topic.  Do not edit MEMORY.md.  USER.md is a profile of the person, not project instructions.  Do not store secrets, credentials, or one-off task state.  Use workspace for this project and global for a preference that applies everywhere.\n\n"
+       (when user (format "User profile:\n\n%s\n\n" user))
+       (when parts (mapconcat #'identity parts "\n"))))))
 
 (defun harmless-memory--root-text-p (text)
   "Return non-nil if TEXT is \"/\" or a drive root."
@@ -447,7 +531,7 @@ directory is not expanded.  Nothing is written at the filesystem root."
   (harmless-register-tool
    (harmless-tool-create
     :name "memory_read"
-    :description "Read a memory note. PATH is relative to the scope, such as topics/emacs.md or observations/_inbox/NAME.md. SCOPE is workspace or global."
+    :description "Read a memory note. PATH is relative to the scope, such as topics/emacs.md, observations/_inbox/NAME.md, or USER.md in the global scope. SCOPE is workspace or global. USER.md is a profile of the person, not a topic and not project instructions."
     :class 'read
     :schema '(:type "object"
               :properties (:path (:type "string")
@@ -471,7 +555,7 @@ directory is not expanded.  Nothing is written at the filesystem root."
   (harmless-register-tool
    (harmless-tool-create
     :name "memory_write_topic"
-    :description "Replace a curated memory topic with CONTENTS, which is the full Markdown file. TOPIC is a slug such as emacs."
+    :description "Replace a curated memory topic with CONTENTS, which is the full Markdown file. TOPIC is a slug such as emacs. TOPIC USER.md writes the global user profile instead of a topic, and it does not rewrite MEMORY.md."
     :class 'read
     :schema '(:type "object"
               :properties (:topic (:type "string")
