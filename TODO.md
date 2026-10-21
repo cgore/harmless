@@ -1,6 +1,6 @@
 # TODO
 
-Gaps versus Grok Build, Claude Code, the Codex CLI, and [OpenRig](https://openrig.dev/) 0.5.14, in the order that changes whether the work can finish. Sections 1–3 are one session. Section 4 is the lasting team OpenRig runs above sessions like these. An item is listed once. A parenthetical names the products that already have it when that is not all three.
+Gaps versus Grok Build, Claude Code, the Codex CLI, [OpenRig](https://openrig.dev/) 0.5.14, and [Hermes Agent](https://hermes-agent.nousresearch.com/), in the order that changes whether the work can finish. Sections 1–3 are one session. Section 4 is the lasting team OpenRig runs above sessions like these. Section 10 is what Hermes does that those sections do not. An item is listed once. A parenthetical names the products that already have it when that is not all three.
 
 Harmless already has the core loop: sessions, streaming turns, `read_file`, `write_file`, `replace`, `list_dir`, `glob`, `grep`, `run_shell`, permission classes, project instructions, a skill catalog, memory, and plan mode.
 
@@ -121,6 +121,26 @@ Plan mode already has `enter_plan_mode`, `write_plan`, and `exit_plan_mode`, wit
 - [x] A headless mode, and a remote task that keeps running while Emacs is closed (Codex cloud, Claude Code on the web and remote control). A registry of other machines, with the same team verbs on each, is section 4.
 - [x] Publish a Markdown or HTML artifact as a page (Claude Code).
 
+## 10. Hermes
+
+[Hermes Agent](https://hermes-agent.nousresearch.com/) already overlaps the checked items: tools, a skill catalog, memory notes, subagents, schedules, browser control, vision, image generation, and an MCP client. These are the pieces it has on top of that.
+
+- [ ] Expand `@file:`, `@folder:`, `@diff`, `@staged`, `@git:N`, and `@url:` in a prompt (Hermes context references). The user's text stays, and the attachment follows under `--- Attached Context ---`. A file or folder stays inside the project or an extra directory. Nil, `""`, a relative path that leaves the project, a trailing slash on `@file:`, and the filesystem root are refused. A line range is 1-based and inclusive. A folder lists at most 200 entries. `@git:` is from 1 to 10 commits. An attachment over half the context window is left off and the prompt is unchanged. One over a quarter keeps the text and says so.
+- [ ] Snapshot the working tree in a shadow git store before `write_file`, `replace`, a patch, or a destructive shell command, at most once per directory per turn (Hermes checkpoints). Restore one checkpoint, one file from it, or show the diff, without touching the project's `.git`. A hand-edit made after the snapshot is kept unless the restore asks for every file. Skip the filesystem root, a missing directory, and a file over the size cap. Nil, `""`, and a snapshot that is not in the store are refused. A snapshot that fails does not block the tool.
+- [ ] `execute_code` (Hermes). The model writes a script that calls Harmless tools. Only what the script prints is returned. Intermediate tool results stay out of the transcript. The script cannot call `execute_code`, `spawn_agent`, `run_workflow`, or an MCP tool. Names that look like secrets are stripped from the environment. Nil, `""`, a timeout, and a call past the tool cap are refused with the error text. A later call in the same session may reuse the interpreter until `reset` or a timeout.
+- [ ] The model can create, patch, and delete a skill, and read one file inside it (Hermes `skill_manage` and `skill_view`). A new skill is a `SKILL.md` under the user skill directory. A path that leaves that directory, the filesystem root, nil, and `""` are refused. An idle curator can patch or archive an agent-written skill. It does not edit a project skill.
+- [ ] Search past session transcripts on this machine and return a short recall (Hermes `session_search`). Nil, `""`, and a query that matches nothing return an empty recall, not an error. The search does not load another session's tools.
+- [ ] When the primary provider errors, retry that turn once on a configured fallback provider and model (Hermes fallback providers). A fallback that names the same connection is refused. The transcript records which connection answered.
+- [ ] A pool of credentials for one provider (Hermes credential pools). A rate limit or an auth failure tries the next key. Nil, `""`, and an empty pool are refused. The pool is not written into the team record or the transcript.
+- [ ] `USER.md`, a profile of the person, kept apart from `MEMORY.md` (Hermes). The memory tool can write it. It is injected with memory. It is not project instructions. Nil, `""`, and the filesystem root are refused as its path.
+- [ ] Read `.cursorrules` and `.cursor/rules/*.mdc` with the other project instruction files (Hermes context files).
+- [ ] `SOUL.md` is the identity block at the front of the system prompt (Hermes personality). It is read from the Harmless data directory, not from the project. A missing file leaves the built-in identity. A directory, nil, and `""` are refused.
+- [ ] Send an Anthropic cache breakpoint on the stable prefix: identity, tools, the memory snapshot, the skill index, and project instructions (Hermes prompt caching).
+- [ ] Pause, resume, and edit a scheduled prompt, and accept a cron expression as well as a delay (Hermes cron). A bad expression is refused with the error text. A schedule still ends when Emacs does, unless it is a section 4 watchdog.
+- [ ] Choose which tools one MCP server exposes, and answer an MCP sampling request with the session's model (Hermes MCP). A server that is not configured is refused.
+- [ ] Run one prompt across many inputs and write a trajectory file (Hermes batch processing). This is an evaluation run, not a team workflow. Nil, `""`, and the filesystem root are refused as the output path.
+- [ ] One memory-provider slot and one context-engine slot (Hermes plugins). The provider can recall text before a turn. The engine can replace compact. The built-in memory and compact stay the defaults. Two providers, or two engines, are refused.
+
 ## Not planned
 
-Theming, voice, and the status line belong to the terminal UIs. Voice is in Grok Build and Codex. Vendor-hosted phone push, claude.ai routines, and a separate PowerShell tool are out of scope for this Emacs package.
+Theming, voice, wake word, text-to-speech, skins, and the status line belong to the terminal UIs. Voice is in Grok Build, Codex, and Hermes. Hermes also runs one agent from Telegram, Discord, Slack, WhatsApp, and the other gateway chats, and it ships a desktop app. A Slack receipt for a person is section 4. A gateway that is the session stays out of this Emacs package. Vendor-hosted phone push, claude.ai routines, and a separate PowerShell tool are out of scope for this Emacs package.
