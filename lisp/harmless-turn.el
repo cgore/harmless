@@ -62,6 +62,7 @@
 (require 'harmless-auto)
 (require 'harmless-hook)
 (require 'harmless-usage)
+(require 'harmless-refs)
 
 (declare-function harmless-memory-observe "harmless-memory" (session))
 
@@ -185,29 +186,36 @@ Return `queued' or `sent'."
 (defun harmless-turn--take-steers (session)
   "Append SESSION's queued follow-ups as user messages.
 Return non-nil when there was at least one."
-  (let ((texts (harmless-session-steers session)))
+  (let* ((texts (harmless-session-steers session))
+         (expanded (mapcar (lambda (text)
+                             (harmless-refs-expand session text))
+                           texts)))
     (setf (harmless-session-steers session) nil)
-    (dolist (text texts)
+    (dolist (text expanded)
       (harmless-session-append-user session text))
-    texts))
+    expanded))
 
 (defun harmless-turn-run (session text)
   "Append user TEXT to SESSION and start the agent loop.
-When the last prompt fills the context window, older turns are
-summarized before the provider sees TEXT."
+@ references in TEXT are expanded first.  A prompt that starts
+with `/NAME' loads that skill from the typed text, so a refused
+reference does not load the skill.  When the last prompt fills
+the context window, older turns are summarized before the
+provider sees TEXT."
   (when (memq (harmless-session-status session) '(streaming waiting-permission))
     (harmless-turn-abort session))
   (when (fboundp 'harmless-compact--validate-threshold)
     (harmless-compact--validate-threshold))
-  (when (fboundp 'harmless-skill-prompt)
-    (harmless-skill-prompt session text))
-  (harmless-session-append-user session text)
-  (when (fboundp 'harmless-media-consume)
-    (harmless-media-consume session))
-  (if (fboundp 'harmless-compact-before-turn)
-      (harmless-compact-before-turn session
-                                    (lambda () (harmless-turn--call session)))
-    (harmless-turn--call session)))
+  (let ((expanded (harmless-refs-expand session text)))
+    (when (fboundp 'harmless-skill-prompt)
+      (harmless-skill-prompt session text))
+    (harmless-session-append-user session expanded)
+    (when (fboundp 'harmless-media-consume)
+      (harmless-media-consume session))
+    (if (fboundp 'harmless-compact-before-turn)
+        (harmless-compact-before-turn session
+                                      (lambda () (harmless-turn--call session)))
+      (harmless-turn--call session))))
 
 (defun harmless-tools-for-session (session)
   "Return the tools offered to SESSION.

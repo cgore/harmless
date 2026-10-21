@@ -1,4 +1,4 @@
-This is harmless.info, produced by texi2any version 7.3+nc from
+This is harmless.info, produced by .\texi2any version 7.3+nc from
 harmless.texi.
 
 Copyright © 2026 Christopher Mark Gore.
@@ -339,6 +339,20 @@ the turn.
    An empty prompt is refused: ‘Prompt is empty’.  Nil, ‘""’, and
 whitespace are the same refusal.  While a permission question is
 showing, send is refused until you answer it.  *Note Permissions::.
+
+   A prompt can attach context.  ‘@file:PATH’ reads a file.
+‘@file:PATH:START-END’ reads a 1-based inclusive line range.
+‘@folder:PATH’ lists a directory, at most 200 entries.  ‘@diff’ is the
+unstaged diff, ‘@staged’ is the index, and ‘@git:N’ is the last N
+commits, from 1 to 10.  ‘@url:URL’ fetches an http or https page.  The
+typed text stays, and the attachment follows under ‘--- Attached Context
+---’.  A file or folder must stay inside the project or an extra
+directory.  An empty reference, a path that leaves the project, and the
+filesystem root are refused.  An attachment larger than half the context
+window is omitted and the prompt is sent unchanged.  A prompt that
+starts with ‘/name’ still loads that skill from the typed text.  The
+attachment is built first, so a refused reference does not load the
+skill.
 
    ‘M-x harmless-steer’ reads a follow-up from the minibuffer and queues
 it without aborting the turn.  That includes while a permission question
@@ -3365,59 +3379,59 @@ Key Index
 
 
 Tag Table:
-Node: Top374
-Node: Introduction2615
-Node: Installation3348
-Node: Starting5238
-Node: Sessions5777
-Node: Transcript8958
-Node: Prompt12719
-Node: Permissions13960
-Node: Accounts22664
-Node: Models25022
-Node: Tools26118
-Node: File tools30626
-Node: Search35133
-Node: Shell37029
-Node: Questions42630
-Node: Subagents43400
-Node: Workflows47783
-Node: Worktrees52786
-Node: Messages55914
-Node: Web search57735
-Node: Fetch a page58590
-Node: X search59823
-Node: MCP62220
-Node: Computer use64924
-Node: Monitors66940
-Node: Schedules69944
-Node: Todos72410
-Node: Review75065
-Node: Language server78648
-Node: Instructions81835
-Node: Skills84943
-Node: Plugins89103
-Node: Output styles91955
-Node: Image generation93966
-Node: Headless95808
-Node: Pages98496
-Node: Team101333
-Node: Machines122412
-Node: People125279
-Node: Profiles127566
-Node: Health130222
-Node: Fleet132234
-Node: Scope133000
-Node: Context137008
-Node: Memory140143
-Node: Plan mode142736
-Node: Usage145722
-Node: Files146741
-Node: Keys150452
-Node: Trouble152163
-Node: Manual153417
-Node: Command Index154122
-Node: Key Index164773
+Node: Top376
+Node: Introduction2617
+Node: Installation3350
+Node: Starting5240
+Node: Sessions5779
+Node: Transcript8960
+Node: Prompt12721
+Node: Permissions14822
+Node: Accounts23526
+Node: Models25884
+Node: Tools26980
+Node: File tools31488
+Node: Search35995
+Node: Shell37891
+Node: Questions43492
+Node: Subagents44262
+Node: Workflows48645
+Node: Worktrees53648
+Node: Messages56776
+Node: Web search58597
+Node: Fetch a page59452
+Node: X search60685
+Node: MCP63082
+Node: Computer use65786
+Node: Monitors67802
+Node: Schedules70806
+Node: Todos73272
+Node: Review75927
+Node: Language server79510
+Node: Instructions82697
+Node: Skills85805
+Node: Plugins89965
+Node: Output styles92817
+Node: Image generation94828
+Node: Headless96670
+Node: Pages99358
+Node: Team102195
+Node: Machines123274
+Node: People126141
+Node: Profiles128428
+Node: Health131084
+Node: Fleet133096
+Node: Scope133862
+Node: Context137870
+Node: Memory141005
+Node: Plan mode143598
+Node: Usage146584
+Node: Files147603
+Node: Keys151314
+Node: Trouble153025
+Node: Manual154279
+Node: Command Index154984
+Node: Key Index165635
 
 End Tag Table
 

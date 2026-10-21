@@ -397,6 +397,21 @@ An empty prompt is refused: @samp{Prompt is empty}.  Nil, @code{""},
 and whitespace are the same refusal.  While a permission question is
 showing, send is refused until you answer it.  @xref{Permissions}.
 
+A prompt can attach context.  @code{@@file:PATH} reads a file.
+@code{@@file:PATH:START-END} reads a 1-based inclusive line range.
+@code{@@folder:PATH} lists a directory, at most 200 entries.
+@code{@@diff} is the unstaged diff, @code{@@staged} is the index,
+and @code{@@git:N} is the last N commits, from 1 to 10.
+@code{@@url:URL} fetches an http or https page.  The typed text
+stays, and the attachment follows under
+@samp{--- Attached Context ---}.  A file or folder must stay inside
+the project or an extra directory.  An empty reference, a path that
+leaves the project, and the filesystem root are refused.  An
+attachment larger than half the context window is omitted and the
+prompt is sent unchanged.  A prompt that starts with @code{/name}
+still loads that skill from the typed text.  The attachment is
+built first, so a refused reference does not load the skill.
+
 @kbd{M-x harmless-steer} reads a follow-up from the minibuffer and
 queues it without aborting the turn.  That includes while a permission
 question is showing.  The same empty-prompt refusal applies.  A value
