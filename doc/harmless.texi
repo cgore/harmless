@@ -87,7 +87,7 @@ another a local model, and a third Claude, each in its own project.
 The transcript buffer is a view.  The saved session on disk is the
 record.  Closing the buffer does not delete the session.
 
-Harmless requires GNU Emacs 31.
+Harmless requires GNU Emacs 30.1.
 
 @node Installation
 @chapter Installation

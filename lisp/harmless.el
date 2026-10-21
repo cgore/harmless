@@ -37,7 +37,7 @@
 ;; Author: Christopher Mark Gore <cgore@cgore.com>
 ;; Maintainer: Christopher Mark Gore <cgore@cgore.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "31.1"))
+;; Package-Requires: ((emacs "30.1"))
 ;; Keywords: tools, convenience, ai
 ;; URL: https://github.com/cgore/harmless
 

@@ -17,7 +17,7 @@ src/harmless-landlock: src/harmless-landlock.c
 all: test
 
 version-check:
-	@$(BATCH) --eval "(unless (>= emacs-major-version 31) (error \"Emacs 31 required, got %s\" emacs-version))"
+	@$(BATCH) --eval "(unless (>= emacs-major-version 30) (error \"Emacs 30 required, got %s\" emacs-version))"
 
 compile: version-check
 	$(BATCH) -L $(LISPDIR) \

@@ -79,7 +79,7 @@ another a local model, and a third Claude, each in its own project.
    The transcript buffer is a view.  The saved session on disk is the
 record.  Closing the buffer does not delete the session.
 
-   Harmless requires GNU Emacs 31.
+   Harmless requires GNU Emacs 30.1.
 
 
 File: harmless.info,  Node: Installation,  Next: Starting,  Prev: Introduction,  Up: Top
@@ -3367,57 +3367,57 @@ Key Index
 Tag Table:
 Node: Top374
 Node: Introduction2615
-Node: Installation3346
-Node: Starting5236
-Node: Sessions5775
-Node: Transcript8956
-Node: Prompt12717
-Node: Permissions13958
-Node: Accounts22662
-Node: Models25020
-Node: Tools26116
-Node: File tools30624
-Node: Search35131
-Node: Shell37027
-Node: Questions42628
-Node: Subagents43398
-Node: Workflows47781
-Node: Worktrees52784
-Node: Messages55912
-Node: Web search57733
-Node: Fetch a page58588
-Node: X search59821
-Node: MCP62218
-Node: Computer use64922
-Node: Monitors66938
-Node: Schedules69942
-Node: Todos72408
-Node: Review75063
-Node: Language server78646
-Node: Instructions81833
-Node: Skills84941
-Node: Plugins89101
-Node: Output styles91953
-Node: Image generation93964
-Node: Headless95806
-Node: Pages98494
-Node: Team101331
-Node: Machines122410
-Node: People125277
-Node: Profiles127564
-Node: Health130220
-Node: Fleet132232
-Node: Scope132998
-Node: Context137006
-Node: Memory140141
-Node: Plan mode142734
-Node: Usage145720
-Node: Files146739
-Node: Keys150450
-Node: Trouble152161
-Node: Manual153415
-Node: Command Index154120
-Node: Key Index164771
+Node: Installation3348
+Node: Starting5238
+Node: Sessions5777
+Node: Transcript8958
+Node: Prompt12719
+Node: Permissions13960
+Node: Accounts22664
+Node: Models25022
+Node: Tools26118
+Node: File tools30626
+Node: Search35133
+Node: Shell37029
+Node: Questions42630
+Node: Subagents43400
+Node: Workflows47783
+Node: Worktrees52786
+Node: Messages55914
+Node: Web search57735
+Node: Fetch a page58590
+Node: X search59823
+Node: MCP62220
+Node: Computer use64924
+Node: Monitors66940
+Node: Schedules69944
+Node: Todos72410
+Node: Review75065
+Node: Language server78648
+Node: Instructions81835
+Node: Skills84943
+Node: Plugins89103
+Node: Output styles91955
+Node: Image generation93966
+Node: Headless95808
+Node: Pages98496
+Node: Team101333
+Node: Machines122412
+Node: People125279
+Node: Profiles127566
+Node: Health130222
+Node: Fleet132234
+Node: Scope133000
+Node: Context137008
+Node: Memory140143
+Node: Plan mode142736
+Node: Usage145722
+Node: Files146741
+Node: Keys150452
+Node: Trouble152163
+Node: Manual153417
+Node: Command Index154122
+Node: Key Index164773
 
 End Tag Table
 
