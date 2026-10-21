@@ -266,6 +266,16 @@ Xref file columns start at 0."
      ((string-empty-p name) 'error)
      (t (intern name)))))
 
+(defun harmless-lsp--diagnostic-message (diag)
+  "Return DIAG's message.
+Emacs 31 can select the message part.  Emacs 30 returns the text
+slot, and its byte compiler inlines a one-argument call, so the
+two-argument call has to go through `apply'."
+  (apply #'flymake-diagnostic-text
+         (if (>= emacs-major-version 31)
+             (list diag '(message))
+           (list diag))))
+
 (defun harmless-lsp--diagnostic-rows (diags)
   "Return (LINE COLUMN SEVERITY TEXT) rows for Flymake DIAGS.
 LINE and COLUMN start at 1."
@@ -286,7 +296,7 @@ LINE and COLUMN start at 1."
        (list line column
              (harmless-lsp--severity (flymake-diagnostic-type diag))
              (harmless-lsp--one-line
-              (flymake-diagnostic-text diag '(message))))))
+              (harmless-lsp--diagnostic-message diag)))))
    diags))
 
 (defun harmless-lsp--diag< (a b)
