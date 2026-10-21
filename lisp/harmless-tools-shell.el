@@ -1000,6 +1000,9 @@ are refused."
                                   (error-message-string err))))))
             (if (stringp argv)
                 (funcall callback argv)
+              (when (and (eq (harmless-shell-command-kind command) 'write)
+                         (fboundp 'harmless-checkpoint-before))
+                (harmless-checkpoint-before session cwd))
               (let* ((buf (generate-new-buffer " *harmless-shell*"))
                      (proc (let ((default-directory cwd))
                              (make-process

@@ -23,6 +23,8 @@
   (should (harmless-tool-by-name "exit_worktree"))
   (should (harmless-tool-by-name "list_sessions"))
   (should (harmless-tool-by-name "session_search"))
+  (should (harmless-tool-by-name "checkpoint_diff"))
+  (should (harmless-tool-by-name "checkpoint_restore"))
   (should (harmless-tool-by-name "send_message"))
   (should (harmless-tool-by-name "web_search"))
   (should (harmless-tool-by-name "web_fetch"))

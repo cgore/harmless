@@ -797,6 +797,7 @@ It can keep a todo list.  @xref{Todos}.
 * File tools::  Read, list, write, replace, patch, and notebooks.
 * Search::      Find files and lines.
 * Shell::       Run a command.
+* Checkpoints:: Snapshot the tree before an edit.
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
@@ -901,7 +902,10 @@ edit.
 Apply several hunks in one call.  Each hunk names a @code{path}, an
 @code{old_string}, and a @code{new_string}.  The old string must occur
 once in that file.  Later hunks on the same file see earlier
-replacements.  If any hunk fails, no file is changed.  This is an edit.
+replacements.  If any hunk fails, no file is changed.  This is an
+edit.  An accepted edit snapshots the directory that contains the
+file when checkpoints are on, after the edit is accepted and before
+the file changes.  @xref{Checkpoints}.
 
 In plan mode, @code{write_file}, @code{replace}, @code{apply_patch},
 and @code{notebook_edit} fail.  The model must write @file{plan.md}
@@ -1008,8 +1012,10 @@ files.
 
 A command Harmless recognizes as read-only does not ask for
 permission.  A command it does not recognize still asks.  A redirect
-that writes, a command substitution, and a subshell ask.
-@xref{Permissions}.
+that writes, a command substitution, and a subshell ask.  A command
+that can write snapshots the project first when checkpoints are on.
+A read-only command does not.
+@xref{Permissions}.  @xref{Checkpoints}.
 
 In plan mode, a shell command that can write is refused before any
 permission question:
@@ -1072,6 +1078,85 @@ A helper that cannot restrict the process reports
 command the helper cannot run reports @samp{Error: Landlock
 could not run}, followed by the program when it has one.
 @xref{Permissions}.
+
+@node Checkpoints
+@section Checkpoints
+
+@cindex checkpoint_diff
+@cindex checkpoint_restore
+@vindex harmless-checkpoints
+Snapshots are off until @code{harmless-checkpoints} is non-nil.
+A snapshot is a commit in a git repository under the Harmless data
+directory, one repository for each snapshotted directory.  That
+repository is not the project's @file{.git}.  The project's history
+stays where it is.  The snapshot is not an object in the project's
+repository.
+
+@code{write_file}, @code{replace}, and @code{apply_patch} snapshot
+the directory that contains the file, after the edit is accepted and
+before the file changes.  A patch snapshots only after every hunk is
+accepted.  A shell command that can write snapshots the project.  A
+read-only command does not.  Each directory is snapshotted at most
+once in a turn.  The next turn can snapshot it again.  A second
+directory has its own repository.  A snapshot that fails does not
+block the tool, and the edit still proceeds.  A refused edit,
+including plan mode, does not snapshot.
+
+The filesystem root, a drive root, and a missing directory are
+skipped.  A file larger than 1000000 bytes is left out of the
+snapshot.  Other files in that tree are still recorded.  A tree with
+more than 5000 regular files is not snapshotted.  A directory named
+@file{.git} is not recorded.  A symlink that is a directory, or whose
+target leaves the tree, is not recorded.
+
+@code{checkpoint_diff} shows the difference from one snapshot to the
+current tree.  @code{id} is the snapshot name: @code{cp-1}, then
+@code{cp-2}, with no zero padding.  @code{path} limits the diff to
+one file.  Omit it, or pass nil, to compare the project.  An empty
+difference is empty text.  A difference longer than 100000 characters
+is cut and ends with @samp{[truncated]}.  This tool only reads.
+
+@code{checkpoint_restore} puts files back.  @code{path} restores that
+one file and keeps later edits of other files.  Omit @code{path}, or
+pass nil, to restore every file the snapshot recorded and to remove
+files created after it.  The project's @file{.git} stays in place.
+Restoring one file returns @samp{Restored }, the relative path,
+@samp{ in }, and the id.  Restoring the tree returns @samp{Restored },
+followed by the id.  This tool is an edit.
+
+Nil, @code{""}, and whitespace for the id are refused:
+@samp{checkpoint id is empty}.  That check comes before the data
+directory.  A value that is not text is refused:
+@samp{checkpoint id must be a string}.  @code{cp-0}, @code{cp-01},
+a path, and an id that is not in the store are refused:
+@samp{no such checkpoint}.  A file the snapshot did not record is
+refused: @samp{checkpoint file is missing}.
+
+@code{""} and whitespace for the path are refused:
+@samp{checkpoint path is empty}.  A value that is not text is refused:
+@samp{checkpoint path must be a string}.  @code{/}, @code{c:/}, a
+drive root, @code{//}, @code{/.}, and a string of only backslashes
+are refused: @samp{checkpoint path is the filesystem root}.  A path
+that leaves the project is refused:
+@samp{checkpoint path escapes the project}.  No session is refused:
+@samp{No Harmless session}.  A detached chat is refused:
+@samp{This chat is not attached to a project}.  In plan mode a
+restore is refused:
+@samp{Plan mode is on. Only plan.md may be edited, with write_plan}.
+
+A nil data directory uses the Harmless data directory.  @code{""}
+and whitespace are refused: @samp{checkpoint path is empty}.
+@code{/}, a drive root, @code{//}, @code{/.}, and a string of only
+backslashes are refused:
+@samp{checkpoint path is the filesystem root}.  A relative data
+directory is refused and is not expanded: @samp{Harmless data
+directory must be absolute, not }, followed by the printed value.
+The store is not created for any of those refusals.
+
+A restore or a diff needs git.  A missing git is refused:
+@samp{checkpoint needs git}.  A git command that fails is refused:
+@samp{checkpoint git failed}.  An automatic snapshot reports neither
+failure, and the edit still proceeds.
 
 @node Questions
 @section Questions
@@ -3580,6 +3665,11 @@ already running, with a different runtime.
 
 @item worktrees/@var{repository}/@var{name}/
 An isolated checkout of that repository.  @xref{Worktrees}.
+
+@item checkpoints/@var{directory}/
+A shadow git repository for one snapshotted directory.  It is not
+that directory's @file{.git}.  Snapshots are off until
+@code{harmless-checkpoints} is set.  @xref{Checkpoints}.
 
 @item SOUL.md
 The identity block sent before the standing prompt.  A missing

@@ -287,6 +287,8 @@ A workflow catalog is included for a session that is not a subagent."
 
 (defun harmless-turn--call (session)
   "Send SESSION messages to the provider."
+  (when (fboundp 'harmless-checkpoint-begin-turn)
+    (harmless-checkpoint-begin-turn session))
   (when (fboundp 'harmless-message-flush)
     (harmless-message-flush session))
   (if (and (fboundp 'harmless-agent-limited-p)

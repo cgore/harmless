@@ -315,6 +315,8 @@ when that feature is loaded.  Other files stay text."
          (contents (or (harmless-tool-arg args :contents)
                        (harmless-tool-arg args :content)
                        "")))
+    (when (fboundp 'harmless-checkpoint-before)
+      (harmless-checkpoint-before session path))
     (let ((parent (file-name-directory path)))
       ;; / already exists.  Refusing to create it must not block a file
       ;; whose project really is the filesystem root.
@@ -357,6 +359,8 @@ when that feature is loaded.  Other files stay text."
                     (concat (substring original 0 at)
                             new
                             (substring original (+ at (length old)))))))
+      (when (fboundp 'harmless-checkpoint-before)
+        (harmless-checkpoint-before session path))
       (write-region out nil path nil 'silent)
       (harmless-tools-fs-revert-visiting path)
       (format "Replaced %d occurrence(s) in %s" count path))))
@@ -436,6 +440,9 @@ see earlier replacements.  Nothing is written if any hunk fails."
                  texts)
         (puthash path (1+ (gethash path counts)) counts)))
     (setq order (nreverse order))
+    (when (fboundp 'harmless-checkpoint-before)
+      (dolist (path order)
+        (harmless-checkpoint-before session path)))
     (dolist (path order)
       (write-region (gethash path texts) nil path nil 'silent)
       (harmless-tools-fs-revert-visiting path))

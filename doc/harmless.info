@@ -683,6 +683,7 @@ can keep a todo list.  *Note Todos::.
 * File tools::  Read, list, write, replace, patch, and notebooks.
 * Search::      Find files and lines.
 * Shell::       Run a command.
+* Checkpoints:: Snapshot the tree before an edit.
 * Questions::   Ask one question with choices.
 * Subagents::   A child session that reports a summary.
 * Workflows::   One script, many child sessions, one result.
@@ -783,7 +784,9 @@ harmless-add-directory’.
      ‘old_string’, and a ‘new_string’.  The old string must occur once
      in that file.  Later hunks on the same file see earlier
      replacements.  If any hunk fails, no file is changed.  This is an
-     edit.
+     edit.  An accepted edit snapshots the directory that contains the
+     file when checkpoints are on, after the edit is accepted and before
+     the file changes.  *Note Checkpoints::.
 
      In plan mode, ‘write_file’, ‘replace’, ‘apply_patch’, and
      ‘notebook_edit’ fail.  The model must write ‘plan.md’ with
@@ -835,7 +838,7 @@ cannot start with a hyphen.  A long result is cut at the same byte cap
 as ‘read_file’.
 
 
-File: harmless.info,  Node: Shell,  Next: Questions,  Prev: Search,  Up: Tools
+File: harmless.info,  Node: Shell,  Next: Checkpoints,  Prev: Search,  Up: Tools
 
 10.3 Shell
 ==========
@@ -882,8 +885,9 @@ files.
 
    A command Harmless recognizes as read-only does not ask for
 permission.  A command it does not recognize still asks.  A redirect
-that writes, a command substitution, and a subshell ask.  *Note
-Permissions::.
+that writes, a command substitution, and a subshell ask.  A command that
+can write snapshots the project first when checkpoints are on.  A
+read-only command does not.  *Note Permissions::.  *Note Checkpoints::.
 
    In plan mode, a shell command that can write is refused before any
 permission question: ‘Error: Plan mode is on. A shell command that can
@@ -936,9 +940,81 @@ cannot run reports ‘Error: Landlock could not run’, followed by the
 program when it has one.  *Note Permissions::.
 
 
-File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Shell,  Up: Tools
+File: harmless.info,  Node: Checkpoints,  Next: Questions,  Prev: Shell,  Up: Tools
 
-10.4 Questions
+10.4 Checkpoints
+================
+
+Snapshots are off until ‘harmless-checkpoints’ is non-nil.  A snapshot
+is a commit in a git repository under the Harmless data directory, one
+repository for each snapshotted directory.  That repository is not the
+project's ‘.git’.  The project's history stays where it is.  The
+snapshot is not an object in the project's repository.
+
+   ‘write_file’, ‘replace’, and ‘apply_patch’ snapshot the directory
+that contains the file, after the edit is accepted and before the file
+changes.  A patch snapshots only after every hunk is accepted.  A shell
+command that can write snapshots the project.  A read-only command does
+not.  Each directory is snapshotted at most once in a turn.  The next
+turn can snapshot it again.  A second directory has its own repository.
+A snapshot that fails does not block the tool, and the edit still
+proceeds.  A refused edit, including plan mode, does not snapshot.
+
+   The filesystem root, a drive root, and a missing directory are
+skipped.  A file larger than 1000000 bytes is left out of the snapshot.
+Other files in that tree are still recorded.  A tree with more than 5000
+regular files is not snapshotted.  A directory named ‘.git’ is not
+recorded.  A symlink that is a directory, or whose target leaves the
+tree, is not recorded.
+
+   ‘checkpoint_diff’ shows the difference from one snapshot to the
+current tree.  ‘id’ is the snapshot name: ‘cp-1’, then ‘cp-2’, with no
+zero padding.  ‘path’ limits the diff to one file.  Omit it, or pass
+nil, to compare the project.  An empty difference is empty text.  A
+difference longer than 100000 characters is cut and ends with
+‘[truncated]’.  This tool only reads.
+
+   ‘checkpoint_restore’ puts files back.  ‘path’ restores that one file
+and keeps later edits of other files.  Omit ‘path’, or pass nil, to
+restore every file the snapshot recorded and to remove files created
+after it.  The project's ‘.git’ stays in place.  Restoring one file
+returns ‘Restored ’, the relative path, ‘ in ’, and the id.  Restoring
+the tree returns ‘Restored ’, followed by the id.  This tool is an edit.
+
+   Nil, ‘""’, and whitespace for the id are refused: ‘checkpoint id is
+empty’.  That check comes before the data directory.  A value that is
+not text is refused: ‘checkpoint id must be a string’.  ‘cp-0’, ‘cp-01’,
+a path, and an id that is not in the store are refused: ‘no such
+checkpoint’.  A file the snapshot did not record is refused: ‘checkpoint
+file is missing’.
+
+   ‘""’ and whitespace for the path are refused: ‘checkpoint path is
+empty’.  A value that is not text is refused: ‘checkpoint path must be a
+string’.  ‘/’, ‘c:/’, a drive root, ‘//’, ‘/.’, and a string of only
+backslashes are refused: ‘checkpoint path is the filesystem root’.  A
+path that leaves the project is refused: ‘checkpoint path escapes the
+project’.  No session is refused: ‘No Harmless session’.  A detached
+chat is refused: ‘This chat is not attached to a project’.  In plan mode
+a restore is refused: ‘Plan mode is on. Only plan.md may be edited, with
+write_plan’.
+
+   A nil data directory uses the Harmless data directory.  ‘""’  and
+whitespace are refused: ‘checkpoint path is empty’.  ‘/’, a drive root,
+‘//’, ‘/.’, and a string of only backslashes are refused: ‘checkpoint
+path is the filesystem root’.  A relative data directory is refused and
+is not expanded: ‘Harmless data directory must be absolute, not ’,
+followed by the printed value.  The store is not created for any of
+those refusals.
+
+   A restore or a diff needs git.  A missing git is refused: ‘checkpoint
+needs git’.  A git command that fails is refused: ‘checkpoint git
+failed’.  An automatic snapshot reports neither failure, and the edit
+still proceeds.
+
+
+File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Checkpoints,  Up: Tools
+
+10.5 Questions
 ==============
 
 ‘ask_user’ asks one question.  ‘question’ is the prompt.  ‘choices’ are
@@ -958,7 +1034,7 @@ it.  Plan mode can use it.
 
 File: harmless.info,  Node: Subagents,  Next: Workflows,  Prev: Questions,  Up: Tools
 
-10.5 Subagents
+10.6 Subagents
 ==============
 
 ‘spawn_agent’ starts a child session and waits for its last reply.  The
@@ -1053,7 +1129,7 @@ child with no definition.  A named definition needs a project directory.
 
 File: harmless.info,  Node: Workflows,  Next: Worktrees,  Prev: Subagents,  Up: Tools
 
-10.6 Workflows
+10.7 Workflows
 ==============
 
 ‘run_workflow’ runs one script.  The script starts child sessions.  The
@@ -1154,7 +1230,7 @@ script.  A named script needs a project directory.  Nil, ‘""’, ‘sub’,
 
 File: harmless.info,  Node: Worktrees,  Next: Messages,  Prev: Workflows,  Up: Tools
 
-10.7 Worktrees
+10.8 Worktrees
 ==============
 
 ‘enter_worktree’ points this session at an isolated checkout of the same
@@ -1210,7 +1286,7 @@ Aborting a turn does not delete a checkout.
 
 File: harmless.info,  Node: Messages,  Next: Web search,  Prev: Worktrees,  Up: Tools
 
-10.8 Messages
+10.9 Messages
 =============
 
 ‘list_sessions’ lists the sessions that are live in this Emacs.  Each
@@ -1262,8 +1338,8 @@ may list sessions and send a finding.
 
 File: harmless.info,  Node: Web search,  Next: Fetch a page,  Prev: Messages,  Up: Tools
 
-10.9 Web search
-===============
+10.10 Web search
+================
 
 ‘web_search’ looks up ‘query’ on the web.  The query is sent to
 DuckDuckGo over https.  Nothing is written into the project.  Nil is
@@ -1283,7 +1359,7 @@ search.  A failed request is ‘web search failed’.
 
 File: harmless.info,  Node: Fetch a page,  Next: X search,  Prev: Web search,  Up: Tools
 
-10.10 Fetch a page
+10.11 Fetch a page
 ==================
 
 ‘web_fetch’ reads one page at ‘url’.  Only ‘http’ and ‘https’ are
@@ -1309,7 +1385,7 @@ fetch a page.  A failed request is ‘web request failed’.
 
 File: harmless.info,  Node: X search,  Next: MCP,  Prev: Fetch a page,  Up: Tools
 
-10.11 X search
+10.12 X search
 ==============
 
 ‘x_keyword_search’ finds recent posts on X. The search covers the last 7
@@ -1356,7 +1432,7 @@ the project.
 
 File: harmless.info,  Node: MCP,  Next: Computer use,  Prev: X search,  Up: Tools
 
-10.12 MCP
+10.13 MCP
 =========
 
 Harmless calls tools on a local MCP server and reads that server's
@@ -1404,7 +1480,7 @@ into the project.
 
 File: harmless.info,  Node: Computer use,  Next: Monitors,  Prev: MCP,  Up: Tools
 
-10.13 Computer use
+10.14 Computer use
 ==================
 
 Harmless can see the screen, click, type, and open a browser the user
@@ -1446,7 +1522,7 @@ detached chat is offered them.  Nothing is written into the project.
 
 File: harmless.info,  Node: Monitors,  Next: Schedules,  Prev: Computer use,  Up: Tools
 
-10.14 Monitors
+10.15 Monitors
 ==============
 
 ‘monitor’ watches one source until a line matches ‘pattern’.  The source
@@ -1500,7 +1576,7 @@ forgotten when Emacs exits.
 
 File: harmless.info,  Node: Schedules,  Next: Todos,  Prev: Monitors,  Up: Tools
 
-10.15 Schedules
+10.16 Schedules
 ===============
 
 ‘schedule’ sends ‘prompt’ once, at a later time.  Pass ‘delay’ in
@@ -1546,7 +1622,7 @@ session does not copy its schedules.
 
 File: harmless.info,  Node: Todos,  Next: Review,  Prev: Schedules,  Up: Tools
 
-10.16 Todos
+10.17 Todos
 ===========
 
 ‘todo_write’ keeps a list of work on the session.  Each item has an id,
@@ -1594,7 +1670,7 @@ pending or in progress.
 
 File: harmless.info,  Node: Review,  Next: Language server,  Prev: Todos,  Up: Tools
 
-10.17 Review
+10.18 Review
 ============
 
 ‘M-x harmless-review’ reads the working tree, a base branch, or one
@@ -1657,7 +1733,7 @@ findings are recorded.
 
 File: harmless.info,  Node: Language server,  Prev: Review,  Up: Tools
 
-10.18 Language server
+10.19 Language server
 =====================
 
 ‘lsp’ asks a language server that is already running in Emacs.  The
@@ -3078,6 +3154,11 @@ replaced with ‘/’.
 ‘worktrees/REPOSITORY/NAME/’
      An isolated checkout of that repository.  *Note Worktrees::.
 
+‘checkpoints/DIRECTORY/’
+     A shadow git repository for one snapshotted directory.  It is not
+     that directory's ‘.git’.  Snapshots are off until
+     ‘harmless-checkpoints’ is set.  *Note Checkpoints::.
+
 ‘SOUL.md’
      The identity block sent before the standing prompt.  A missing file
      leaves that prompt first.  *Note Instructions::.
@@ -3461,48 +3542,49 @@ Node: Permissions14822
 Node: Accounts23526
 Node: Models25884
 Node: Tools26980
-Node: File tools31488
-Node: Search35995
-Node: Shell37891
-Node: Questions43492
-Node: Subagents44262
-Node: Workflows48645
-Node: Worktrees53648
-Node: Messages56776
-Node: Web search59651
-Node: Fetch a page60506
-Node: X search61739
-Node: MCP64136
-Node: Computer use66840
-Node: Monitors68856
-Node: Schedules71860
-Node: Todos74326
-Node: Review76981
-Node: Language server80564
-Node: Instructions83751
-Node: Skills88273
-Node: Plugins92433
-Node: Output styles95285
-Node: Image generation97338
-Node: Headless99180
-Node: Pages101868
-Node: Team104705
-Node: Machines125784
-Node: People128651
-Node: Profiles130938
-Node: Health133594
-Node: Fleet135606
-Node: Scope136372
-Node: Context140380
-Node: Memory143515
-Node: Plan mode147254
-Node: Usage150240
-Node: Files151259
-Node: Keys155171
-Node: Trouble156882
-Node: Manual158136
-Node: Command Index158841
-Node: Key Index169492
+Node: File tools31538
+Node: Search36223
+Node: Shell38119
+Node: Checkpoints43854
+Node: Questions47839
+Node: Subagents48615
+Node: Workflows52998
+Node: Worktrees58001
+Node: Messages61129
+Node: Web search64004
+Node: Fetch a page64861
+Node: X search66094
+Node: MCP68491
+Node: Computer use71195
+Node: Monitors73211
+Node: Schedules76215
+Node: Todos78681
+Node: Review81336
+Node: Language server84919
+Node: Instructions88106
+Node: Skills92628
+Node: Plugins96788
+Node: Output styles99640
+Node: Image generation101693
+Node: Headless103535
+Node: Pages106223
+Node: Team109060
+Node: Machines130139
+Node: People133006
+Node: Profiles135293
+Node: Health137949
+Node: Fleet139961
+Node: Scope140727
+Node: Context144735
+Node: Memory147870
+Node: Plan mode151609
+Node: Usage154595
+Node: Files155614
+Node: Keys159748
+Node: Trouble161459
+Node: Manual162713
+Node: Command Index163418
+Node: Key Index174069
 
 End Tag Table
 

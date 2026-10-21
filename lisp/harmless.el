@@ -169,6 +169,7 @@
 (require 'harmless-media)
 (require 'harmless-image)
 (require 'harmless-tools-shell)
+(require 'harmless-checkpoint)
 (require 'harmless-perm)
 (require 'harmless-turn)
 (require 'harmless-plan)
