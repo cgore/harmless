@@ -667,6 +667,7 @@
                        "schedule"
                        "schedule_cancel"
                        "send_message"
+                       "session_search"
                        "spawn_agent"
                        "todo_write"
                        "web_fetch"
@@ -695,5 +696,337 @@
       (should (equal "chat" (aref (cadr entry) 0))))
     (should-not (file-exists-p "/summary.json"))
     (should-not (file-exists-p "/AGENTS.md"))))
+
+(defun harmless-session-search-test-error (text thunk)
+  "THUNK must signal an error whose message is exactly TEXT."
+  (let ((err (should-error (funcall thunk) :type 'error)))
+    (should (equal text (error-message-string err)))
+    err))
+
+(defun harmless-session-search-test-guards ()
+  "Return existence of paths a search must not create.
+The current directory is recorded because a leading slash follows
+the current drive on Windows."
+  (cons default-directory
+        (mapcar (lambda (path) (cons path (file-exists-p path)))
+                (list (expand-file-name "harmless/sessions"
+                                        user-emacs-directory)
+                      "/sessions" "/messages.jsonl"
+                      "c:/sessions" "c:/messages.jsonl"
+                      "c:\\sessions" "c:\\messages.jsonl"
+                      "C:/sessions" "C:/messages.jsonl"
+                      "C:\\sessions" "C:\\messages.jsonl"))))
+
+(defun harmless-session-search-test-guards-unchanged (before)
+  "Assert BEFORE still matches the filesystem."
+  (let ((default-directory (car before)))
+    (dolist (cell (cdr before))
+      (should (equal (cdr cell) (file-exists-p (car cell)))))))
+
+(defun harmless-session-search-test-bytes (file)
+  "Return FILE's raw bytes."
+  (with-temp-buffer
+    (set-buffer-multibyte nil)
+    (insert-file-contents-literally file)
+    (buffer-string)))
+
+(defun harmless-session-search-test-write (root proj id summary lines)
+  "Write one session under ROOT and return its messages file."
+  (let ((dir (expand-file-name
+              id (expand-file-name
+                  proj (expand-file-name "sessions" root))))
+        (coding-system-for-write 'utf-8-unix))
+    (make-directory dir t)
+    (with-temp-file (expand-file-name "summary.json" dir)
+      (insert summary))
+    (with-temp-file (expand-file-name "messages.jsonl" dir)
+      (insert (mapconcat #'identity lines "\n") "\n"))
+    (expand-file-name "messages.jsonl" dir)))
+
+(defun harmless-session-search-test-summary (id title updated)
+  "Return one summary.json body."
+  (format "{\"id\":%S,\"title\":%S,\"updated-at\":%S,\"agent-allow\":[\"only-in-summary-tool\"]}"
+          id title updated))
+
+(ert-deftest harmless-session-search-recalls-a-transcript ()
+  (let* ((root (make-temp-file "harmless-search-" t))
+         (harmless-directory (file-name-as-directory root))
+         (harmless--sessions (make-hash-table :test 'equal))
+         (guards (harmless-session-search-test-guards))
+         (tools (mapcar #'harmless-tool-name harmless-tools))
+         (dash (char-to-string #x2014))
+         (old-file nil)
+         (old-bytes nil))
+    (unwind-protect
+        (progn
+          (setq old-file
+                (harmless-session-search-test-write
+                 root "proj" "old"
+                 (harmless-session-search-test-summary
+                  "old" "Old notes" "2020-01-01")
+                 '("{\"role\":\"user\",\"content\":\"Remember visible-phrase please\"}"
+                   "not json"
+                   "{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"block-phrase\"}]}")))
+          (harmless-session-search-test-write
+           root "proj" "new"
+           (harmless-session-search-test-summary
+            "new" "New notes" "2020-01-03")
+           '("{\"role\":\"user\",\"content\":\"VISIBLE-PHRASE again\"}"))
+          (harmless-session-search-test-write
+           root "proj" "title-only"
+           (harmless-session-search-test-summary
+            "title-only" "Title needle here" "2020-01-02")
+           '("{\"role\":\"user\",\"content\":\"nothing to see\"}"))
+          (harmless-session-search-test-write
+           root "proj" "blank-title"
+           (harmless-session-search-test-summary
+            "blank-title" "   " "2019-01-01")
+           '("{\"role\":\"user\",\"content\":\"blank-title-phrase\"}"))
+          (harmless-session-search-test-write
+           root "proj" "num-id"
+           "{\"id\":7,\"title\":\"Numeric\",\"updated-at\":\"2019-06-01\",\"agent-allow\":[\"only-in-summary-tool\"]}"
+           '("{\"role\":\"user\",\"content\":\"numeric-phrase\"}"))
+          (harmless-session-search-test-write
+           root "proj" "literal"
+           (harmless-session-search-test-summary
+            "literal" "Literal" "2019-07-01")
+           '("{\"role\":\"user\",\"content\":\"a.b only\"}"))
+          (harmless-session-search-test-write
+           root "proj" "wild"
+           (harmless-session-search-test-summary
+            "wild" "Wild" "2019-07-02")
+           '("{\"role\":\"user\",\"content\":\"axb only\"}"))
+          (with-temp-file (expand-file-name
+                           "notes.txt"
+                           (expand-file-name
+                            "proj" (expand-file-name "sessions" root)))
+            (insert "visible-phrase\n"))
+          (setq old-bytes (harmless-session-search-test-bytes old-file))
+          (let ((recall nil))
+            (cl-letf (((symbol-function 'harmless-session-load)
+                       (lambda (&rest _) (error "loaded a session")))
+                      ((symbol-function 'harmless-session-resume)
+                       (lambda (&rest _) (error "resumed a session")))
+                      ((symbol-function 'harmless-session-list-on-disk)
+                       (lambda (&rest _) (error "listed sessions"))))
+              (setq recall (harmless-session-search "  visible-phrase  "))
+              (should (equal "" (harmless-session-search "only-in-summary-tool")))
+              (should (equal "" (harmless-session-search "missing-phrase")))
+              (should (equal "" (harmless-session-search nil)))
+              (should (equal "" (harmless-session-search "")))
+              (should (equal "" (harmless-session-search "   "))))
+            (should (string-search (concat "new " dash " New notes") recall))
+            (should (string-search (concat "old " dash " Old notes") recall))
+            (should (< (string-search (concat "new " dash) recall)
+                       (string-search (concat "old " dash) recall)))
+            (should (string-search "VISIBLE-PHRASE again" recall))
+            (should (string-search "Remember visible-phrase please" recall))
+            (let ((block (harmless-session-search "block-phrase")))
+              (should (string-search (concat "old " dash " Old notes") block))
+              (should (string-search "block-phrase" block))
+              (should-not (string-search "new " block)))
+            (should (equal (concat "title-only " dash " Title needle here\n"
+                                   "Title needle here")
+                           (harmless-session-search "title needle")))
+            (should (equal "blank-title\nuser blank-title-phrase"
+                           (harmless-session-search "blank-title-phrase")))
+            (let ((numeric (harmless-session-search "numeric-phrase")))
+              (should (string-search (concat "num-id " dash " Numeric") numeric))
+              (should-not (string-search (concat "\n7 " dash) (concat "\n" numeric))))
+            (let ((dotted (harmless-session-search "a.b")))
+              (should (string-search "literal" dotted))
+              (should (string-search "a.b only" dotted))
+              (should-not (string-search "wild" dotted))
+              (should-not (string-search "axb" dotted))))
+          (should (equal old-bytes (harmless-session-search-test-bytes old-file)))
+          (should-not (harmless-session-get "new"))
+          (should (equal 0 (hash-table-count harmless--sessions)))
+          (should (equal tools (mapcar #'harmless-tool-name harmless-tools)))
+          (should-not (harmless-tool-by-name "only-in-summary-tool"))
+          (let ((tool (harmless-tool-by-name "session_search")))
+            (should (eq 'read (harmless-tool-class tool)))
+            (should (equal "" (harmless-tool-call tool nil '(:query "missing-phrase"))))
+            (should (equal "" (harmless-tool-call tool nil nil)))
+            (should (string-search
+                     (concat "new " dash " New notes")
+                     (harmless-tool-call tool nil '(:query "visible-phrase"))))
+            (should (equal "Error: session search query must be a string"
+                           (harmless-tool-call tool nil '(:query 42)))))
+          (should (equal "recall" (harmless-ui--tool-verb "session_search")))
+          (should (equal "visible-phrase"
+                         (harmless-ui--tool-summary
+                          "session_search" '(:query "visible-phrase"))))
+          (harmless-session-search-test-error
+           "session search query must be a string"
+           (lambda () (harmless-session-search 42))))
+      (delete-directory root t))
+    (harmless-session-search-test-guards-unchanged guards)))
+
+(ert-deftest harmless-session-search-caps-sessions-bytes-and-windows ()
+  (let* ((root (make-temp-file "harmless-search-cap-" t))
+         (harmless-directory root)
+         (harmless--sessions (make-hash-table :test 'equal))
+         (guards (harmless-session-search-test-guards))
+         (ellipsis (char-to-string #x2026)))
+    (unwind-protect
+        (let ((n 1)
+              (capped nil))
+          (while (<= n 6)
+            (harmless-session-search-test-write
+             root "proj" (format "m%02d" n)
+             (format "{\"id\":%S,\"updated-at\":%S}"
+                     (format "m%02d" n)
+                     (format "2021-01-%02d" n))
+             '("{\"role\":\"user\",\"content\":\"cap-phrase\"}"))
+            (setq n (1+ n)))
+          (let* ((recall (harmless-session-search "cap-phrase"))
+                 (ids (mapcar (lambda (block)
+                                (car (split-string block "\n" t)))
+                              (split-string recall "\n\n" t))))
+            (should (equal '("m06" "m05" "m04" "m03" "m02") ids))
+            (should-not (member "m01" ids)))
+          (setq capped (expand-file-name
+                        "messages.jsonl"
+                        (expand-file-name
+                         "capped"
+                         (expand-file-name
+                          "late" (expand-file-name "sessions" root)))))
+          (make-directory (file-name-directory capped) t)
+          (let ((coding-system-for-write 'utf-8-unix))
+            (with-temp-file (expand-file-name "summary.json"
+                                              (file-name-directory capped))
+              (insert "{\"id\":\"capped\",\"title\":\"Capped\",\"updated-at\":\"2021-02-01\"}\n"))
+            (with-temp-file capped
+              (insert "{\"role\":\"user\",\"content\":\"early-phrase\"}\n")
+              (insert (make-string 100000 ?x))
+              (insert "late-phrase")))
+          (should (string-search "early-phrase"
+                                (harmless-session-search "early-phrase")))
+          (should (equal "" (harmless-session-search "late-phrase")))
+          (should (string-search "late-phrase"
+                                (harmless-session-search-test-bytes capped)))
+          (let ((dir (expand-file-name
+                      "dirmsg"
+                      (expand-file-name
+                       "proj" (expand-file-name "sessions" root)))))
+            (make-directory (expand-file-name "messages.jsonl" dir) t)
+            (let ((coding-system-for-write 'utf-8-unix))
+              (with-temp-file (expand-file-name "summary.json" dir)
+                (insert "{\"id\":\"dirmsg\",\"title\":\"Dir\",\"updated-at\":\"2021-03-01\"}\n"))
+              (with-temp-file (expand-file-name
+                               "hidden.txt"
+                               (expand-file-name "messages.jsonl" dir))
+                (insert "dir-phrase\n"))))
+          (should (equal "" (harmless-session-search "dir-phrase")))
+          (harmless-session-search-test-write
+           root "proj" "long"
+           "{\"id\":\"long\",\"title\":\"Long\",\"updated-at\":\"2021-04-01\"}"
+           (list (format "{\"role\":\"user\",\"content\":%S}"
+                         (concat (make-string 50 ?a)
+                                 "mark-phrase"
+                                 (make-string 200 ?b)))))
+          (let* ((recall (harmless-session-search "mark-phrase"))
+                 (snippet (cadr (split-string recall "\n" t))))
+            (should (string-search "mark-phrase" snippet))
+            (should (string-prefix-p ellipsis snippet))
+            (should (string-suffix-p ellipsis snippet))
+            (should (= 162 (length snippet)))))
+      (delete-directory root t))
+    (harmless-session-search-test-guards-unchanged guards)))
+
+(ert-deftest harmless-session-search-skips-a-symlink-escape ()
+  (let* ((root (make-temp-file "harmless-search-link-" t))
+         (outside (make-temp-file "harmless-search-out-" t))
+         (harmless-directory root)
+         (harmless--sessions (make-hash-table :test 'equal))
+         (guards (harmless-session-search-test-guards))
+         (link (expand-file-name
+                "escaped"
+                (expand-file-name
+                 "proj" (expand-file-name "sessions" root)))))
+    (unwind-protect
+        (progn
+          (make-directory (file-name-directory link) t)
+          (let ((coding-system-for-write 'utf-8-unix))
+            (with-temp-file (expand-file-name "summary.json" outside)
+              (insert "{\"id\":\"secret\",\"title\":\"Secret\",\"updated-at\":\"2024-01-01\"}\n"))
+            (with-temp-file (expand-file-name "messages.jsonl" outside)
+              (insert "{\"role\":\"user\",\"content\":\"secret-cursor-search\"}\n")))
+          (condition-case nil
+              (make-symbolic-link (directory-file-name outside) link)
+            (file-error nil))
+          (when (file-symlink-p link)
+            (should (equal "" (harmless-session-search "secret-cursor-search")))
+            (delete-file link)))
+      (delete-directory outside t)
+      (delete-directory root t))
+    (harmless-session-search-test-guards-unchanged guards)))
+
+(ert-deftest harmless-session-search-refuses-a-bad-data-directory ()
+  (let ((guards (harmless-session-search-test-guards))
+        (default-directory
+         (file-name-as-directory (make-temp-file "harmless-search-rel-" t))))
+    (unwind-protect
+        (dolist (blank '("" "   " "\t\n"))
+          (let ((harmless-directory blank))
+            (cl-letf (((symbol-function 'harmless-sessions-root)
+                       (lambda () (error "scanned the sessions root"))))
+              (harmless-session-search-test-error
+               "session search path is empty"
+               (lambda () (harmless-session-search "x"))))))
+      (dolist (root '("/" "c:/" "c:\\" "C:/" "\\" "c:" "//" "/." "D:/" "d:\\"))
+        (let ((harmless-directory root))
+          (cl-letf (((symbol-function 'harmless-sessions-root)
+                     (lambda () (error "scanned the sessions root"))))
+            (harmless-session-search-test-error
+             "session search path is the filesystem root"
+             (lambda () (harmless-session-search "x"))))))
+      (let ((harmless-directory "/"))
+        (cl-letf (((symbol-function 'harmless-sessions-root)
+                   (lambda () (error "scanned the sessions root"))))
+          (should (equal "" (harmless-session-search nil)))
+          (should (equal "" (harmless-session-search "")))
+          (should (equal "" (harmless-session-search "   ")))
+          (harmless-session-search-test-error
+           "session search query must be a string"
+           (lambda () (harmless-session-search 42)))))
+      (dolist (rel '("notes" "notes/"))
+        (let ((harmless-directory rel))
+          (harmless-session-search-test-error
+           (format "Harmless data directory must be absolute, not %S" rel)
+           (lambda () (harmless-session-search "x")))
+          (should-not (file-exists-p (expand-file-name rel default-directory)))
+          (should-not (file-directory-p
+                       (expand-file-name "notes" default-directory)))))
+      (let ((dir default-directory)
+            (default-directory temporary-file-directory))
+        (delete-directory dir t)))
+    (harmless-session-search-test-guards-unchanged guards)))
+
+(ert-deftest harmless-session-search-nil-directory-uses-the-data-directory ()
+  (let* ((fallback (make-temp-file "harmless-search-nil-" t))
+         (harmless-directory nil)
+         (harmless--sessions (make-hash-table :test 'equal))
+         (guards (harmless-session-search-test-guards))
+         (file nil))
+    (unwind-protect
+        (cl-letf (((symbol-function 'locate-user-emacs-file)
+                   (lambda (&rest _) fallback)))
+          (setq file
+                (harmless-session-search-test-write
+                 fallback "proj" "nil-dir"
+                 "{\"id\":\"nil-dir\",\"title\":\"Nil dir\",\"updated-at\":\"2022-01-01\"}"
+                 '("{\"role\":\"user\",\"content\":\"from-nil-dir\"}")))
+          (let ((recall (harmless-session-search "from-nil-dir")))
+            (should (string-search "nil-dir" recall))
+            (should (string-search "Nil dir" recall)))
+          (should (file-exists-p file))
+          (should (string-prefix-p
+                   (file-name-as-directory (file-truename fallback))
+                   (file-truename file)))
+          (should (equal "" (harmless-session-search "missing-from-nil"))))
+      (when (file-directory-p fallback)
+        (delete-directory fallback t)))
+    (harmless-session-search-test-guards-unchanged guards)))
 
 (provide 'harmless-session-tests)

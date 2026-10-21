@@ -1398,6 +1398,26 @@ Each line is the id, the status, and the title.  A session that is
 only on disk is not listed.  Nil and an empty registry still return
 the heading @samp{Live sessions:}.
 
+@cindex session_search
+@code{session_search} searches saved transcripts on this machine.
+@code{query} matches without regard to case.  The recall names at
+most five sessions, newest first.  Each hit is the session id, the
+title when the summary has one, and a short excerpt.  A session
+that is only on disk is included.  The search reads the transcript
+file.  It does not load that session, and it does not install that
+session's tools.  A transcript is searched through its first
+100000 characters.
+
+Nil, @code{""}, and whitespace return an empty recall.  A query
+that matches nothing returns an empty recall.  A value that is not
+text is refused: @samp{session search query must be a string}.
+Nil uses the Harmless data directory.  @code{""} and whitespace
+are refused: @samp{session search path is empty}.  @code{/}, a
+drive root, and a string of only backslashes are refused:
+@samp{session search path is the filesystem root}.  A relative
+data directory is refused and is not expanded: @samp{Harmless data
+directory must be absolute, not }, followed by the printed value.
+
 @code{send_message} sends @code{text} to the live session whose id is
 @code{session}.  Nil, @code{""}, and whitespace are refused:
 @samp{session id is empty}.  A value that is not text is refused:

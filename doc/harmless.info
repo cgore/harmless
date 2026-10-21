@@ -1218,6 +1218,23 @@ line is the id, the status, and the title.  A session that is only on
 disk is not listed.  Nil and an empty registry still return the heading
 ‘Live sessions:’.
 
+   ‘session_search’ searches saved transcripts on this machine.  ‘query’
+matches without regard to case.  The recall names at most five sessions,
+newest first.  Each hit is the session id, the title when the summary
+has one, and a short excerpt.  A session that is only on disk is
+included.  The search reads the transcript file.  It does not load that
+session, and it does not install that session's tools.  A transcript is
+searched through its first 100000 characters.
+
+   Nil, ‘""’, and whitespace return an empty recall.  A query that
+matches nothing returns an empty recall.  A value that is not text is
+refused: ‘session search query must be a string’.  Nil uses the Harmless
+data directory.  ‘""’  and whitespace are refused: ‘session search path
+is empty’.  ‘/’, a drive root, and a string of only backslashes are
+refused: ‘session search path is the filesystem root’.  A relative data
+directory is refused and is not expanded: ‘Harmless data directory must
+be absolute, not ’, followed by the printed value.
+
    ‘send_message’ sends ‘text’ to the live session whose id is
 ‘session’.  Nil, ‘""’, and whitespace are refused: ‘session id is
 empty’.  A value that is not text is refused: ‘session id is not an id’.
@@ -3452,40 +3469,40 @@ Node: Subagents44262
 Node: Workflows48645
 Node: Worktrees53648
 Node: Messages56776
-Node: Web search58597
-Node: Fetch a page59452
-Node: X search60685
-Node: MCP63082
-Node: Computer use65786
-Node: Monitors67802
-Node: Schedules70806
-Node: Todos73272
-Node: Review75927
-Node: Language server79510
-Node: Instructions82697
-Node: Skills87219
-Node: Plugins91379
-Node: Output styles94231
-Node: Image generation96284
-Node: Headless98126
-Node: Pages100814
-Node: Team103651
-Node: Machines124730
-Node: People127597
-Node: Profiles129884
-Node: Health132540
-Node: Fleet134552
-Node: Scope135318
-Node: Context139326
-Node: Memory142461
-Node: Plan mode146200
-Node: Usage149186
-Node: Files150205
-Node: Keys154117
-Node: Trouble155828
-Node: Manual157082
-Node: Command Index157787
-Node: Key Index168438
+Node: Web search59651
+Node: Fetch a page60506
+Node: X search61739
+Node: MCP64136
+Node: Computer use66840
+Node: Monitors68856
+Node: Schedules71860
+Node: Todos74326
+Node: Review76981
+Node: Language server80564
+Node: Instructions83751
+Node: Skills88273
+Node: Plugins92433
+Node: Output styles95285
+Node: Image generation97338
+Node: Headless99180
+Node: Pages101868
+Node: Team104705
+Node: Machines125784
+Node: People128651
+Node: Profiles130938
+Node: Health133594
+Node: Fleet135606
+Node: Scope136372
+Node: Context140380
+Node: Memory143515
+Node: Plan mode147254
+Node: Usage150240
+Node: Files151259
+Node: Keys155171
+Node: Trouble156882
+Node: Manual158136
+Node: Command Index158841
+Node: Key Index169492
 
 End Tag Table
 

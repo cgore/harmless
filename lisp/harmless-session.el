@@ -64,6 +64,7 @@
 (require 'harmless-util)
 (require 'harmless-log)
 (require 'harmless-provider)
+(require 'harmless-tools)
 
 (declare-function harmless-tools-shell-kill "harmless-tools-shell" (proc))
 (declare-function harmless-agent-settle "harmless-agent" (session))
@@ -957,6 +958,192 @@ when its parent already exists."
         (coding-system-for-write 'utf-8-unix))
     (write-region text nil dest nil 'silent)
     dest))
+
+(defconst harmless-session-search-limit 5
+  "Maximum sessions named in one recall.")
+
+(defconst harmless-session-search-bytes 100000
+  "Maximum characters read from one transcript.")
+
+(defconst harmless-session-search-snippet 160
+  "Maximum characters of one excerpt before an ellipsis.")
+
+(defun harmless-session-search--root ()
+  "Return the sessions directory a search may read.
+Nil uses the Harmless data directory.  \"\" and the filesystem
+root are refused.  The directory is not created."
+  (when (and (stringp harmless-directory)
+             (string-empty-p (string-trim harmless-directory)))
+    (error "session search path is empty"))
+  (when (and (stringp harmless-directory)
+             (harmless-session--root-text-p harmless-directory))
+    (error "session search path is the filesystem root"))
+  (let ((dir (condition-case err
+                 (harmless-sessions-root)
+               (error
+                (if (string-prefix-p "Refusing to store Harmless data"
+                                     (error-message-string err))
+                    (error "session search path is the filesystem root")
+                  (signal (car err) (cdr err)))))))
+    (when (or (not (stringp dir))
+              (harmless-filesystem-root-p dir)
+              (harmless-session--root-text-p dir))
+      (error "session search path is the filesystem root"))
+    dir))
+
+(defun harmless-session-search--inside-p (root path)
+  "Return non-nil if PATH stays inside ROOT after resolving links."
+  (condition-case nil
+      (let* ((base (file-name-as-directory
+                    (file-truename (directory-file-name root))))
+             (full (file-truename path)))
+        (and (stringp full)
+             (or (string-prefix-p base full)
+                 (string-prefix-p base (file-name-as-directory full)))))
+    (error nil)))
+
+(defun harmless-session-search--read (file)
+  "Return the start of FILE, or nil when it is not a readable file."
+  (when (and (file-regular-p file) (file-readable-p file))
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8-unix))
+        (insert-file-contents file nil 0 harmless-session-search-bytes))
+      (buffer-string))))
+
+(defun harmless-session-search--strings (value)
+  "Return the strings stored in VALUE."
+  (cond
+   ((stringp value) (list value))
+   ((or (null value) (not (listp value))) nil)
+   (t (apply #'nconc (mapcar #'harmless-session-search--strings value)))))
+
+(defun harmless-session-search--snippet (text query)
+  "Return a short excerpt of TEXT around QUERY, or nil."
+  (let* ((case-fold-search t)
+         (flat (string-trim
+                (replace-regexp-in-string "[ \t\n\r]+" " " (or text ""))))
+         (at (string-match (regexp-quote query) flat)))
+    (when at
+      (let* ((start (max 0 (- at 40)))
+             (end (min (length flat) (+ start harmless-session-search-snippet)))
+             (piece (substring flat start end)))
+        (when (> start 0)
+          (setq piece (concat "…" piece)))
+        (when (< end (length flat))
+          (setq piece (concat piece "…")))
+        piece))))
+
+(defun harmless-session-search--summary (dir)
+  "Return DIR's summary plist, or nil when it cannot be read."
+  (let ((raw (harmless-session-search--read
+              (expand-file-name "summary.json" dir))))
+    (and raw (harmless-json-decode-safe raw))))
+
+(defun harmless-session-search--transcript (dir query)
+  "Return the first excerpt of DIR's transcript that matches QUERY."
+  (let ((raw (harmless-session-search--read
+              (expand-file-name "messages.jsonl" dir)))
+        (found nil))
+    (when raw
+      (dolist (line (split-string raw "\n" t))
+        (unless found
+          (let ((msg (harmless-json-decode-safe line)))
+            (when msg
+              (setq found
+                    (harmless-session-search--snippet
+                     (mapconcat #'identity
+                                (harmless-session-search--strings msg)
+                                "\n")
+                     query)))))))
+    found))
+
+(defun harmless-session-search--one (dir query)
+  "Return one hit for DIR, or nil.
+The session is not loaded."
+  (let* ((summary (harmless-session-search--summary dir))
+         (id (or (and summary
+                     (let ((raw (plist-get summary :id)))
+                       (and (stringp raw)
+                            (not (string-empty-p (string-trim raw)))
+                            (string-trim raw))))
+                 (file-name-nondirectory (directory-file-name dir))))
+         (title (and summary (plist-get summary :title)))
+         (updated (or (and summary (plist-get summary :updated-at)) ""))
+         (snippet (or (harmless-session-search--transcript dir query)
+                      (and (stringp title)
+                           (harmless-session-search--snippet title query)))))
+    (when (and snippet (stringp id) (not (string-empty-p id)))
+      (list (if (stringp updated) updated "")
+            id
+            (and (stringp title) title)
+            snippet))))
+
+(defun harmless-session-search--hits (root query)
+  "Return hits under ROOT for QUERY.
+A directory that leaves ROOT is skipped."
+  (let (hits)
+    (when (and (file-directory-p root)
+               (harmless-session-search--inside-p root root))
+      (dolist (cwd-dir (directory-files root t directory-files-no-dot-files-regexp))
+        (when (and (file-directory-p cwd-dir)
+                   (harmless-session-search--inside-p root cwd-dir))
+          (dolist (sid-dir (directory-files
+                            cwd-dir t directory-files-no-dot-files-regexp))
+            (when (and (file-directory-p sid-dir)
+                       (harmless-session-search--inside-p root sid-dir))
+              (let ((hit (harmless-session-search--one sid-dir query)))
+                (when hit (push hit hits))))))))
+    hits))
+
+(defun harmless-session-search--format (hit)
+  "Return one recall block for HIT."
+  (let ((id (nth 1 hit))
+        (title (nth 2 hit))
+        (snippet (nth 3 hit)))
+    (concat id
+            (when (and (stringp title) (not (string-empty-p (string-trim title))))
+              (concat " — " (string-trim title)))
+            "\n"
+            snippet)))
+
+(defun harmless-session-search (query)
+  "Return a short recall of saved transcripts that contain QUERY.
+Nil, \"\", and whitespace return an empty recall.  A query that
+matches nothing returns an empty recall.  A value that is not text
+is refused.  The search reads transcripts under the Harmless data
+directory.  It does not load a session and it does not install
+that session's tools."
+  (cond
+   ((null query) "")
+   ((not (stringp query))
+    (error "session search query must be a string"))
+   (t
+    (let ((needle (string-trim query)))
+      (if (string-empty-p needle)
+          ""
+        (let* ((root (harmless-session-search--root))
+               (hits (harmless-session-search--hits root needle))
+               (ordered (sort hits
+                              (lambda (a b) (string> (car a) (car b)))))
+               (kept (seq-take ordered harmless-session-search-limit)))
+          (if kept
+              (mapconcat #'harmless-session-search--format kept "\n\n")
+            "")))))))
+
+(defun harmless-session-search--tool (_session args)
+  "Tool wrapper: search saved transcripts for ARGS' query."
+  (harmless-session-search (harmless-tool-arg args :query)))
+
+(harmless-register-tool
+ (harmless-tool-create
+  :name "session_search"
+  :description "Search saved transcripts on this machine and return a short recall. Nil, an empty query, and a query that matches nothing return an empty recall. The search does not load another session or its tools."
+  :class 'read
+  :schema '(:type "object"
+            :properties (:query (:type "string"
+                                 :description "Text to find in a saved transcript"))
+            :required ["query"])
+  :fn #'harmless-session-search--tool))
 
 (provide 'harmless-session)
 

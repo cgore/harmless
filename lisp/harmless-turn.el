@@ -237,6 +237,7 @@ project shell, or plan mode.  A subagent is not offered
                             "computer_type"
                             "list_sessions"
                             "memory_read"
+                            "session_search"
                             "memory_remember"
                             "memory_write_topic"
                             "send_message"
