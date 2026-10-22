@@ -1,4 +1,4 @@
-This is harmless.info, produced by .\texi2any version 7.3+nc from
+This is harmless.info, produced by texi2any version 7.3+nc from
 harmless.texi.
 
 Copyright © 2026 Christopher Mark Gore.
@@ -353,6 +353,23 @@ window is omitted and the prompt is sent unchanged.  A prompt that
 starts with ‘/name’ still loads that skill from the typed text.  The
 attachment is built first, so a refused reference does not load the
 skill.
+
+   Sending from a file buffer attaches that buffer.  The attachment
+names the buffer, the file, the major mode, the line and column at
+point, and whether the buffer is modified or narrowed.  The line is
+counted from the start of the buffer.  The column starts at 1.  An
+active region is included, cut at ‘harmless-read-file-max-bytes’ the
+same way ‘read_file’ cuts a file.  With no region, the attachment sends
+the line at point and the name ‘which-function’ can find.  A prompt sent
+from the transcript or the prompt window attaches the other window in
+the selected frame when that window shows a file buffer, and attaches no
+file when it does not.  A non-file buffer is named, with its major mode,
+and contributes no file text.  The minibuffer and a buffer whose name
+starts with a space are not attached.  ‘M-x harmless-steer’ from a file
+buffer attaches that buffer.  The typed text stays, and this attachment
+follows under ‘--- Attached Context ---’, after any ‘@’ references.  A
+file buffer and the transcript keep their text.  The prompt buffer is
+what gets cleared.
 
    ‘M-x harmless-steer’ reads a follow-up from the minibuffer and queues
 it without aborting the turn.  That includes while a permission question
@@ -3619,61 +3636,61 @@ Key Index
 
 
 Tag Table:
-Node: Top376
-Node: Introduction2617
-Node: Installation3350
-Node: Starting5240
-Node: Sessions5779
-Node: Transcript8960
-Node: Prompt12721
-Node: Permissions14822
-Node: Accounts23526
-Node: Models25884
-Node: Tools26980
-Node: File tools31691
-Node: Search37735
-Node: Shell39631
-Node: Checkpoints45366
-Node: Code execution49356
-Node: Questions52793
-Node: Subagents53572
-Node: Workflows57955
-Node: Worktrees62958
-Node: Messages66086
-Node: Web search68963
-Node: Fetch a page69820
-Node: X search71053
-Node: MCP73450
-Node: Computer use76154
-Node: Monitors78170
-Node: Schedules81174
-Node: Todos83640
-Node: Review86295
-Node: Language server89878
-Node: Instructions93065
-Node: Skills97587
-Node: Plugins101747
-Node: Output styles104599
-Node: Image generation106652
-Node: Headless108494
-Node: Pages111182
-Node: Team114019
-Node: Machines135098
-Node: People137965
-Node: Profiles140252
-Node: Health142908
-Node: Fleet144920
-Node: Scope145686
-Node: Context149694
-Node: Memory152829
-Node: Plan mode156568
-Node: Usage159554
-Node: Files160573
-Node: Keys164707
-Node: Trouble166418
-Node: Manual167672
-Node: Command Index168377
-Node: Key Index179028
+Node: Top374
+Node: Introduction2615
+Node: Installation3348
+Node: Starting5238
+Node: Sessions5777
+Node: Transcript8958
+Node: Prompt12719
+Node: Permissions15919
+Node: Accounts24623
+Node: Models26981
+Node: Tools28077
+Node: File tools32788
+Node: Search38832
+Node: Shell40728
+Node: Checkpoints46463
+Node: Code execution50453
+Node: Questions53890
+Node: Subagents54669
+Node: Workflows59052
+Node: Worktrees64055
+Node: Messages67183
+Node: Web search70060
+Node: Fetch a page70917
+Node: X search72150
+Node: MCP74547
+Node: Computer use77251
+Node: Monitors79267
+Node: Schedules82271
+Node: Todos84737
+Node: Review87392
+Node: Language server90975
+Node: Instructions94162
+Node: Skills98684
+Node: Plugins102844
+Node: Output styles105696
+Node: Image generation107749
+Node: Headless109591
+Node: Pages112279
+Node: Team115116
+Node: Machines136195
+Node: People139062
+Node: Profiles141349
+Node: Health144005
+Node: Fleet146017
+Node: Scope146783
+Node: Context150791
+Node: Memory153926
+Node: Plan mode157665
+Node: Usage160651
+Node: Files161670
+Node: Keys165804
+Node: Trouble167515
+Node: Manual168769
+Node: Command Index169474
+Node: Key Index180125
 
 End Tag Table
 

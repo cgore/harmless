@@ -63,6 +63,7 @@
 (require 'harmless-hook)
 (require 'harmless-usage)
 (require 'harmless-refs)
+(require 'harmless-editor)
 
 (declare-function harmless-memory-observe "harmless-memory" (session))
 
@@ -164,6 +165,23 @@ is aborted too.  Its summary is not recorded on SESSION."
   (harmless-session-set-status session 'idle)
   (harmless-emit session '(:error "aborted")))
 
+(defun harmless-turn--steer-text (item)
+  "Return the prompt text stored in steer ITEM."
+  (if (consp item) (car item) item))
+
+(defun harmless-turn--steer-note (item)
+  "Return the editor attachment stored in steer ITEM, or nil."
+  (when (consp item) (cdr item)))
+
+(defun harmless-turn--steer-item (text)
+  "Return TEXT queued with the editor attachment, when one was rendered.
+The attachment is the string in `harmless-editor-note' at send time.
+Point can move before a queued steer is delivered."
+  (if (and (stringp harmless-editor-note)
+           (not (string-empty-p harmless-editor-note)))
+      (cons text harmless-editor-note)
+    text))
+
 (defun harmless-turn-steer (session text)
   "Queue TEXT on SESSION without aborting a running turn.
 When SESSION is not streaming and not waiting on permission, start a
@@ -178,7 +196,8 @@ Return `queued' or `sent'."
               '(streaming waiting-permission))
         (progn
           (setf (harmless-session-steers session)
-                (append (harmless-session-steers session) (list text)))
+                (append (harmless-session-steers session)
+                        (list (harmless-turn--steer-item text))))
           'queued)
       (harmless-turn-run session text)
       'sent)))
@@ -187,8 +206,11 @@ Return `queued' or `sent'."
   "Append SESSION's queued follow-ups as user messages.
 Return non-nil when there was at least one."
   (let* ((texts (harmless-session-steers session))
-         (expanded (mapcar (lambda (text)
-                             (harmless-refs-expand session text))
+         (expanded (mapcar (lambda (item)
+                             (harmless-editor-join
+                              (harmless-refs-expand
+                               session (harmless-turn--steer-text item))
+                              (harmless-turn--steer-note item)))
                            texts)))
     (setf (harmless-session-steers session) nil)
     (dolist (text expanded)
@@ -199,14 +221,17 @@ Return non-nil when there was at least one."
   "Append user TEXT to SESSION and start the agent loop.
 @ references in TEXT are expanded first.  A prompt that starts
 with `/NAME' loads that skill from the typed text, so a refused
-reference does not load the skill.  When the last prompt fills
-the context window, older turns are summarized before the
-provider sees TEXT."
+reference does not load the skill.  `harmless-editor-note', when
+set by the send command, is appended after that expansion.  When
+the last prompt fills the context window, older turns are
+summarized before the provider sees TEXT."
   (when (memq (harmless-session-status session) '(streaming waiting-permission))
     (harmless-turn-abort session))
   (when (fboundp 'harmless-compact--validate-threshold)
     (harmless-compact--validate-threshold))
-  (let ((expanded (harmless-refs-expand session text)))
+  (let ((expanded (harmless-editor-join
+                   (harmless-refs-expand session text)
+                   harmless-editor-note)))
     (when (fboundp 'harmless-skill-prompt)
       (harmless-skill-prompt session text))
     (harmless-session-append-user session expanded)

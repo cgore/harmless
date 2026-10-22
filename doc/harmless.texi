@@ -412,6 +412,25 @@ prompt is sent unchanged.  A prompt that starts with @code{/name}
 still loads that skill from the typed text.  The attachment is
 built first, so a refused reference does not load the skill.
 
+Sending from a file buffer attaches that buffer.  The attachment
+names the buffer, the file, the major mode, the line and column at
+point, and whether the buffer is modified or narrowed.  The line is
+counted from the start of the buffer.  The column starts at 1.  An
+active region is included, cut at
+@code{harmless-read-file-max-bytes} the same way @code{read_file}
+cuts a file.  With no region, the attachment sends the line at
+point and the name @code{which-function} can find.  A prompt sent
+from the transcript or the prompt window attaches the other window
+in the selected frame when that window shows a file buffer, and
+attaches no file when it does not.  A non-file buffer is named,
+with its major mode, and contributes no file text.  The minibuffer
+and a buffer whose name starts with a space are not attached.
+@kbd{M-x harmless-steer} from a file buffer attaches that buffer.
+The typed text stays, and this attachment follows under
+@samp{--- Attached Context ---}, after any @code{@@} references.
+A file buffer and the transcript keep their text.  The prompt
+buffer is what gets cleared.
+
 @kbd{M-x harmless-steer} reads a follow-up from the minibuffer and
 queues it without aborting the turn.  That includes while a permission
 question is showing.  The same empty-prompt refusal applies.  A value

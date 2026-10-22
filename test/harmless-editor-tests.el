@@ -1,12 +1,24 @@
-;;; harmless-editor-tests.el --- Tests for visiting-buffer edits -*- lexical-binding: t; -*-
+;;; harmless-editor-tests.el --- Tests for editor integration -*- lexical-binding: t; -*-
 
 (require 'ert)
+(require 'cl-lib)
+(require 'dired)
 (require 'harmless-openai)
+(require 'harmless-provider)
 (require 'harmless-session)
 (require 'harmless-tools-fs)
 (require 'harmless-checkpoint)
+(require 'harmless-editor)
 (require 'harmless-ui)
 (require 'vc)
+
+(cl-defstruct (harmless-editor-fake
+               (:include harmless-provider)
+               (:constructor harmless-editor-make-fake)))
+
+(cl-defmethod harmless-provider-complete
+    ((_provider harmless-editor-fake) _messages _tools _callback)
+  nil)
 
 (defvar harmless--session)
 
@@ -74,6 +86,38 @@
   "Insert a bang at the end of the buffer."
   (goto-char (point-max))
   (insert "!"))
+
+(defun harmless-editor-test-chat (dir)
+  "Return a session at DIR whose provider does not open a connection."
+  (harmless-session-new
+   :cwd dir
+   :provider (harmless-editor-make-fake :name "fake" :host "none")
+   :model "m"))
+
+(defun harmless-editor-test-content (session)
+  "Return the last user message stored on SESSION."
+  (plist-get (car (last (harmless-session-messages session))) :content))
+
+(defmacro harmless-editor-test-bind (dir &rest body)
+  "Bind DIR, a temp data directory, and a buffer list, then run BODY.
+BODY may push onto `bufs'.  Nothing is written at the filesystem root."
+  (declare (indent 1))
+  `(let* ((,dir (make-temp-file "harmless-edit-" t))
+          (harmless-directory (expand-file-name ".harmless" ,dir))
+          (harmless--sessions (make-hash-table :test 'equal))
+          (harmless-providers nil)
+          (bufs nil))
+     (unwind-protect
+         (progn ,@body)
+       (harmless-editor-test-cleanup ,dir bufs))))
+
+(defmacro harmless-editor-test-no-write (&rest body)
+  "Run BODY and refuse any file write."
+  `(cl-letf (((symbol-function 'write-region)
+              (lambda (&rest _) (error "wrote a file")))
+             ((symbol-function 'write-file)
+              (lambda (&rest _) (error "wrote a file"))))
+     ,@body))
 
 (defun harmless-editor-test-cleanup (dir bufs)
   "Kill BUFS and delete DIR."
@@ -651,5 +695,299 @@
                          (harmless-tools-fs--read session '(:path "a.txt"))))
           (should (equal "baz bar baz" (harmless-editor-test-bytes path))))
       (harmless-editor-test-cleanup dir nil))))
+
+(ert-deftest harmless-editor-attaches-a-file-buffer ()
+  (harmless-editor-test-bind dir
+    (let* ((path (harmless-editor-test-file
+                  dir "a.el" "(defun hello ()\n  (message \"hi\"))\n"))
+           (buf (let ((default-directory dir))
+                  (find-file-noselect "a.el"))))
+      (push buf bufs)
+      (with-current-buffer buf
+        (setq-local require-final-newline nil)
+        (should (file-name-absolute-p buffer-file-name))
+        (should (equal buffer-file-name path))
+        (should-not (directory-name-p buffer-file-name))
+        (goto-char (point-min))
+        (forward-line 1)
+        (harmless-editor-test-no-write
+         (should (equal (format (concat "buffer: %s\nfile: %s\n"
+                                        "mode: emacs-lisp-mode\n"
+                                        "line: 2\ncolumn: 1\n"
+                                        "modified: no\nnarrowed: no\n"
+                                        "line-text:   (message \"hi\"))\n"
+                                        "function: hello")
+                                (buffer-name) path)
+                        (harmless-editor-note))))
+        (forward-char 2)
+        (should (string-search "\ncolumn: 3\n" (harmless-editor-note)))
+        (set-buffer-modified-p t)
+        (should (string-search "\nmodified: yes\n" (harmless-editor-note)))
+        (set-buffer-modified-p nil)
+        (goto-char (point-min))
+        (forward-line 1)
+        (narrow-to-region (point) (line-end-position))
+        (let ((note (harmless-editor-note)))
+          (should (string-search "\nline: 2\n" note))
+          (should (string-search "\nnarrowed: yes\n" note))
+          (should (string-search "line-text:   (message \"hi\"))" note)))
+        (transient-mark-mode 1)
+        (let ((use-empty-active-region nil))
+          (set-mark (point))
+          (activate-mark)
+          (let ((note (harmless-editor-note)))
+            (should (string-search "line-text:" note))
+            (should-not (string-search "\nregion:" note))))
+        (deactivate-mark)
+        (goto-char (line-beginning-position))
+        (set-mark (line-end-position))
+        (activate-mark)
+        (let* ((harmless-read-file-max-bytes 4)
+               (region (buffer-substring-no-properties
+                        (region-beginning) (region-end)))
+               (cut (harmless-tools-fs--text-window region nil nil))
+               (note (harmless-editor-note)))
+          (should (equal cut (concat (substring region 0 4) "\n[truncated]")))
+          (should (string-search (concat "region:\n" cut) note))
+          (should-not (string-search "line-text:" note))
+          (should (string-search "\ncolumn: 1\n" note)))
+        (deactivate-mark)
+        (widen)
+        (let ((indirect (clone-indirect-buffer "indirect-a" nil)))
+          (push indirect bufs)
+          (with-current-buffer indirect
+            (goto-char (point-min))
+            (forward-line 1)
+            (let ((note (harmless-editor-note)))
+              (should (string-search "buffer: indirect-a\n" note))
+              (should (string-search (format "file: %s\n" path) note))
+              (should (string-search "\nline: 2\n" note))
+              (should (string-search "\nfunction: hello" note)))))))))
+
+(ert-deftest harmless-editor-names-a-non-file-buffer ()
+  (harmless-editor-test-bind dir
+    (harmless-editor-test-file dir "SECRET.txt" "SECRET-BODY")
+    (let ((notes (get-buffer-create "notes"))
+          (hidden (get-buffer-create " hidden"))
+          (root (get-buffer-create "root-notes"))
+          (slash (file-name-as-directory dir)))
+      (push notes bufs)
+      (push hidden bufs)
+      (push root bufs)
+      (should (directory-name-p slash))
+      (with-current-buffer notes
+        (fundamental-mode)
+        (erase-buffer)
+        (insert "SECRET")
+        (harmless-editor-test-no-write
+         (should (equal "buffer: notes\nmode: fundamental-mode"
+                        (harmless-editor-note))))
+        (should-not (string-search "SECRET" (harmless-editor-note))))
+      (with-current-buffer hidden
+        (erase-buffer)
+        (insert "HIDDEN")
+        (should-not (harmless-editor-note)))
+      (with-current-buffer (window-buffer (minibuffer-window))
+        (should-not (harmless-editor-note)))
+      (with-current-buffer root
+        (fundamental-mode)
+        (erase-buffer)
+        (setq default-directory "/")
+        (insert "NOFILE")
+        (harmless-editor-test-no-write
+         (let ((note (harmless-editor-note)))
+           (should (equal "buffer: root-notes\nmode: fundamental-mode" note))
+           (should-not (string-search "NOFILE" note))
+           (should-not (string-search "file:" note)))))
+      (let ((dbuf (dired-noselect slash)))
+        (push dbuf bufs)
+        (with-current-buffer dbuf
+          (harmless-editor-test-no-write
+           (let ((note (harmless-editor-note)))
+             (should (equal (format "buffer: %s\nmode: %s"
+                                    (buffer-name) major-mode)
+                            note))
+             (should-not (string-search "file:" note))
+             (should-not (string-search "SECRET-BODY" note))
+             (should-not (string-search "line-text:" note)))))))))
+
+(ert-deftest harmless-editor-refuses-an-empty-prompt ()
+  (harmless-editor-test-bind dir
+    (let* ((path (harmless-editor-test-file dir "a.txt" "OLD\n"))
+           (buf (harmless-editor-test-visit path 'utf-8-unix))
+           (session (harmless-editor-test-chat dir)))
+      (push buf bufs)
+      (with-current-buffer buf
+        (setq harmless--session session)
+        (dolist (text (list nil "" " " "\t" "\n"))
+          (should (equal "Prompt is empty"
+                         (harmless-editor-test-signal
+                          (harmless-steer text)))))
+        (should (equal "Prompt is empty"
+                       (harmless-editor-test-signal
+                        (harmless-prompt-send)))))
+      (should-not (harmless-session-messages session))
+      (should-not (harmless-session-steers session))
+      (should (equal "OLD\n" (harmless-editor-test-text buf)))
+      (should (equal "OLD\n" (harmless-editor-test-bytes path))))))
+
+(ert-deftest harmless-editor-sends-the-attachment ()
+  (harmless-editor-test-bind dir
+    (let* ((path (harmless-editor-test-file dir "a.txt" "FIRST\nLAST\n"))
+           (buf (harmless-editor-test-visit path 'utf-8-unix))
+           (session (harmless-editor-test-chat dir))
+           (prompt (harmless-ui-ensure-prompt-buffer session))
+           (transcript (harmless-ui-ensure-session-buffer session)))
+      (push buf bufs)
+      (push prompt bufs)
+      (push transcript bufs)
+      (harmless-editor-test-file dir "b.txt" "alpha\n")
+      (with-current-buffer buf
+        (setq harmless--session session)
+        (goto-char (point-min))
+        (harmless-turn-run session "plain"))
+      (should (equal "plain" (harmless-editor-test-content session)))
+      (should (eq 'streaming (harmless-session-status session)))
+      (with-current-buffer buf
+        (goto-char (point-min))
+        (let ((note (harmless-editor-note)))
+          (should (string-search "line-text: FIRST" note))
+          (harmless-steer "please")
+          (should (equal (list (cons "please" note))
+                         (harmless-session-steers session)))
+          (goto-char (point-max))
+          (insert "MOVED")
+          (harmless-turn--take-steers session)
+          (should (equal (harmless-editor-join "please" note)
+                         (harmless-editor-test-content session)))
+          (should-not (string-search "MOVED"
+                                     (harmless-editor-test-content session)))))
+      (should (equal "FIRST\nLAST\nMOVED" (harmless-editor-test-text buf)))
+      (should (equal "FIRST\nLAST\n" (harmless-editor-test-bytes path)))
+      (with-current-buffer buf
+        (erase-buffer)
+        (insert "@file:missing.txt")
+        (goto-char (point-min))
+        (transient-mark-mode 1)
+        (set-mark (point-max))
+        (activate-mark)
+        (setf (harmless-session-status session) 'idle)
+        (harmless-steer "please")
+        (should (string-search "region:\n@file:missing.txt"
+                               (harmless-editor-test-content session)))
+        (should-not (string-search "context reference is missing"
+                                   (harmless-editor-test-content session)))
+        (deactivate-mark)
+        (let ((before (length (harmless-session-messages session))))
+          (setf (harmless-session-status session) 'idle)
+          (should (equal "context reference is missing"
+                         (harmless-editor-test-signal
+                          (harmless-steer "see @file:missing.txt"))))
+          (should (= before (length (harmless-session-messages session)))))
+        (erase-buffer)
+        (insert "FIRST\nLAST\n")
+        (set-buffer-modified-p nil)
+        (goto-char (point-min))
+        (setf (harmless-session-status session) 'idle)
+        (harmless-steer "see @file:b.txt")
+        (let ((content (harmless-editor-test-content session)))
+          (should (string-search "@file:b.txt\nalpha\n" content))
+          (should (string-search "\nbuffer: a.txt\n" content))
+          (should (string-search (format "file: %s\n" path) content))
+          (should (string-search harmless-refs-header content))))
+      (with-current-buffer prompt
+        (erase-buffer)
+        (insert "from-file"))
+      (with-current-buffer buf
+        (goto-char (point-min))
+        (setf (harmless-session-status session) 'idle)
+        (let ((note (harmless-editor-note)))
+          (harmless-prompt-send)
+          (should (equal (harmless-editor-join "from-file" note)
+                         (harmless-editor-test-content session)))))
+      (should (equal "FIRST\nLAST\n" (harmless-editor-test-text buf)))
+      (should (string-empty-p (with-current-buffer prompt (buffer-string))))
+      (should (equal "FIRST\nLAST\n" (harmless-editor-test-bytes path)))
+      (with-current-buffer prompt
+        (insert " \t"))
+      (with-current-buffer buf
+        (should (equal "Prompt is empty"
+                       (harmless-editor-test-signal
+                        (harmless-prompt-send))))
+        (should (equal "FIRST\nLAST\n" (buffer-string))))
+      (should (equal " \t" (with-current-buffer prompt (buffer-string))))
+      (delete-other-windows)
+      (let ((file-win (selected-window)))
+        (set-window-buffer file-win buf)
+        (with-current-buffer buf
+          (goto-char (point-max)))
+        (set-window-point file-win (with-current-buffer buf (point-min)))
+        (split-window-below)
+        (other-window 1)
+        (set-window-buffer (selected-window) prompt)
+        (with-current-buffer prompt
+          (erase-buffer)
+          (insert "from-prompt")
+          (setq harmless--session session)
+          (let ((note (harmless-editor-note)))
+            (should (string-search "\nline: 1\n" note))
+            (should (string-search "line-text: FIRST" note))
+            (should-not (string-search "line-text: LAST" note))
+            (setf (harmless-session-status session) 'idle)
+            (harmless-prompt-send)
+            (should (equal (harmless-editor-join "from-prompt" note)
+                           (harmless-editor-test-content session)))))
+        (should (equal "FIRST\nLAST\n" (harmless-editor-test-text buf)))
+        (should (string-empty-p (with-current-buffer prompt (buffer-string))))
+        (let ((notes (get-buffer-create "notes")))
+          (push notes bufs)
+          (with-current-buffer notes
+            (fundamental-mode)
+            (erase-buffer)
+            (insert "SECRET"))
+          (set-window-buffer (next-window nil nil (selected-frame)) notes)
+          (with-current-buffer prompt
+            (insert "named")
+            (should-not (harmless-editor-note))
+            (setf (harmless-session-status session) 'idle)
+            (harmless-prompt-send))
+          (should (equal "named" (harmless-editor-test-content session)))
+          (should (equal "SECRET" (with-current-buffer notes (buffer-string))))))
+      (delete-other-windows)
+      (set-window-buffer (selected-window) prompt)
+      (with-current-buffer prompt
+        (insert "alone")
+        (should-not (harmless-editor-note))
+        (setf (harmless-session-status session) 'idle)
+        (harmless-prompt-send))
+      (should (equal "alone" (harmless-editor-test-content session)))
+      (delete-other-windows)
+      (let ((file-win (selected-window)))
+        (set-window-buffer file-win buf)
+        (with-current-buffer buf
+          (goto-char (point-max)))
+        (set-window-point file-win (with-current-buffer buf (point-min)))
+        (split-window-below)
+        (other-window 1)
+        (set-window-buffer (selected-window) transcript)
+        (with-current-buffer transcript
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert "KEEP-TRANSCRIPT")))
+        (with-current-buffer prompt
+          (erase-buffer)
+          (insert "from-transcript"))
+        (with-current-buffer transcript
+          (let ((note (harmless-editor-note)))
+            (should (string-search "line-text: FIRST" note))
+            (should-not (string-search "line-text: LAST" note))
+            (setf (harmless-session-status session) 'idle)
+            (harmless-prompt-send)
+            (should (equal (harmless-editor-join "from-transcript" note)
+                           (harmless-editor-test-content session))))
+          (should (string-prefix-p "KEEP-TRANSCRIPT" (buffer-string))))
+        (should (equal "FIRST\nLAST\n" (harmless-editor-test-text buf)))
+        (should (string-empty-p (with-current-buffer prompt (buffer-string)))))
+      (should (equal "FIRST\nLAST\n" (harmless-editor-test-bytes path))))))
 
 (provide 'harmless-editor-tests)

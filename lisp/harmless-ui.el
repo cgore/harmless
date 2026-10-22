@@ -48,6 +48,7 @@
 (require 'harmless-session)
 (require 'harmless-tools)
 (require 'harmless-turn)
+(require 'harmless-editor)
 (require 'harmless-perm)
 (require 'harmless-md)
 
@@ -1209,31 +1210,54 @@ would swallow the following tool block into the streamed prose."
       (harmless-ui--perm-decide 'always)
     (self-insert-command 1)))
 
+(defun harmless-ui--permission-pending-p (source)
+  "Return non-nil when the current buffer or SOURCE is asking permission."
+  (or harmless--perm-callback
+      (and (buffer-live-p source)
+           (not (eq source (current-buffer)))
+           (with-current-buffer source
+             harmless--perm-callback))))
+
 (defun harmless-prompt-send ()
-  "Send the prompt buffer contents as the next user turn."
+  "Send the prompt buffer contents as the next user turn.
+A file buffer and the transcript keep their text.  The prompt
+buffer supplies the text, and the editor attachment is captured
+before that buffer is erased."
   (interactive)
-  (when harmless--perm-callback
-    (user-error "Finish the permission prompt first (y/n/!)"))
   (let* ((session harmless--session)
-         (text (string-trim (buffer-substring-no-properties (point-min) (point-max)))))
-    (when (and (string-empty-p text)
-               (not (and (fboundp 'harmless-media-pending-p)
-                         (harmless-media-pending-p session))))
-      (user-error "Prompt is empty"))
-    (erase-buffer)
-    (if (eq (harmless-session-status session) 'streaming)
-        (harmless-turn-steer session text)
-      (harmless-turn-run session text))))
+         (source (harmless-editor-prompt-source session)))
+    (when (harmless-ui--permission-pending-p source)
+      (user-error "Finish the permission prompt first (y/n/!)"))
+    (let* ((note (harmless-editor-note))
+           (text (if (buffer-live-p source)
+                     (with-current-buffer source
+                       (string-trim
+                        (buffer-substring-no-properties
+                         (point-min) (point-max))))
+                   "")))
+      (when (and (string-empty-p text)
+                 (not (and (fboundp 'harmless-media-pending-p)
+                           (harmless-media-pending-p session))))
+        (user-error "Prompt is empty"))
+      (when (buffer-live-p source)
+        (with-current-buffer source
+          (erase-buffer)))
+      (let ((harmless-editor-note note))
+        (if (eq (harmless-session-status session) 'streaming)
+            (harmless-turn-steer session text)
+          (harmless-turn-run session text))))))
 
 ;;;###autoload
 (defun harmless-steer (text)
   "Queue TEXT on the current session without aborting its turn.
 Nil, \"\", and whitespace are refused.  The minibuffer prompt works
 while a permission question is showing.  The follow-up is sent after
-the current tool batch, or after a reply that used no tools."
+the current tool batch, or after a reply that used no tools.  A
+file buffer current at the call is attached."
   (interactive "sSteer: ")
   (let ((session (or harmless--session
-                     (car (harmless-session-for-cwd (harmless-current-cwd))))))
+                     (car (harmless-session-for-cwd (harmless-current-cwd)))))
+        (harmless-editor-note (harmless-editor-note)))
     (unless session
       (user-error "No Harmless session"))
     (when (eq 'queued (harmless-turn-steer session text))
