@@ -911,6 +911,28 @@ edit.  An accepted edit snapshots the directory that contains the
 file when checkpoints are on, after the edit is accepted and before
 the file changes.  @xref{Checkpoints}.
 
+When a buffer visits the file, @code{read_file} returns that
+buffer's accessible text.  Unsaved text ends with @samp{[unsaved]}.
+Narrowed text ends with @samp{[narrowed]}.  The read records the
+buffer.  @code{write_file}, @code{replace}, and @code{apply_patch}
+then change that buffer as one undo entry and save it.  The saved
+bytes use the buffer's coding system and newline convention.  A
+window that already shows the buffer moves to the first change, and
+the selected window stays selected.  @code{vc} is refreshed after
+the save.  A file that no buffer is visiting is still read and
+written directly.  An indirect buffer is edited through its base
+buffer.  Narrowing is restored when the tool returns, and the report
+says @samp{buffer was narrowed}.
+
+A buffer that changed after it was read is refused, and the file is
+left as it was: @samp{buffer changed since it was read}.  A
+read-only buffer, or read-only text inside the replacement, is
+refused: @samp{buffer is read-only}.  The transcript, the prompt,
+the minibuffer, and a buffer whose name starts with a space are
+refused: @samp{buffer is not a file}.  A @code{before-save-hook} or
+@code{after-save-hook} that signals restores the buffer text and is
+refused: @samp{buffer save failed: }, followed by that message.
+
 In plan mode, @code{write_file}, @code{replace}, @code{apply_patch},
 and @code{notebook_edit} fail.  The model must write @file{plan.md}
 with @code{write_plan}.

@@ -792,6 +792,27 @@ harmless-add-directory’.
      file when checkpoints are on, after the edit is accepted and before
      the file changes.  *Note Checkpoints::.
 
+     When a buffer visits the file, ‘read_file’ returns that buffer's
+     accessible text.  Unsaved text ends with ‘[unsaved]’.  Narrowed
+     text ends with ‘[narrowed]’.  The read records the buffer.
+     ‘write_file’, ‘replace’, and ‘apply_patch’ then change that buffer
+     as one undo entry and save it.  The saved bytes use the buffer's
+     coding system and newline convention.  A window that already shows
+     the buffer moves to the first change, and the selected window stays
+     selected.  ‘vc’ is refreshed after the save.  A file that no buffer
+     is visiting is still read and written directly.  An indirect buffer
+     is edited through its base buffer.  Narrowing is restored when the
+     tool returns, and the report says ‘buffer was narrowed’.
+
+     A buffer that changed after it was read is refused, and the file is
+     left as it was: ‘buffer changed since it was read’.  A read-only
+     buffer, or read-only text inside the replacement, is refused:
+     ‘buffer is read-only’.  The transcript, the prompt, the minibuffer,
+     and a buffer whose name starts with a space are refused: ‘buffer is
+     not a file’.  A ‘before-save-hook’ or ‘after-save-hook’ that
+     signals restores the buffer text and is refused: ‘buffer save
+     failed: ’, followed by that message.
+
      In plan mode, ‘write_file’, ‘replace’, ‘apply_patch’, and
      ‘notebook_edit’ fail.  The model must write ‘plan.md’ with
      ‘write_plan’.  *Note Plan mode::.
@@ -3610,49 +3631,49 @@ Node: Accounts23526
 Node: Models25884
 Node: Tools26980
 Node: File tools31691
-Node: Search36376
-Node: Shell38272
-Node: Checkpoints44007
-Node: Code execution47997
-Node: Questions51434
-Node: Subagents52213
-Node: Workflows56596
-Node: Worktrees61599
-Node: Messages64727
-Node: Web search67604
-Node: Fetch a page68461
-Node: X search69694
-Node: MCP72091
-Node: Computer use74795
-Node: Monitors76811
-Node: Schedules79815
-Node: Todos82281
-Node: Review84936
-Node: Language server88519
-Node: Instructions91706
-Node: Skills96228
-Node: Plugins100388
-Node: Output styles103240
-Node: Image generation105293
-Node: Headless107135
-Node: Pages109823
-Node: Team112660
-Node: Machines133739
-Node: People136606
-Node: Profiles138893
-Node: Health141549
-Node: Fleet143561
-Node: Scope144327
-Node: Context148335
-Node: Memory151470
-Node: Plan mode155209
-Node: Usage158195
-Node: Files159214
-Node: Keys163348
-Node: Trouble165059
-Node: Manual166313
-Node: Command Index167018
-Node: Key Index177669
+Node: Search37735
+Node: Shell39631
+Node: Checkpoints45366
+Node: Code execution49356
+Node: Questions52793
+Node: Subagents53572
+Node: Workflows57955
+Node: Worktrees62958
+Node: Messages66086
+Node: Web search68963
+Node: Fetch a page69820
+Node: X search71053
+Node: MCP73450
+Node: Computer use76154
+Node: Monitors78170
+Node: Schedules81174
+Node: Todos83640
+Node: Review86295
+Node: Language server89878
+Node: Instructions93065
+Node: Skills97587
+Node: Plugins101747
+Node: Output styles104599
+Node: Image generation106652
+Node: Headless108494
+Node: Pages111182
+Node: Team114019
+Node: Machines135098
+Node: People137965
+Node: Profiles140252
+Node: Health142908
+Node: Fleet144920
+Node: Scope145686
+Node: Context149694
+Node: Memory152829
+Node: Plan mode156568
+Node: Usage159554
+Node: Files160573
+Node: Keys164707
+Node: Trouble166418
+Node: Manual167672
+Node: Command Index168377
+Node: Key Index179028
 
 End Tag Table
 

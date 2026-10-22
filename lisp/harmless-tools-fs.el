@@ -38,8 +38,9 @@
 ;;
 ;; read_file, write_file, replace, apply_patch, list_dir, grep, glob.
 ;; Paths must stay inside the session cwd or a directory added with
-;; `harmless-add-directory'.  apply_patch writes nothing when any hunk
-;; fails.  grep uses ripgrep, then ag, then an Elisp scan.
+;; `harmless-add-directory'.  A buffer visiting the file is read and
+;; edited in place, then saved.  apply_patch writes nothing when any
+;; hunk fails.  grep uses ripgrep, then ag, then an Elisp scan.
 
 ;;; Code:
 
@@ -244,6 +245,208 @@ PATH may stay inside the project or an extra directory."
     (with-current-buffer buf
       (revert-buffer t t t))))
 
+(defvar-local harmless-tools-fs--read-tick nil
+  "Character tick of this buffer at the last `read_file'.
+Nil means the tools have not read the buffer.  A later edit refuses
+when the tick has moved.")
+
+(defun harmless-tools-fs--unusable-buffer-p (buf)
+  "Return non-nil if BUF must not be read or edited as a project file."
+  (or (minibufferp buf)
+      (with-current-buffer buf
+        (or (derived-mode-p 'harmless-session-mode 'harmless-prompt-mode)
+            (and (stringp (buffer-name))
+                 (not (string-empty-p (buffer-name)))
+                 (eq (aref (buffer-name) 0) ?\s))))))
+
+(defun harmless-tools-fs--file-buffer (path)
+  "Return the base buffer visiting PATH, or nil.
+An indirect buffer is returned as its base.  The transcript, the
+prompt, the minibuffer, and a buffer whose name starts with a space
+signal \"buffer is not a file\"."
+  (let ((buf (and (stringp path) (find-buffer-visiting path))))
+    (when (buffer-live-p buf)
+      (setq buf (or (buffer-base-buffer buf) buf))
+      (when (harmless-tools-fs--unusable-buffer-p buf)
+        (error "buffer is not a file"))
+      buf)))
+
+(defun harmless-tools-fs--note (narrowed)
+  "Return the report suffix when NARROWED is non-nil."
+  (if narrowed " buffer was narrowed" ""))
+
+(defun harmless-tools-fs--annotate (text modified narrowed)
+  "Return TEXT plus unsaved and narrowed markers."
+  (when modified
+    (setq text (concat text "\n[unsaved]")))
+  (when narrowed
+    (setq text (concat text "\n[narrowed]")))
+  text)
+
+(defun harmless-tools-fs--text-window (text offset limit)
+  "Return TEXT from line OFFSET for LIMIT lines, then apply the cap."
+  (with-temp-buffer
+    (insert (or text ""))
+    (when (and offset (numberp offset) (> offset 1))
+      (goto-char (point-min))
+      (forward-line (1- offset))
+      (delete-region (point-min) (point)))
+    (when (and limit (numberp limit) (> limit 0))
+      (goto-char (point-min))
+      (forward-line limit)
+      (delete-region (point) (point-max)))
+    (when (> (buffer-size) harmless-read-file-max-bytes)
+      (goto-char (1+ harmless-read-file-max-bytes))
+      (delete-region (point) (point-max))
+      (goto-char (point-max))
+      (insert "\n[truncated]"))
+    (buffer-string)))
+
+(defun harmless-tools-fs--refuse-read-only (start end)
+  "Signal when the current buffer, or START to END, is read-only."
+  (when (or buffer-read-only
+            (and (integerp start) (integerp end) (< start end)
+                 (text-property-not-all start end 'read-only nil)))
+    (error "buffer is read-only")))
+
+(defun harmless-tools-fs--file-bytes (path)
+  "Return the raw bytes of PATH, or nil when it is not a file."
+  (when (and (stringp path) (file-regular-p path))
+    (with-temp-buffer
+      (set-buffer-multibyte nil)
+      (insert-file-contents-literally path)
+      (buffer-string))))
+
+(defun harmless-tools-fs--restore-file (path bytes existed)
+  "Put PATH back to BYTES.  Delete it when EXISTED is nil."
+  (if (not existed)
+      (when (and (stringp path) (file-exists-p path))
+        (delete-file path))
+    (when (and (stringp path) bytes
+               (not (equal bytes (harmless-tools-fs--file-bytes path))))
+      (let ((coding-system-for-write 'no-conversion))
+        (write-region bytes nil path nil 'silent)))))
+
+(defun harmless-tools-fs--restore-narrow (narrowed start end)
+  "Restore a narrowing from START to END when NARROWED is non-nil."
+  (if (not narrowed)
+      (widen)
+    (let ((beg (max (point-min) (min start (point-max))))
+          (tail (max (point-min) (min end (point-max)))))
+      (if (< beg tail)
+          (narrow-to-region beg tail)
+        (widen)))))
+
+(defun harmless-tools-fs--show-change (buf pos)
+  "Move windows that show BUF to POS.  The selected window stays selected."
+  (when (and (buffer-live-p buf) (integerp pos))
+    (dolist (win (get-buffer-window-list buf nil t))
+      (when (window-live-p win)
+        (set-window-point win (with-current-buffer buf
+                                (max (point-min) (min pos (point-max)))))))))
+
+(declare-function vc-backend "vc-hooks" (file))
+(declare-function vc-refresh-state "vc-hooks" ())
+
+(defun harmless-tools-fs--refresh-vc (buf)
+  "Refresh VC state for BUF after a save."
+  (when (and (require 'vc nil t) (buffer-live-p buf))
+    (with-current-buffer buf
+      (when (and buffer-file-name (vc-backend buffer-file-name))
+        (condition-case nil
+            (vc-refresh-state)
+          (error nil))))))
+
+(defun harmless-tools-fs--ensure-current-editable ()
+  "Signal when this buffer changed after a read or is read-only."
+  (when (and (numberp harmless-tools-fs--read-tick)
+             (/= harmless-tools-fs--read-tick
+                 (buffer-chars-modified-tick)))
+    (error "buffer changed since it was read"))
+  (when buffer-read-only
+    (error "buffer is read-only")))
+
+(defun harmless-tools-fs--ensure-buffer-writable (buf &optional spans)
+  "Signal when BUF must not be edited.
+SPANS is a list of (BEG . END) in the widened buffer.  With no
+spans, the whole widened buffer is checked for read-only text."
+  (with-current-buffer buf
+    (harmless-tools-fs--ensure-current-editable)
+    (save-restriction
+      (widen)
+      (if spans
+          (dolist (span spans)
+            (harmless-tools-fs--refuse-read-only (car span) (cdr span)))
+        (harmless-tools-fs--refuse-read-only (point-min) (point-max))))))
+
+(defun harmless-tools-fs--edit-buffer (buf mutator)
+  "Apply MUTATOR in BUF as one undo entry and save BUF.
+MUTATOR runs widened and returns the position of the first change.
+Return (POS . NARROWED).  A save hook that signals restores the
+buffer and the file and signals \"buffer save failed:\"."
+  (with-current-buffer buf
+    (harmless-tools-fs--ensure-current-editable)
+    ;; A command loop would have done this.  Keep the tool's edit one
+    ;; undo entry behind the buffer's earlier edits.
+    (undo-boundary)
+    (let* ((narrowed (buffer-narrowed-p))
+           (start (point-min))
+           (end (point-max))
+           (modified (buffer-modified-p))
+           (tick harmless-tools-fs--read-tick)
+           (path buffer-file-name)
+           (existed (and path (file-exists-p path)))
+           (bytes (and existed (harmless-tools-fs--file-bytes path)))
+           (handle (prepare-change-group buf))
+           (settled nil)
+           (pos nil))
+      (activate-change-group handle)
+      (unwind-protect
+          (progn
+            (widen)
+            (setq pos (funcall mutator))
+            (condition-case err
+                ;; `save-buffer' demotes a `before-save-hook' error.
+                ;; Run both save hooks here so a signal refuses the edit.
+                (let ((before before-save-hook)
+                      (after after-save-hook))
+                  (let ((before-save-hook nil)
+                        (after-save-hook nil))
+                    (setq before-save-hook before)
+                    (run-hooks 'before-save-hook)
+                    (setq before-save-hook nil)
+                    (if buffer-file-coding-system
+                        (let ((coding-system-for-write
+                               buffer-file-coding-system))
+                          (save-buffer))
+                      (save-buffer))
+                    (setq after-save-hook after)
+                    (run-hooks 'after-save-hook)))
+              (error
+               (ignore-errors (cancel-change-group handle))
+               (setq settled t)
+               (set-buffer-modified-p modified)
+               (when (numberp tick)
+                 (setq harmless-tools-fs--read-tick
+                       (buffer-chars-modified-tick)))
+               (harmless-tools-fs--restore-narrow narrowed start end)
+               (harmless-tools-fs--restore-file path bytes existed)
+               (error "buffer save failed: %s" (error-message-string err))))
+            (accept-change-group handle)
+            (setq settled t)
+            (undo-amalgamate-change-group handle)
+            (setq harmless-tools-fs--read-tick (buffer-chars-modified-tick))
+            (harmless-tools-fs--restore-narrow narrowed start end)
+            (harmless-tools-fs--refresh-vc buf)
+            (harmless-tools-fs--show-change buf pos)
+            (cons pos narrowed))
+        (unless settled
+          (ignore-errors (cancel-change-group handle))
+          (set-buffer-modified-p modified)
+          (when (numberp tick)
+            (setq harmless-tools-fs--read-tick (buffer-chars-modified-tick)))
+          (harmless-tools-fs--restore-narrow narrowed start end))))))
+
 (defun harmless-tools-fs-diff (old new path)
   "Return a unified diff string from OLD to NEW labeled as PATH."
   (let ((a (make-temp-file "harmless-old"))
@@ -268,28 +471,28 @@ PATH may stay inside the project or an extra directory."
 
 (defun harmless-tools-fs--read-resolved (session path args)
   "Return the text of PATH for SESSION.
-ARGS supplies the optional line offset and limit."
+ARGS supplies the optional line offset and limit.  A visiting
+buffer supplies its accessible text, labeled when it is unsaved
+or narrowed."
   (ignore session)
-  (let ((offset (harmless-tool-arg args :offset))
+  (let ((buf (harmless-tools-fs--file-buffer path))
+        (offset (harmless-tool-arg args :offset))
         (limit (harmless-tool-arg args :limit)))
-    (unless (file-readable-p path)
-      (error "Cannot read %s" path))
-    (with-temp-buffer
-      (insert-file-contents path)
-      (when (and offset (numberp offset) (> offset 1))
-        (goto-char (point-min))
-        (forward-line (1- offset))
-        (delete-region (point-min) (point)))
-      (when (and limit (numberp limit) (> limit 0))
-        (goto-char (point-min))
-        (forward-line limit)
-        (delete-region (point) (point-max)))
-      (when (> (buffer-size) harmless-read-file-max-bytes)
-        (goto-char (1+ harmless-read-file-max-bytes))
-        (delete-region (point) (point-max))
-        (goto-char (point-max))
-        (insert "\n[truncated]"))
-      (buffer-string))))
+    (if (not buf)
+        (progn
+          (unless (file-readable-p path)
+            (error "Cannot read %s" path))
+          (with-temp-buffer
+            (insert-file-contents path)
+            (harmless-tools-fs--text-window (buffer-string) offset limit)))
+      (with-current-buffer buf
+        (let ((text (buffer-substring-no-properties (point-min) (point-max)))
+              (modified (buffer-modified-p))
+              (narrowed (buffer-narrowed-p)))
+          (setq harmless-tools-fs--read-tick (buffer-chars-modified-tick))
+          (harmless-tools-fs--annotate
+           (harmless-tools-fs--text-window text offset limit)
+           modified narrowed))))))
 
 (defun harmless-tools-fs--read (session args)
   "read_file implementation.
@@ -314,17 +517,66 @@ when that feature is loaded.  Other files stay text."
   (let* ((path (harmless-tools-fs-resolve session (harmless-tool-arg args :path)))
          (contents (or (harmless-tool-arg args :contents)
                        (harmless-tool-arg args :content)
-                       "")))
-    (when (fboundp 'harmless-checkpoint-before)
-      (harmless-checkpoint-before session path))
-    (let ((parent (file-name-directory path)))
-      ;; / already exists.  Refusing to create it must not block a file
-      ;; whose project really is the filesystem root.
-      (unless (and parent (file-directory-p parent))
-        (harmless-ensure-directory parent)))
-    (write-region contents nil path nil 'silent)
-    (harmless-tools-fs-revert-visiting path)
-    (format "Wrote %s (%d bytes)" path (string-bytes contents))))
+                       ""))
+         (buf (harmless-tools-fs--file-buffer path)))
+    (unless (stringp contents)
+      (setq contents (format "%s" contents)))
+    (when buf
+      (harmless-tools-fs--ensure-buffer-writable buf))
+    (if (not buf)
+        (let ((parent (file-name-directory path)))
+          ;; / already exists.  Refusing to create it must not block a file
+          ;; whose project really is the filesystem root.
+          (unless (and parent (file-directory-p parent))
+            (harmless-ensure-directory parent))
+          (when (fboundp 'harmless-checkpoint-before)
+            (harmless-checkpoint-before session path))
+          (write-region contents nil path nil 'silent)
+          (format "Wrote %s (%d bytes)" path (string-bytes contents)))
+      (when (fboundp 'harmless-checkpoint-before)
+        (harmless-checkpoint-before session path))
+      (let ((narrowed (cdr (harmless-tools-fs--edit-buffer
+                            buf
+                            (lambda ()
+                              (harmless-tools-fs--refuse-read-only
+                               (point-min) (point-max))
+                              (erase-buffer)
+                              (insert contents)
+                              (point-min))))))
+        (format "Wrote %s (%d bytes)%s"
+                path
+                (with-current-buffer buf
+                  (save-restriction
+                    (widen)
+                    (string-bytes (buffer-string))))
+                (harmless-tools-fs--note narrowed))))))
+
+(defun harmless-tools-fs--buffer-text (buf)
+  "Return BUF's full text, widened."
+  (with-current-buffer buf
+    (save-restriction
+      (widen)
+      (buffer-substring-no-properties (point-min) (point-max)))))
+
+(defun harmless-tools-fs--source-text (path)
+  "Return the text an edit should change for PATH.
+A visiting buffer supplies its widened text and refuses a buffer
+that changed after it was read.  Otherwise the file is read."
+  (let ((buf (harmless-tools-fs--file-buffer path)))
+    (if (not buf)
+        (progn
+          (unless (and (file-regular-p path) (file-readable-p path))
+            (error "Cannot read %s" path))
+          (cons nil
+                (with-temp-buffer
+                  (insert-file-contents path)
+                  (buffer-string))))
+      (with-current-buffer buf
+        (when (and (numberp harmless-tools-fs--read-tick)
+                   (/= harmless-tools-fs--read-tick
+                       (buffer-chars-modified-tick)))
+          (error "buffer changed since it was read"))
+        (cons buf (harmless-tools-fs--buffer-text buf))))))
 
 (defun harmless-tools-fs--replace (session args)
   "replace implementation (unique old_string -> new_string)."
@@ -335,18 +587,18 @@ when that feature is loaded.  Other files stay text."
          (replace-all (harmless-tool-arg args :replace_all)))
     (unless (and old (not (string-empty-p old)))
       (error "old_string is empty"))
-    (unless (file-readable-p path)
-      (error "Cannot read %s" path))
-    (let* ((original (with-temp-buffer
-                       (insert-file-contents path)
-                       (buffer-string)))
+    (let* ((source (harmless-tools-fs--source-text path))
+           (buf (car source))
+           (original (cdr source))
            (all (harmless-json-true-p replace-all))
            (count 0)
            (start 0)
+           (first nil)
            pos
            out)
       (while (setq pos (string-search old original start))
         (setq count (1+ count)
+              first (or first pos)
               start (+ pos (max 1 (length old)))))
       (when (= count 0)
         (error "old_string not found in %s" path))
@@ -354,16 +606,49 @@ when that feature is loaded.  Other files stay text."
         (error "old_string matched %d times in %s; pass replace_all or a unique string"
                count path))
       (setq out (if all
-                    (replace-regexp-in-string (regexp-quote old) new original t t)
-                  (let ((at (string-search old original)))
-                    (concat (substring original 0 at)
-                            new
-                            (substring original (+ at (length old)))))))
-      (when (fboundp 'harmless-checkpoint-before)
-        (harmless-checkpoint-before session path))
-      (write-region out nil path nil 'silent)
-      (harmless-tools-fs-revert-visiting path)
-      (format "Replaced %d occurrence(s) in %s" count path))))
+                    (replace-regexp-in-string
+                     (regexp-quote old) new original t t)
+                  (concat (substring original 0 first)
+                          new
+                          (substring original (+ first (length old))))))
+      (let ((spans (if all
+                       (let ((found nil)
+                             (from 0)
+                             at)
+                         (while (setq at (string-search old original from))
+                           (push at found)
+                           (setq from (+ at (max 1 (length old)))))
+                         (nreverse found))
+                     (list first))))
+        (when buf
+          (harmless-tools-fs--ensure-buffer-writable
+           buf
+           (mapcar (lambda (at)
+                     (cons (1+ at) (+ 1 at (length old))))
+                   spans)))
+        (when (fboundp 'harmless-checkpoint-before)
+          (harmless-checkpoint-before session path))
+        (if (not buf)
+            (progn
+              (write-region out nil path nil 'silent)
+              (format "Replaced %d occurrence(s) in %s" count path))
+          (let ((narrowed (cdr (harmless-tools-fs--edit-buffer
+                                buf
+                                (lambda ()
+                                  (condition-case nil
+                                      (dolist (at (reverse spans))
+                                        (let ((beg (1+ at))
+                                              (end (+ 1 at (length old))))
+                                          (harmless-tools-fs--refuse-read-only
+                                           beg end)
+                                          (goto-char beg)
+                                          (delete-region beg end)
+                                          (insert new)))
+                                    (text-read-only
+                                     (error "buffer is read-only")))
+                                  (1+ first))))))
+            (format "Replaced %d occurrence(s) in %s%s"
+                    count path (harmless-tools-fs--note narrowed))))))))
 
 (defun harmless-tools-fs--hunk-list (args)
   "Return the hunks from ARGS, or signal when none were given.
@@ -401,13 +686,113 @@ PATH and N identify the hunk in an error.  OLD must occur once."
                 new
                 (substring text (+ at (length old))))))))
 
+(defun harmless-tools-fs--snapshot (path buf)
+  "Return the state of PATH and BUF before an edit."
+  (let ((existed (and (stringp path) (file-regular-p path))))
+    (list :path path
+          :existed existed
+          :bytes (and existed (harmless-tools-fs--file-bytes path))
+          :buf (and (buffer-live-p buf) buf)
+          :modified (and (buffer-live-p buf)
+                         (with-current-buffer buf (buffer-modified-p)))
+          :tick (and (buffer-live-p buf)
+                     (with-current-buffer buf harmless-tools-fs--read-tick))
+          :narrowed (and (buffer-live-p buf)
+                         (with-current-buffer buf (buffer-narrowed-p)))
+          :start (and (buffer-live-p buf)
+                      (with-current-buffer buf (point-min)))
+          :end (and (buffer-live-p buf)
+                    (with-current-buffer buf (point-max)))
+          :text (and (buffer-live-p buf)
+                     (harmless-tools-fs--buffer-text buf)))))
+
+(defun harmless-tools-fs--rollback (snaps)
+  "Restore SNAPS taken before a patch.
+A buffer the failing edit already restored is left as it is."
+  (dolist (snap snaps)
+    (let ((buf (plist-get snap :buf))
+          (text (plist-get snap :text)))
+      (when (buffer-live-p buf)
+        (with-current-buffer buf
+          (unless (equal text (harmless-tools-fs--buffer-text buf))
+            (save-restriction
+              (widen)
+              (when (listp buffer-undo-list)
+                (setq buffer-undo-list
+                      (primitive-undo 1 buffer-undo-list)))))
+          (unless (equal text (harmless-tools-fs--buffer-text buf))
+            (let ((buffer-undo-list t)
+                  (inhibit-read-only t))
+              (save-restriction
+                (widen)
+                (erase-buffer)
+                (insert (or text "")))))
+          (set-buffer-modified-p (plist-get snap :modified))
+          (when (numberp (plist-get snap :tick))
+            (setq harmless-tools-fs--read-tick
+                  (buffer-chars-modified-tick)))
+          (harmless-tools-fs--restore-narrow
+           (plist-get snap :narrowed)
+           (plist-get snap :start)
+           (plist-get snap :end))))
+      (harmless-tools-fs--restore-file
+       (plist-get snap :path)
+       (plist-get snap :bytes)
+       (plist-get snap :existed)))))
+
+(defun harmless-tools-fs--refuse-hunk-text (buf hunks)
+  "Signal when a hunk in HUNKS would edit read-only text in BUF.
+HUNKS are (OLD . NEW) in application order."
+  (with-current-buffer buf
+    (save-restriction
+      (widen)
+      (let ((text (buffer-substring-no-properties (point-min) (point-max))))
+        (dolist (hunk hunks)
+          (let ((at (string-search (car hunk) text)))
+            (when at
+              (harmless-tools-fs--refuse-read-only
+               (1+ at) (+ 1 at (length (car hunk))))
+              (setq text (concat (substring text 0 at)
+                                 (cdr hunk)
+                                 (substring text
+                                            (+ at (length (car hunk)))))))))))))
+
+(defun harmless-tools-fs--install-hunks (buf hunks)
+  "Apply HUNKS in BUF as one undo entry and save BUF.
+Each hunk is (OLD . NEW).  Return (POS . NARROWED)."
+  (harmless-tools-fs--edit-buffer
+   buf
+   (lambda ()
+     (let ((first nil)
+           (case-fold-search nil))
+       (condition-case nil
+           (dolist (hunk hunks)
+             (goto-char (point-min))
+             (unless (search-forward (car hunk) nil t)
+               (error "old_string not found in %s" (or buffer-file-name "")))
+             (let ((beg (match-beginning 0))
+                   (end (match-end 0)))
+               (harmless-tools-fs--refuse-read-only beg end)
+               (unless first
+                 (setq first beg))
+               (goto-char beg)
+               (delete-region beg end)
+               (insert (cdr hunk))))
+         (text-read-only
+          (error "buffer is read-only")))
+       (or first (point-min))))))
+
 (defun harmless-tools-fs--apply-patch (session args)
   "apply_patch implementation.
 Each hunk replaces one unique string.  Later hunks on the same file
-see earlier replacements.  Nothing is written if any hunk fails."
+see earlier replacements.  Nothing is written if any hunk fails.
+A visiting buffer is edited as one undo entry and saved.  A save
+that fails restores every file this patch already wrote."
   (harmless-tools-fs--reject-plan-edit session)
   (let ((hunks (harmless-tools-fs--hunk-list args))
         (texts (make-hash-table :test 'equal))
+        (buffers (make-hash-table :test 'equal))
+        (edits (make-hash-table :test 'equal))
         (counts (make-hash-table :test 'equal))
         (order nil)
         (n 0))
@@ -425,33 +810,59 @@ see earlier replacements.  Nothing is written if any hunk fails."
         (when (null new)
           (setq new ""))
         (unless (gethash path texts)
-          (unless (and (file-regular-p path) (file-readable-p path))
-            (error "hunk %d: Cannot read %s" n path))
-          (puthash path
-                   (with-temp-buffer
-                     (insert-file-contents path)
-                     (buffer-string))
-                   texts)
-          (push path order)
-          (puthash path 0 counts))
+          (let* ((source (condition-case err
+                             (harmless-tools-fs--source-text path)
+                           (error
+                            (let ((msg (error-message-string err)))
+                              (if (member msg
+                                          '("buffer is not a file"
+                                            "buffer changed since it was read"
+                                            "buffer is read-only"))
+                                  (error "%s" msg)
+                                (error "hunk %d: %s" n msg))))))
+                 (buf (car source)))
+            (puthash path (cdr source) texts)
+            (puthash path buf buffers)
+            (push path order)
+            (puthash path 0 counts)))
         (puthash path
                  (harmless-tools-fs--replace-once
                   (gethash path texts) old new path n)
                  texts)
+        (push (cons old new) (gethash path edits))
         (puthash path (1+ (gethash path counts)) counts)))
     (setq order (nreverse order))
+    (dolist (path order)
+      (puthash path (nreverse (gethash path edits)) edits)
+      (let ((buf (gethash path buffers)))
+        (when buf
+          (with-current-buffer buf
+            (harmless-tools-fs--ensure-current-editable))
+          (harmless-tools-fs--refuse-hunk-text buf (gethash path edits)))))
     (when (fboundp 'harmless-checkpoint-before)
       (dolist (path order)
         (harmless-checkpoint-before session path)))
-    (dolist (path order)
-      (write-region (gethash path texts) nil path nil 'silent)
-      (harmless-tools-fs-revert-visiting path))
-    (format "Applied %d hunk%s in %s"
-            n
-            (if (= n 1) "" "s")
-            (mapconcat (lambda (path)
-                         (format "%s (%d)" path (gethash path counts)))
-                       order ", "))))
+    (let ((snaps nil)
+          (narrowed nil))
+      (condition-case err
+          (dolist (path order)
+            (let ((buf (gethash path buffers)))
+              (push (harmless-tools-fs--snapshot path buf) snaps)
+              (if (not buf)
+                  (write-region (gethash path texts) nil path nil 'silent)
+                (when (cdr (harmless-tools-fs--install-hunks
+                            buf (gethash path edits)))
+                  (setq narrowed t)))))
+        (error
+         (harmless-tools-fs--rollback snaps)
+         (error "%s" (error-message-string err))))
+      (format "Applied %d hunk%s in %s%s"
+              n
+              (if (= n 1) "" "s")
+              (mapconcat (lambda (path)
+                           (format "%s (%d)" path (gethash path counts)))
+                         order ", ")
+              (harmless-tools-fs--note narrowed)))))
 
 (defun harmless-tools-fs--list (session args)
   "list_dir implementation."
