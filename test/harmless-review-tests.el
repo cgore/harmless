@@ -248,7 +248,7 @@
            (cadr case)
            (lambda () (harmless-review-run session (car case)))))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "review")
+                        (harmless-tool-by-name "harmless-tool-review")
                         session '(:base "/"))
                        "Error: review base is not a branch"))
         (dolist (bad (list nil "" "  " "notes" "sub/" "/" "c:/" "d:/"
@@ -460,7 +460,7 @@
             (should (equal (harmless-review-run session '(:findings nil))
                            "No findings"))
             (should (= calls 0))))
-        (should (eq (harmless-tool-class (harmless-tool-by-name "review"))
+        (should (eq (harmless-tool-class (harmless-tool-by-name "harmless-tool-review"))
                     'read))
         (should-not (harmless-perm-needed-p session 'read))
         (let ((kept (harmless-session-review session))
@@ -502,15 +502,15 @@
       (should-not (file-exists-p (expand-file-name "notes" dir)))
       (should-not (file-directory-p (expand-file-name "sub" dir)))
       (should-not (file-exists-p "/plan.md"))
-      (should (equal (harmless-ui--tool-summary "review" nil)
+      (should (equal (harmless-ui--tool-summary "harmless-tool-review" nil)
                      "working tree"))
-      (should (equal (harmless-ui--tool-summary "review" '(:base "base"))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-review" '(:base "base"))
                      "base"))
       (should (equal (harmless-ui--tool-summary
-                      "review" '(:commit "HEAD"))
+                      "harmless-tool-review" '(:commit "HEAD"))
                      "HEAD"))
       (should (equal (harmless-ui--tool-summary
-                      "review"
+                      "harmless-tool-review"
                       '(:findings ((:text "change it")
                                    (:text "c:/"))))
                      "change it, c:/")))))
@@ -610,10 +610,10 @@
       (should (equal (harmless-session-review session) kept))
       (setf (harmless-session-agent agent)
             (list :allow 'all :sandbox 'read-only :prompt "p"))
-      (should (member "review"
+      (should (member "harmless-tool-review"
                       (mapcar #'harmless-tool-name
                               (harmless-tools-for-session agent))))
-      (should (member "review"
+      (should (member "harmless-tool-review"
                       (mapcar #'harmless-tool-name
                               (harmless-tools-for-session session))))
       (should (equal (harmless-review-run
@@ -621,13 +621,13 @@
                      "[low] agent"))
       (should (equal (harmless-session-review session) kept))
       (setf (plist-get (harmless-session-agent agent) :allow)
-            '("read_file"))
+            '("harmless-tool-read-file"))
       (should (equal (harmless-agent-refuse-call
-                      agent (harmless-tool-by-name "review") nil)
-                     "Error: this subagent cannot use review"))
+                      agent (harmless-tool-by-name "harmless-tool-review") nil)
+                     "Error: this subagent cannot use harmless-tool-review"))
       (setq chat (harmless-session-new
                   :detached t :provider provider :model "m" :title "Chat"))
-      (should-not (member "review"
+      (should-not (member "harmless-tool-review"
                           (mapcar #'harmless-tool-name
                                   (harmless-tools-for-session chat))))
       (harmless-review-test-error
@@ -635,7 +635,7 @@
        (lambda () (harmless-review-run chat nil)))
       (should (harmless-directory-strictly-under-p
                (harmless-session-directory chat) data))
-      (should (equal (harmless-ui--tool-verb "review") "review"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-review") "review"))
       (unwind-protect
           (let ((harmless--session session))
             (harmless-ui-render-session session)
@@ -668,7 +668,7 @@
                        :name "fake" :host "none"
                        :script
                        (harmless-review-test-tool-script
-                        '(:tool-call "1" "review" "{}"))))))
+                        '(:tool-call "1" "harmless-tool-review" "{}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
         (setq harmless-review-test-calls 0)
@@ -688,7 +688,7 @@
                        :name "fake" :host "none"
                        :script
                        (harmless-review-test-tool-script
-                        '(:tool-call "1" "review"
+                        '(:tool-call "1" "harmless-tool-review"
                           "{\"findings\":[{\"severity\":\"low\",\"file\":\"/\",\"line\":1,\"text\":\"c:/\"}]}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function

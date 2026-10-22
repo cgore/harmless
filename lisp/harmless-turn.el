@@ -250,34 +250,34 @@ search the web, fetch a page, look up X, read MCP resources,
 see the screen, click, type, open a browser, schedule a prompt,
 and update a todo list.  It is not offered project files, a
 project shell, or plan mode.  A subagent is not offered
-`spawn_agent' or `run_workflow'."
+`harmless-tool-spawn-agent' or `harmless-tool-run-workflow'."
   (let ((tools
          (if (not (harmless-session-detached-p session))
              (harmless-tools-enabled)
-           (let ((allowed '("ask_user"
-                            "browser_open"
-                            "computer_click"
-                            "computer_key"
-                            "computer_screenshot"
-                            "computer_type"
-                            "list_sessions"
-                            "memory_read"
-                            "session_search"
-                            "memory_remember"
-                            "memory_write_topic"
-                            "send_message"
-                            "spawn_agent"
-                            "run_workflow"
-                            "schedule"
-                            "schedule_cancel"
-                            "todo_write"
-                            "web_fetch"
-                            "web_search"
-                            "x_keyword_search"
-                            "x_thread_fetch"
-                            "x_user_search"
-                            "mcp_list_resources"
-                            "mcp_read_resource")))
+           (let ((allowed '("harmless-tool-ask-user"
+                            "harmless-tool-browser-open"
+                            "harmless-tool-computer-click"
+                            "harmless-tool-computer-key"
+                            "harmless-tool-computer-screenshot"
+                            "harmless-tool-computer-type"
+                            "harmless-tool-list-sessions"
+                            "harmless-tool-memory-read"
+                            "harmless-tool-session-search"
+                            "harmless-tool-memory-remember"
+                            "harmless-tool-memory-write-topic"
+                            "harmless-tool-send-message"
+                            "harmless-tool-spawn-agent"
+                            "harmless-tool-run-workflow"
+                            "harmless-tool-schedule"
+                            "harmless-tool-schedule-cancel"
+                            "harmless-tool-todo-write"
+                            "harmless-tool-web-fetch"
+                            "harmless-tool-web-search"
+                            "harmless-tool-x-keyword-search"
+                            "harmless-tool-x-thread-fetch"
+                            "harmless-tool-x-user-search"
+                            "harmless-tool-mcp-list-resources"
+                            "harmless-tool-mcp-read-resource")))
              (seq-filter (lambda (tool)
                            (member (harmless-tool-name tool) allowed))
                          (harmless-tools-enabled))))))
@@ -454,10 +454,10 @@ A tool's `classify' function may narrow one shell command to `read'."
   "Short description of TOOL with ARGS for a permission prompt."
   (let ((name (harmless-tool-name tool)))
     (cond
-     ((string= name "schedule")
+     ((string= name "harmless-tool-schedule")
       (let ((prompt (harmless-tool-arg args :prompt)))
         (if (stringp prompt) prompt name)))
-     ((string= name "schedule_cancel")
+     ((string= name "harmless-tool-schedule-cancel")
       (let ((id (harmless-tool-arg args :id)))
         (cond
          ((stringp id) id)
@@ -646,7 +646,7 @@ Waiting-perm is already set.  CLASS is the permission class."
         call (format "Error: unknown tool %s" (plist-get call :name)))))
      (t
       (let* ((class (harmless-turn--class tool session args))
-             (command (and (string= (harmless-tool-name tool) "run_shell")
+             (command (and (string= (harmless-tool-name tool) "harmless-tool-run-shell")
                            (harmless-tool-arg args :command)))
              (agent-refusal
               (and (fboundp 'harmless-agent-refuse-call)

@@ -84,7 +84,7 @@ An internal buffer's name starts with a space."
                           harmless--session)))))))
 
 (defun harmless-editor--excerpt (text)
-  "Cut TEXT the way `read_file' cuts a file."
+  "Cut TEXT the way `harmless-tool-read-file' cuts a file."
   (harmless-tools-fs--text-window (or text "") nil nil))
 
 (defun harmless-editor--function-name ()

@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `send_message' delivers a finding to another session that is live in
+;; `harmless-tool-send-message' delivers a finding to another session that is live in
 ;; this Emacs.  An idle session receives it in the transcript immediately.
 ;; A session that is streaming or waiting on permission keeps it in memory
 ;; until the transcript can take a line, then it is written there.  The
@@ -144,7 +144,7 @@ A session that is only on disk is omitted."
       "Live sessions:")))
 
 (defun harmless-message--list-tool (session args)
-  "list_sessions implementation."
+  "harmless-tool-list-sessions implementation."
   (ignore session args)
   (harmless-message-list-text))
 
@@ -152,15 +152,15 @@ A session that is only on disk is omitted."
   "Register the live-session messaging tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "list_sessions"
+    :name "harmless-tool-list-sessions"
     :description "List live sessions on this machine. Each line is an id, a status, and a title. A session that is only on disk is omitted."
     :class 'read
     :schema '(:type "object")
     :fn #'harmless-message--list-tool))
   (harmless-register-tool
    (harmless-tool-create
-    :name "send_message"
-    :description "Send TEXT to a live session on this machine. SESSION is that session's id, from list_sessions. The finding is added to its transcript and does not start a turn."
+    :name "harmless-tool-send-message"
+    :description "Send TEXT to a live session on this machine. SESSION is that session's id, from harmless-tool-list-sessions. The finding is added to its transcript and does not start a turn."
     :class 'edit
     :schema '(:type "object"
               :properties (:session (:type "string"

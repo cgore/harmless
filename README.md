@@ -284,9 +284,9 @@ transcript.
 A skill is a directory with a `SKILL.md` file.  The file starts with
 `name` and `description` frontmatter.  Each turn lists the name,
 description, and path.  The model can still read that file with
-`read_file`.  The body is not in the catalog.
+`harmless-tool-read-file`.  The body is not in the catalog.
 
-Load one with the `skill` tool, with `M-x harmless-load-skill`, or by
+Load one with the `harmless-tool-skill` tool, with `M-x harmless-load-skill`, or by
 starting the prompt with `/name`.  The name is a skill id, not a path.
 Later turns include the body.  The prompt that loaded it stays in the
 transcript.  Frontmatter `allowed-tools` limits the tools those turns
@@ -359,7 +359,7 @@ is saved with the session.  A fork keeps it.
 
 ## Image generation
 
-`generate_image` writes an image into the project.  `prompt` is the
+`harmless-tool-generate-image` writes an image into the project.  `prompt` is the
 description.  `path` is the file.  A relative path is resolved
 against the session directory, not the buffer's default directory.
 The bytes come from `harmless-image-generate-function`.  When that
@@ -535,10 +535,10 @@ first.  The transcript summary is `M-x harmless-compact`.
 Nothing is started.
 
 The model calls the same commands through tools.
-`team_boot` boots a spec.  `team_inspect` reads the seats, the
+`harmless-tool-team-boot` boots a spec.  `harmless-tool-team-inspect` reads the seats, the
 edges, the launch order, and the rows, and it writes nothing.
-`team_message` sends text to an occupied seat.  `team_snapshot`
-stores a named copy.  `team_restore` puts that copy back when
+`harmless-tool-team-message` sends text to an occupied seat.  `harmless-tool-team-snapshot`
+stores a named copy.  `harmless-tool-team-restore` puts that copy back when
 every seat can return.  A detached chat is not offered these
 tools.  Plan mode refuses the ones that write.  Nothing is
 started.
@@ -670,7 +670,7 @@ and nothing is started.
 
 ## Subagents
 
-`spawn_agent` starts a child session with its own transcript and waits
+`harmless-tool-spawn-agent` starts a child session with its own transcript and waits
 for that child's last reply.  `prompt` is the task.  An optional
 `agent` name loads `NAME.md` from `.claude/agents/`, `.codex/agents/`,
 `.harmless/agents/`, `.grok/agents/`, or `.agents/agents/`, from the
@@ -682,7 +682,7 @@ aborts a child that is still running.
 
 ## Workflows
 
-`run_workflow` runs one script, starts the child sessions that script
+`harmless-tool-run-workflow` runs one script, starts the child sessions that script
 asks for, and returns one string.  Pass `name` to run a fixed
 `NAME.hw` file, or `script` to run text written for this task.  Fixed
 scripts live in `.claude/workflows/`, `.codex/workflows/`,
@@ -696,20 +696,20 @@ checkout.
 
 ## Worktrees
 
-`enter_worktree` points the session at a git checkout of the same
+`harmless-tool-enter-worktree` points the session at a git checkout of the same
 repository.  The checkout is stored under `harmless-directory`, outside
 the project, on a branch named `harmless/` plus the name.  It starts at
 the current `HEAD`.  Uncommitted files are not copied.  The same name
-is the same checkout.  `exit_worktree` returns to the previous project
+is the same checkout.  `harmless-tool-exit-worktree` returns to the previous project
 and leaves the checkout on disk.  `M-x harmless-worktree` and `M-x
-harmless-worktree-exit` do the same from the minibuffer.  `spawn_agent`
+harmless-worktree-exit` do the same from the minibuffer.  `harmless-tool-spawn-agent`
 takes `worktree` so the child edits that checkout while the parent
 stays put.
 
 ## Messages
 
-`list_sessions` lists the sessions that are live in this Emacs.  A
-session that is only on disk is omitted.  `send_message` delivers
+`harmless-tool-list-sessions` lists the sessions that are live in this Emacs.  A
+session that is only on disk is omitted.  `harmless-tool-send-message` delivers
 `text` to one of those ids.  An idle session gets the finding in its
 transcript immediately.  A session that is in a turn receives it at
 the next safe point.  The finding does not start a turn.  Closing
@@ -717,21 +717,21 @@ Emacs before a queued finding is written drops it.
 
 ## Web search
 
-`web_search` sends a query to DuckDuckGo over https and returns a
+`harmless-tool-web-search` sends a query to DuckDuckGo over https and returns a
 title, a URL, and a snippet for each hit.  The class is `network`, so
 accepting edits still asks before a search.  The result is not written
 into the project.
 
 ## Fetch a page
 
-`web_fetch` reads one http or https page and returns its text.  HTML
+`harmless-tool-web-fetch` reads one http or https page and returns its text.  HTML
 is reduced to text.  The class is `network`, so accepting edits still
 asks.  The page is not written into the project.
 
 ## X search
 
-`x_keyword_search` finds recent posts.  `x_thread_fetch` reads one
-post and its conversation.  `x_user_search` finds accounts.  The
+`harmless-tool-x-keyword-search` finds recent posts.  `harmless-tool-x-thread-fetch` reads one
+post and its conversation.  `harmless-tool-x-user-search` finds accounts.  The
 class is `network`, so accepting edits still asks.  The bearer
 token is `harmless-x-bearer`, `X_BEARER_TOKEN`, or an auth-source
 entry for `api.x.com`.  A missing token is refused before a
@@ -742,17 +742,17 @@ request.  Nothing is written into the project.
 `mcp.json` names local MCP servers.  The project file is
 `.harmless/mcp.json`.  The global file is `mcp.json` under the
 Harmless data directory.  A server tool is offered as
-`mcp__SERVER__TOOL`.  Its schema is loaded when the tool is about
-to be called.  `mcp_list_resources` and `mcp_read_resource` read
+`harmless-tool-mcp-SERVER--TOOL`.  Its schema is loaded when the tool is about
+to be called.  `harmless-tool-mcp-list-resources` and `harmless-tool-mcp-read-resource` read
 resources.  The class is `network`, so accepting edits still asks.
 A read-only subagent may read resources.  Nothing is written into
 the project.
 
 ## Computer use
 
-`computer_screenshot` returns the size and a PNG path under the
-Harmless data directory.  `computer_click`, `computer_type`, and
-`computer_key` act on the desktop.  `browser_open` opens an http
+`harmless-tool-computer-screenshot` returns the size and a PNG path under the
+Harmless data directory.  `harmless-tool-computer-click`, `harmless-tool-computer-type`, and
+`harmless-tool-computer-key` act on the desktop.  `harmless-tool-browser-open` opens an http
 or https URL in the desktop browser.  The class is `shell`, so
 accepting edits still asks.  Plan mode refuses a click, typed
 text, a key, and the browser.  A screenshot still runs.  A
@@ -761,25 +761,25 @@ into the project.
 
 ## Monitors
 
-`monitor` watches a file in the project or an added directory, a
+`harmless-tool-monitor` watches a file in the project or an added directory, a
 command, or a background shell.  A line that matches `pattern` wakes the
 session.  A file watch does not ask.  A command that can write
-still asks, and plan mode refuses it.  `monitor_stop` stops the
+still asks, and plan mode refuses it.  `harmless-tool-monitor-stop` stops the
 watch.  Nothing is written into the project.
 
 ## Schedules
 
-`schedule` sends a prompt once, after a delay or at a UTC time.
+`harmless-tool-schedule` sends a prompt once, after a delay or at a UTC time.
 The prompt and the time are saved with the session.  Loading the
 session arms a schedule that is still in the future and drops one
-that has expired without sending it.  `schedule_cancel` removes a
+that has expired without sending it.  `harmless-tool-schedule-cancel` removes a
 waiting prompt.  The class is `edit`, so accepting edits does not
 ask.  Plan mode does not refuse it.  A read-only subagent cannot
 use it.  Nothing is written into the project.
 
 ## Todos
 
-`todo_write` keeps a list of work on the session.  Each item has
+`harmless-tool-todo-write` keeps a list of work on the session.  Each item has
 an id, content, a status (`pending`, `in_progress`, `completed`,
 or `cancelled`), and the ids it depends on.  `merge` updates by
 id.  False replaces the list.  The list is saved with the
@@ -789,7 +789,7 @@ Nothing is written into the project.
 
 ## Review
 
-`review` reads the working tree, a base branch, or one commit.
+`harmless-tool-review` reads the working tree, a base branch, or one commit.
 `M-x harmless-review` does the same.  The menu key is `R`.
 Omit `base` and `commit` for the working tree.  `findings`
 records the result.  Omit findings and the tool returns the
@@ -800,7 +800,7 @@ applied as an edit.  Nothing is written into the project.
 
 ## Language server
 
-`lsp` asks a language server that is already running in Emacs.
+`harmless-tool-lsp` asks a language server that is already running in Emacs.
 The operation is `definition`, `references`, or `diagnostics`.
 `M-x harmless-lsp` does the same.  The menu key is `L`.
 Line and column start at 1.  Diagnostics read the whole file.
@@ -810,9 +810,9 @@ into the project.
 
 ## Images, PDFs, and notebooks
 
-`read_file` reads an image by its bytes, a PDF by the literal
+`harmless-tool-read-file` reads an image by its bytes, a PDF by the literal
 strings in the file, and a notebook by its cells.  `offset` and
-`limit` apply only to text.  `notebook_edit` replaces one cell
+`limit` apply only to text.  `harmless-tool-notebook-edit` replaces one cell
 in an existing `.ipynb` file.  The file is not created.  The
 class is `edit`, so it asks in ask mode.  Plan mode refuses it.
 `M-x harmless-attach-image` queues an image on the next prompt.
@@ -828,8 +828,8 @@ harmless-dream` folds the inbox into `topics/` and moves those files
 to `archive/`.  `MEMORY.md` is a generated index.
 
 Each turn sends the index, not the notes.  The model reads a note with
-`memory_read`, saves a fact with `memory_remember`, and replaces a
-topic with `memory_write_topic`.  `M-x harmless-remember` saves a note
+`harmless-tool-memory-read`, saves a fact with `harmless-tool-memory-remember`, and replaces a
+topic with `harmless-tool-memory-write-topic`.  `M-x harmless-remember` saves a note
 directly.  A prefix argument stores it in global memory.
 
 A finished turn can also write one inbox observation.  Set
@@ -877,10 +877,10 @@ directory stays inside the project.
 prefix argument turns it off.  The same command is `P` in the Harmless
 menu.  The model may also ask to enter plan mode.
 
-In plan mode, `write_file`, `replace`, and `apply_patch` fail.  A shell
+In plan mode, `harmless-tool-write-file`, `harmless-tool-replace`, and `harmless-tool-apply-patch` fail.  A shell
 command that can write is refused before any permission question.  A
 read-only shell command still runs.  The model writes `plan.md` in the
-session directory with `write_plan`, then calls `exit_plan_mode`.  That
+session directory with `harmless-tool-write-plan`, then calls `harmless-tool-exit-plan-mode`.  That
 shows the plan and asks you to approve it, comment on a line or
 range, send revision notes, or quit.  A comment does not change
 `plan.md`.  Approving turns plan mode off so the same turn can start

@@ -651,33 +651,33 @@
       (should-not (string-match-p "PROJECT-SECRET" (or text ""))))
     (let ((names (mapcar #'harmless-tool-name
                          (harmless-tools-for-session b))))
-      (should (equal '("ask_user"
-                       "browser_open"
-                       "computer_click"
-                       "computer_key"
-                       "computer_screenshot"
-                       "computer_type"
-                       "list_sessions"
-                       "mcp_list_resources"
-                       "mcp_read_resource"
-                       "memory_read"
-                       "memory_remember"
-                       "memory_write_topic"
-                       "run_workflow"
-                       "schedule"
-                       "schedule_cancel"
-                       "send_message"
-                       "session_search"
-                       "spawn_agent"
-                       "todo_write"
-                       "web_fetch"
-                       "web_search"
-                       "x_keyword_search"
-                       "x_thread_fetch"
-                       "x_user_search")
+      (should (equal '("harmless-tool-ask-user"
+                       "harmless-tool-browser-open"
+                       "harmless-tool-computer-click"
+                       "harmless-tool-computer-key"
+                       "harmless-tool-computer-screenshot"
+                       "harmless-tool-computer-type"
+                       "harmless-tool-list-sessions"
+                       "harmless-tool-mcp-list-resources"
+                       "harmless-tool-mcp-read-resource"
+                       "harmless-tool-memory-read"
+                       "harmless-tool-memory-remember"
+                       "harmless-tool-memory-write-topic"
+                       "harmless-tool-run-workflow"
+                       "harmless-tool-schedule"
+                       "harmless-tool-schedule-cancel"
+                       "harmless-tool-send-message"
+                       "harmless-tool-session-search"
+                       "harmless-tool-spawn-agent"
+                       "harmless-tool-todo-write"
+                       "harmless-tool-web-fetch"
+                       "harmless-tool-web-search"
+                       "harmless-tool-x-keyword-search"
+                       "harmless-tool-x-thread-fetch"
+                       "harmless-tool-x-user-search")
                      (sort names #'string<)))
-      (should-not (member "read_file" names))
-      (should-not (member "run_shell" names)))
+      (should-not (member "harmless-tool-read-file" names))
+      (should-not (member "harmless-tool-run-shell" names)))
     (harmless-test-error
      "not attached"
      (lambda () (harmless-memory-remember "workspace" nil "Title" "Body")))
@@ -843,7 +843,7 @@ the current drive on Windows."
           (should (equal 0 (hash-table-count harmless--sessions)))
           (should (equal tools (mapcar #'harmless-tool-name harmless-tools)))
           (should-not (harmless-tool-by-name "only-in-summary-tool"))
-          (let ((tool (harmless-tool-by-name "session_search")))
+          (let ((tool (harmless-tool-by-name "harmless-tool-session-search")))
             (should (eq 'read (harmless-tool-class tool)))
             (should (equal "" (harmless-tool-call tool nil '(:query "missing-phrase"))))
             (should (equal "" (harmless-tool-call tool nil nil)))
@@ -852,10 +852,10 @@ the current drive on Windows."
                      (harmless-tool-call tool nil '(:query "visible-phrase"))))
             (should (equal "Error: session search query must be a string"
                            (harmless-tool-call tool nil '(:query 42)))))
-          (should (equal "recall" (harmless-ui--tool-verb "session_search")))
+          (should (equal "recall" (harmless-ui--tool-verb "harmless-tool-session-search")))
           (should (equal "visible-phrase"
                          (harmless-ui--tool-summary
-                          "session_search" '(:query "visible-phrase"))))
+                          "harmless-tool-session-search" '(:query "visible-phrase"))))
           (harmless-session-search-test-error
            "session search query must be a string"
            (lambda () (harmless-session-search 42))))

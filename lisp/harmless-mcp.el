@@ -475,7 +475,7 @@ loaded when the tool runs."
   (let* ((remote (plist-get spec :name))
          (desc (plist-get spec :description))
          (tool (harmless-tool-create
-                :name (format "mcp__%s__%s"
+                :name (format "harmless-tool-mcp-%s--%s"
                               (plist-get server :name) remote)
                 :description (if (and (stringp desc)
                                       (not (string-empty-p desc)))
@@ -543,7 +543,7 @@ registered globally."
       (error "resource has no text"))))
 
 (defun harmless-mcp-list-resources (session args)
-  "mcp_list_resources implementation."
+  "harmless-tool-mcp-list-resources implementation."
   (let ((server (harmless-mcp--server-arg session args)))
     (harmless-mcp--format-resources
      (plist-get (funcall harmless-mcp-call-function
@@ -551,7 +551,7 @@ registered globally."
                 :resources))))
 
 (defun harmless-mcp-read-resource (session args)
-  "mcp_read_resource implementation."
+  "harmless-tool-mcp-read-resource implementation."
   (let ((server (harmless-mcp--server-arg session args))
         (uri (harmless-mcp--uri-arg args)))
     (harmless-mcp--resource-text
@@ -563,7 +563,7 @@ registered globally."
   "Register the built-in MCP resource tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "mcp_list_resources"
+    :name "harmless-tool-mcp-list-resources"
     :description "List resources on one configured MCP server. SERVER is the name from mcp.json. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"
@@ -573,7 +573,7 @@ registered globally."
     :fn #'harmless-mcp-list-resources))
   (harmless-register-tool
    (harmless-tool-create
-    :name "mcp_read_resource"
+    :name "harmless-tool-mcp-read-resource"
     :description "Read one MCP resource as text. SERVER is the name from mcp.json. URI is the resource URI. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"

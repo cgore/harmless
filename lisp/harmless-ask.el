@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `ask_user' asks one question.  The user picks one of the given
+;; `harmless-tool-ask-user' asks one question.  The user picks one of the given
 ;; choices.  Replace `harmless-ask-decide-function' in tests.
 
 ;;; Code:
@@ -91,7 +91,7 @@ are refused.  A choice is text.  It is not a filesystem path."
       (nreverse choices))))
 
 (defun harmless-ask--tool (session args)
-  "ask_user implementation."
+  "harmless-tool-ask-user implementation."
   (let ((question (harmless-ask-question args))
         (choices (harmless-ask-choices args)))
     (condition-case nil
@@ -103,10 +103,10 @@ are refused.  A choice is text.  It is not a filesystem path."
       (quit "The user cancelled the question."))))
 
 (defun harmless-ask-register ()
-  "Register the ask_user tool."
+  "Register the harmless-tool-ask-user tool."
   (harmless-register-tool
    (harmless-tool-create
-    :name "ask_user"
+    :name "harmless-tool-ask-user"
     :description "Ask the user one question. QUESTION is the prompt. CHOICES are the answers they can pick. The result is the choice they made."
     :class 'read
     :schema '(:type "object"

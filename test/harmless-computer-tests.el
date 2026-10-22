@@ -128,27 +128,27 @@ The desktop, PowerShell, and the browser are not called."
                       ("10" . "x must be an integer")
                       (-1 . "x must be a non-negative integer")))
         (should (equal (harmless-computer-test-call
-                        "computer_click" session
+                        "harmless-tool-computer-click" session
                         (list :x (car pair) :y 1))
                        (concat "Error: " (cdr pair)))))
       (should (equal (harmless-computer-test-call
-                      "computer_click" session '(:x 0))
+                      "harmless-tool-computer-click" session '(:x 0))
                      "Error: y must be an integer"))
       (should (equal (harmless-computer-test-call
-                      "computer_click" session '(:x 0 :y -1))
+                      "harmless-tool-computer-click" session '(:x 0 :y -1))
                      "Error: y must be a non-negative integer"))
       (dolist (button '(:false 42 "" "   " "sideways"))
         (should (equal (harmless-computer-test-call
-                        "computer_click" session
+                        "harmless-tool-computer-click" session
                         (list :x 1 :y 2 :button button))
                        "Error: button must be left, right, or middle")))
       (dolist (text '(nil :false 42))
         (should (equal (harmless-computer-test-call
-                        "computer_type" session (list :text text))
+                        "harmless-tool-computer-type" session (list :text text))
                        "Error: text must be a string")))
       (dolist (text '("" "   " "\n"))
         (should (equal (harmless-computer-test-call
-                        "computer_type" session (list :text text))
+                        "harmless-tool-computer-type" session (list :text text))
                        "Error: text is empty")))
       (dolist (pair '((nil . "key is empty")
                       (:false . "key must be a string")
@@ -162,37 +162,37 @@ The desktop, PowerShell, and the browser are not called."
                       ("f0" . "key is not a key")
                       ("f123" . "key is not a key")))
         (should (equal (harmless-computer-test-call
-                        "computer_key" session (list :key (car pair)))
+                        "harmless-tool-computer-key" session (list :key (car pair)))
                        (concat "Error: " (cdr pair)))))
       (setq harmless-computer-act-function
             (lambda (action) (setq seen action)))
       (should (equal (harmless-computer-test-call
-                      "computer_click" session '(:x 0 :y 0))
+                      "harmless-tool-computer-click" session '(:x 0 :y 0))
                      "Clicked left at 0, 0"))
       (should (equal seen '(:click t :x 0 :y 0 :button "left")))
       (should (equal (harmless-computer-test-call
-                      "computer_click" session
+                      "harmless-tool-computer-click" session
                       '("x" 3 "y" 4 "button" " RIGHT "))
                      "Clicked right at 3, 4"))
       (should (equal seen '(:click t :x 3 :y 4 :button "right")))
       (should (equal (harmless-computer-test-call
-                      "computer_click" session
+                      "harmless-tool-computer-click" session
                       '(:x 1 :y 2 :button "middle"))
                      "Clicked middle at 1, 2"))
       (should (equal (harmless-computer-test-call
-                      "computer_type" session '(:text "/"))
+                      "harmless-tool-computer-type" session '(:text "/"))
                      "Typed 1 characters"))
       (should (equal seen '(:type "/")))
       (should (equal (harmless-computer-test-call
-                      "computer_type" session '(:text "c:/"))
+                      "harmless-tool-computer-type" session '(:text "c:/"))
                      "Typed 3 characters"))
       (should (equal seen '(:type "c:/")))
       (should (equal (harmless-computer-test-call
-                      "computer_type" session '(:text "  hi  "))
+                      "harmless-tool-computer-type" session '(:text "  hi  "))
                      "Typed 6 characters"))
       (should (equal seen '(:type "  hi  ")))
       (should (equal (harmless-computer-test-call
-                      "computer_type" session '("text" "c:/"))
+                      "harmless-tool-computer-type" session '("text" "c:/"))
                      "Typed 3 characters"))
       (dolist (pair '(("/" . "/")
                       ("A" . "A")
@@ -216,7 +216,7 @@ The desktop, PowerShell, and the browser are not called."
                       ("F12" . "{F12}")
                       ("f9" . "{F9}")))
         (should (equal (harmless-computer-test-call
-                        "computer_key" session (list :key (car pair)))
+                        "harmless-tool-computer-key" session (list :key (car pair)))
                        "Pressed key"))
         (should (equal seen (list :key (cdr pair)))))
       (should (= calls 0))
@@ -292,18 +292,18 @@ The desktop, PowerShell, and the browser are not called."
       (setq harmless-computer-capture-function
             (lambda () (list 8 6 (nth 2 shot))))
       (should (equal (harmless-computer-test-call
-                      "computer_screenshot" session nil)
+                      "harmless-tool-computer-screenshot" session nil)
                      (format "8x6\n%s" (nth 2 shot))))
       (dolist (bad (list nil "nope" (list 1 2 "shot.png") (list 1 2 "/")
                          (list "8" 6 (nth 2 shot)) (list 8 6 "/")))
         (setq harmless-computer-capture-function (lambda () bad))
         (should (equal (harmless-computer-test-call
-                        "computer_screenshot" session nil)
+                        "harmless-tool-computer-screenshot" session nil)
                        "Error: computer capture failed")))
       (setq harmless-computer-capture-function
             (lambda () (list 1 2 "c:/shot.png")))
       (should (equal (harmless-computer-test-call
-                      "computer_screenshot" session nil)
+                      "harmless-tool-computer-screenshot" session nil)
                      "1x2\nc:/shot.png"))
       (should-not (file-exists-p "/shot.png"))
       (should-not (file-exists-p "/computer"))
@@ -403,20 +403,20 @@ The desktop, PowerShell, and the browser are not called."
                       ("javascript:alert(1)" . "url must be http or https")
                       ("http:/example.com" . "url must be http or https")))
         (should (equal (harmless-computer-test-call
-                        "browser_open" session (list :url (car pair)))
+                        "harmless-tool-browser-open" session (list :url (car pair)))
                        (concat "Error: " (cdr pair)))))
       (setq harmless-computer-browse-function
             (lambda (url) (push url opened) url))
       (should (equal (harmless-computer-test-call
-                      "browser_open" session
+                      "harmless-tool-browser-open" session
                       '(:url "  https://example.com/a  "))
                      "Opened https://example.com/a"))
       (should (equal (harmless-computer-test-call
-                      "browser_open" session
+                      "harmless-tool-browser-open" session
                       '(:url "HTTP://example.com/b"))
                      "Opened HTTP://example.com/b"))
       (should (equal (harmless-computer-test-call
-                      "browser_open" session
+                      "harmless-tool-browser-open" session
                       '("url" "https://example.com/c:/"))
                      "Opened https://example.com/c:/"))
       (should (equal opened '("https://example.com/c:/"
@@ -425,16 +425,16 @@ The desktop, PowerShell, and the browser are not called."
       (setf (harmless-session-plan-mode session) t)
       (setq opened nil)
       (should (equal (harmless-computer-test-call
-                      "browser_open" session '(:url "https://example.com/a"))
+                      "harmless-tool-browser-open" session '(:url "https://example.com/a"))
                      harmless-computer-plan-refusal))
       (should (equal (harmless-computer-test-call
-                      "computer_click" session nil)
+                      "harmless-tool-computer-click" session nil)
                      harmless-computer-plan-refusal))
       (should (equal (harmless-computer-test-call
-                      "computer_type" session '(:text "/"))
+                      "harmless-tool-computer-type" session '(:text "/"))
                      harmless-computer-plan-refusal))
       (should (equal (harmless-computer-test-call
-                      "computer_key" session '(:key "/"))
+                      "harmless-tool-computer-key" session '(:key "/"))
                      harmless-computer-plan-refusal))
       (should-not opened)
       (should (harmless-session-plan-mode session))
@@ -442,7 +442,7 @@ The desktop, PowerShell, and the browser are not called."
             (lambda ()
               (list 2 3 (expand-file-name "computer/shot.png" _data))))
       (let ((text (harmless-computer-test-call
-                   "computer_screenshot" session nil)))
+                   "harmless-tool-computer-screenshot" session nil)))
         (should (string-prefix-p "2x3\n" text))
         (should-not (string-search "Plan mode is on" text)))
       (harmless-computer-test-not-root session))))
@@ -470,7 +470,7 @@ The desktop, PowerShell, and the browser are not called."
              (harmless-computer-make-fake
               :name "fake" :host "none"
               :script (harmless-computer-test-script
-                       '(:tool-call "1" "computer_click"
+                       '(:tool-call "1" "harmless-tool-computer-click"
                          "{\"x\":10,\"y\":20}")))))
       (setq harmless-perm-ask-function
             (lambda (_session class item callback)
@@ -492,7 +492,7 @@ The desktop, PowerShell, and the browser are not called."
              (harmless-computer-make-fake
               :name "fake" :host "none"
               :script (harmless-computer-test-script
-                       '(:tool-call "1" "computer_type"
+                       '(:tool-call "1" "harmless-tool-computer-type"
                          "{\"text\":\"c:/\"}")))))
       (setq harmless-perm-ask-function
             (lambda (_session class item callback)
@@ -514,7 +514,7 @@ The desktop, PowerShell, and the browser are not called."
              (harmless-computer-make-fake
               :name "fake" :host "none"
               :script (harmless-computer-test-script
-                       '(:tool-call "1" "computer_screenshot" "{}")))))
+                       '(:tool-call "1" "harmless-tool-computer-screenshot" "{}")))))
       (setf (harmless-session-plan-mode session) t)
       (setq harmless-perm-ask-function
             (lambda (&rest _) (error "permission asked")))
@@ -540,7 +540,7 @@ The desktop, PowerShell, and the browser are not called."
              (harmless-computer-make-fake
               :name "fake" :host "none"
               :script (harmless-computer-test-script
-                       '(:tool-call "1" "browser_open"
+                       '(:tool-call "1" "harmless-tool-browser-open"
                          "{\"url\":\"https://example.com/a\"}")))))
       (setf (harmless-session-plan-mode session) t)
       (setq harmless-computer-test-calls 0)
@@ -558,7 +558,7 @@ The desktop, PowerShell, and the browser are not called."
              (harmless-computer-make-fake
               :name "fake" :host "none"
               :script (harmless-computer-test-script
-                       '(:tool-call "1" "computer_key"
+                       '(:tool-call "1" "harmless-tool-computer-key"
                          "{\"key\":\"enter\"}")))))
       (setq harmless-perm-ask-function
             (lambda (&rest _) (error "permission asked")))
@@ -568,49 +568,49 @@ The desktop, PowerShell, and the browser are not called."
       (should (equal (harmless-computer-test-tools session)
                      '("Pressed key")))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "run_shell")
+                      (harmless-tool-by-name "harmless-tool-run-shell")
                       '(:command "git status" :text "nope"))
                      "git status"))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "shell_kill")
+                      (harmless-tool-by-name "harmless-tool-shell-kill")
                       '(:id "1"))
-                     "shell_kill"))
+                     "harmless-tool-shell-kill"))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "computer_screenshot")
+                      (harmless-tool-by-name "harmless-tool-computer-screenshot")
                       nil)
-                     "computer_screenshot"))
+                     "harmless-tool-computer-screenshot"))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "computer_key")
+                      (harmless-tool-by-name "harmless-tool-computer-key")
                       '(:key "enter"))
                      "enter"))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "browser_open")
+                      (harmless-tool-by-name "harmless-tool-browser-open")
                       '(:url "https://example.com/a"))
                      "https://example.com/a"))
-      (should (equal (harmless-ui--tool-verb "computer_screenshot")
+      (should (equal (harmless-ui--tool-verb "harmless-tool-computer-screenshot")
                      "screen"))
-      (should (equal (harmless-ui--tool-verb "computer_click") "click"))
-      (should (equal (harmless-ui--tool-verb "computer_type") "type"))
-      (should (equal (harmless-ui--tool-verb "computer_key") "key"))
-      (should (equal (harmless-ui--tool-verb "browser_open") "browser"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-computer-click") "click"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-computer-type") "type"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-computer-key") "key"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-browser-open") "browser"))
       (should (equal (harmless-ui--tool-summary
-                      "computer_screenshot" nil)
+                      "harmless-tool-computer-screenshot" nil)
                      ""))
       (should (equal (harmless-ui--tool-summary
-                      "computer_click" '(:x 10 :y 20))
+                      "harmless-tool-computer-click" '(:x 10 :y 20))
                      "10,20"))
       (should (equal (harmless-ui--tool-summary
-                      "computer_type" '(:text "/"))
+                      "harmless-tool-computer-type" '(:text "/"))
                      "/"))
       (should (equal (harmless-ui--tool-summary
-                      "computer_key" '(:key "enter"))
+                      "harmless-tool-computer-key" '(:key "enter"))
                      "enter"))
       (should (equal (harmless-ui--tool-summary
-                      "browser_open" '(:url "https://example.com/a"))
+                      "harmless-tool-browser-open" '(:url "https://example.com/a"))
                      "https://example.com/a"))
       (should (equal (harmless-computer-test-files repo) files))
-      (dolist (name '("computer_screenshot" "computer_click"
-                      "computer_type" "computer_key" "browser_open"))
+      (dolist (name '("harmless-tool-computer-screenshot" "harmless-tool-computer-click"
+                      "harmless-tool-computer-type" "harmless-tool-computer-key" "harmless-tool-browser-open"))
         (let ((tool (harmless-tool-by-name name)))
           (should (eq (harmless-tool-class tool) 'shell))
           (should-not (harmless-tool-async tool))
@@ -623,8 +623,8 @@ The desktop, PowerShell, and the browser are not called."
            (child (harmless-computer-test-session
                    :cwd repo :id "child" :source 'agent :parent-id "p"
                    :title "Reader"))
-           (names '("computer_screenshot" "computer_click"
-                    "computer_type" "computer_key" "browser_open")))
+           (names '("harmless-tool-computer-screenshot" "harmless-tool-computer-click"
+                    "harmless-tool-computer-type" "harmless-tool-computer-key" "harmless-tool-browser-open")))
       (setf (harmless-session-agent child)
             (list :allow 'all :sandbox 'read-only :callback nil
                   :turns 0 :max 8 :error nil :prompt nil :task nil))
@@ -632,9 +632,9 @@ The desktop, PowerShell, and the browser are not called."
                              (harmless-tools-for-session child))))
         (dolist (name names)
           (should-not (member name offered)))
-        (should (member "run_shell" offered))
-        (should (member "read_file" offered))
-        (should-not (member "write_file" offered)))
+        (should (member "harmless-tool-run-shell" offered))
+        (should (member "harmless-tool-read-file" offered))
+        (should-not (member "harmless-tool-write-file" offered)))
       (dolist (name names)
         (should (equal (harmless-agent-refuse-call
                         child (harmless-tool-by-name name) nil)
@@ -646,7 +646,7 @@ The desktop, PowerShell, and the browser are not called."
         (dolist (name names)
           (should (member name offered))))
       (setf (plist-get (harmless-session-agent child) :allow)
-            '("read_file"))
+            '("harmless-tool-read-file"))
       (setf (plist-get (harmless-session-agent child) :sandbox)
             'read-only)
       (dolist (name names)
@@ -659,34 +659,34 @@ The desktop, PowerShell, and the browser are not called."
         (should (equal (sort (mapcar #'harmless-tool-name
                                      (harmless-tools-for-session detached))
                              #'string<)
-                       '("ask_user"
-                         "browser_open"
-                         "computer_click"
-                         "computer_key"
-                         "computer_screenshot"
-                         "computer_type"
-                         "list_sessions"
-                         "mcp_list_resources"
-                         "mcp_read_resource"
-                         "memory_read"
-                         "memory_remember"
-                         "memory_write_topic"
-                         "run_workflow"
-                         "schedule"
-                         "schedule_cancel"
-                         "send_message"
-                         "session_search"
-                         "spawn_agent"
-                         "todo_write"
-                         "web_fetch"
-                         "web_search"
-                         "x_keyword_search"
-                         "x_thread_fetch"
-                         "x_user_search")))
-        (should-not (member "read_file"
+                       '("harmless-tool-ask-user"
+                         "harmless-tool-browser-open"
+                         "harmless-tool-computer-click"
+                         "harmless-tool-computer-key"
+                         "harmless-tool-computer-screenshot"
+                         "harmless-tool-computer-type"
+                         "harmless-tool-list-sessions"
+                         "harmless-tool-mcp-list-resources"
+                         "harmless-tool-mcp-read-resource"
+                         "harmless-tool-memory-read"
+                         "harmless-tool-memory-remember"
+                         "harmless-tool-memory-write-topic"
+                         "harmless-tool-run-workflow"
+                         "harmless-tool-schedule"
+                         "harmless-tool-schedule-cancel"
+                         "harmless-tool-send-message"
+                         "harmless-tool-session-search"
+                         "harmless-tool-spawn-agent"
+                         "harmless-tool-todo-write"
+                         "harmless-tool-web-fetch"
+                         "harmless-tool-web-search"
+                         "harmless-tool-x-keyword-search"
+                         "harmless-tool-x-thread-fetch"
+                         "harmless-tool-x-user-search")))
+        (should-not (member "harmless-tool-read-file"
                             (mapcar #'harmless-tool-name
                                     (harmless-tools-for-session detached))))
-        (should-not (member "run_shell"
+        (should-not (member "harmless-tool-run-shell"
                             (mapcar #'harmless-tool-name
                                     (harmless-tools-for-session detached))))
         (harmless-computer-test-not-root detached))

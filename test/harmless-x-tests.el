@@ -98,7 +98,7 @@
             (lambda (&rest _) (setq called t) nil))
            (harmless-x-user-function
             (lambda (&rest _) (setq called t) nil)))
-      (dolist (name '("x_keyword_search" "x_user_search"))
+      (dolist (name '("harmless-tool-x-keyword-search" "harmless-tool-x-user-search"))
         (dolist (query (list nil :false 42))
           (should (equal (harmless-x-test-call name session
                                                (list :query query))
@@ -123,19 +123,19 @@
            (harmless-web-retrieve-function
             (lambda (_url) (error "network was called"))))
       (dolist (id (list nil "" "  " "\n"))
-        (should (equal (harmless-x-test-call "x_thread_fetch" session
+        (should (equal (harmless-x-test-call "harmless-tool-x-thread-fetch" session
                                              (list :post_id id))
                        "Error: post id is empty")))
       (dolist (id (list :false 42))
-        (should (equal (harmless-x-test-call "x_thread_fetch" session
+        (should (equal (harmless-x-test-call "harmless-tool-x-thread-fetch" session
                                              (list :post_id id))
                        "Error: post id must be a string")))
       (dolist (id (list "sub" "sub/" "/" "c:/" "../x" "12a" "1.2"))
-        (should (equal (harmless-x-test-call "x_thread_fetch" session
+        (should (equal (harmless-x-test-call "harmless-tool-x-thread-fetch" session
                                              (list :post_id id))
                        "Error: post id is not an id")))
       (should-not called)
-      (should (equal (harmless-x-test-call "x_thread_fetch" session
+      (should (equal (harmless-x-test-call "harmless-tool-x-thread-fetch" session
                                            (list :post_id "  123  "))
                      "No posts"))
       (should (equal called "123"))
@@ -152,34 +152,34 @@
               nil)))
       (dolist (mode (list "" "  " :false 42 "sideways"))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session
+                        "harmless-tool-x-keyword-search" session
                         (list :query "emacs" :mode mode))
                        "Error: mode must be Top or Latest")))
       (dolist (limit (list 1.5 "8" :false))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session
+                        "harmless-tool-x-keyword-search" session
                         (list :query "emacs" :limit limit))
                        "Error: limit must be a positive integer")))
       (dolist (limit (list 0 -1 11))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session
+                        "harmless-tool-x-keyword-search" session
                         (list :query "emacs" :limit limit))
                        "Error: limit must be from 1 to 10")))
       (dolist (date (list :false 42 "" "  " "c:/" "/" "2026-1-02"
                           "20260102"))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session
+                        "harmless-tool-x-keyword-search" session
                         (list :query "emacs" :from_date date))
                        "Error: date must be YYYY-MM-DD")))
       (should (equal (harmless-x-test-call
-                      "x_keyword_search" session
+                      "harmless-tool-x-keyword-search" session
                       (list :query "emacs"
                             :from_date "2026-02-01"
                             :to_date "2026-01-01"))
                      "Error: from_date is after to_date"))
       (should-not called)
       (should (equal (harmless-x-test-call
-                      "x_keyword_search" session
+                      "harmless-tool-x-keyword-search" session
                       (list :query "  c:/  " :mode " top "
                             :from_date "  2026-01-02  "
                             :to_date "2026-01-03"))
@@ -187,7 +187,7 @@
       (should (equal called '("c:/" "Top" "2026-01-02" "2026-01-03")))
       (setq called nil)
       (should (equal (harmless-x-test-call
-                      "x_keyword_search" session
+                      "harmless-tool-x-keyword-search" session
                       (list :query "emacs"))
                      "No posts"))
       (should (equal called '("emacs" "Latest" nil nil)))
@@ -429,7 +429,7 @@
                           (harmless-session-directory session) t)
                          #'string<))
       (should (equal (harmless-x-test-call
-                      "x_keyword_search" session
+                      "harmless-tool-x-keyword-search" session
                       (list :query "  emacs  "))
                      harmless-x-test-post))
       (should (equal seen '("emacs" "Latest" nil nil)))
@@ -439,11 +439,11 @@
       (should (equal (harmless-x-test-raw-empty session) ""))
       (let ((harmless-x-search-function (lambda (&rest _) nil)))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session '(:query "none"))
+                        "harmless-tool-x-keyword-search" session '(:query "none"))
                        "No posts")))
       (let ((harmless-x-search-function (lambda (&rest _) "nope")))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session '(:query "bad"))
+                        "harmless-tool-x-keyword-search" session '(:query "bad"))
                        "Error: X search failed")))
       (let ((harmless-x-search-function
              (lambda (&rest _)
@@ -456,7 +456,7 @@
                          out))
                  (nreverse out)))))
         (let ((text (harmless-x-test-call
-                     "x_keyword_search" session '(:query "many"))))
+                     "harmless-tool-x-keyword-search" session '(:query "many"))))
           (should (string-search "p8" text))
           (should-not (string-search "p9" text))))
       (let ((harmless-x-search-function
@@ -464,35 +464,35 @@
                (list (list :id "1" :username "ada" :name "Ada"
                            :text "only")))))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" session
+                        "harmless-tool-x-keyword-search" session
                         (list :query "emacs" :limit 1))
                        (concat "1. @ada (Ada)\n"
                                "https://x.com/ada/status/1\n"
                                "only"))))
       (let ((harmless-x-user-function (lambda (_query) nil)))
         (should (equal (harmless-x-test-call
-                        "x_user_search" session '(:query "none"))
+                        "harmless-tool-x-user-search" session '(:query "none"))
                        "No users")))
       (should (equal (harmless-x-test-call
-                      "x_user_search" session
+                      "harmless-tool-x-user-search" session
                       (list "query" "ada"))
                      harmless-x-test-user))
       (let ((harmless-x-thread-function
              (lambda (_id)
                (list (list :id "7" :text "bare")))))
         (should (equal (harmless-x-test-call
-                        "x_thread_fetch" session '(:post_id "7"))
+                        "harmless-tool-x-thread-fetch" session '(:post_id "7"))
                        (concat "1. unknown\n"
                                "https://x.com/i/status/7\n"
                                "bare"))))
-      (should (equal (harmless-ui--tool-verb "x_keyword_search") "posts"))
-      (should (equal (harmless-ui--tool-verb "x_thread_fetch") "thread"))
-      (should (equal (harmless-ui--tool-verb "x_user_search") "users"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-x-keyword-search") "posts"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-x-thread-fetch") "thread"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-x-user-search") "users"))
       (should (equal (harmless-ui--tool-summary
-                      "x_keyword_search" '(:query "emacs"))
+                      "harmless-tool-x-keyword-search" '(:query "emacs"))
                      "emacs"))
       (should (equal (harmless-ui--tool-summary
-                      "x_thread_fetch" '(:post_id "123"))
+                      "harmless-tool-x-thread-fetch" '(:post_id "123"))
                      "123"))
       (should (equal (sort (directory-files repo t) #'string<) files))
       (should (equal (with-temp-buffer
@@ -503,7 +503,7 @@
                             (harmless-session-directory session) t)
                            #'string<)
                      stored))
-      (dolist (name '("x_keyword_search" "x_thread_fetch" "x_user_search"))
+      (dolist (name '("harmless-tool-x-keyword-search" "harmless-tool-x-thread-fetch" "harmless-tool-x-user-search"))
         (should (eq (harmless-tool-class (harmless-tool-by-name name))
                     'network))
         (should-not (harmless-tool-async (harmless-tool-by-name name))))
@@ -511,11 +511,11 @@
       (let ((detached (harmless-x-test-session :detached t :id "chat")))
         (let ((names (mapcar #'harmless-tool-name
                              (harmless-tools-for-session detached))))
-          (should (member "x_keyword_search" names))
-          (should (member "x_thread_fetch" names))
-          (should (member "x_user_search" names)))
+          (should (member "harmless-tool-x-keyword-search" names))
+          (should (member "harmless-tool-x-thread-fetch" names))
+          (should (member "harmless-tool-x-user-search" names)))
         (should (equal (harmless-x-test-call
-                        "x_keyword_search" detached '(:query "emacs"))
+                        "harmless-tool-x-keyword-search" detached '(:query "emacs"))
                        harmless-x-test-post))
         (harmless-x-test-not-root detached)
         (should (string-search "/_detached/"
@@ -532,7 +532,7 @@
         (cl-letf (((symbol-function 'harmless-auth--auth-source)
                    (lambda (_host) nil)))
           (should (equal (harmless-x-test-call
-                          "x_keyword_search" session '(:query "emacs"))
+                          "harmless-tool-x-keyword-search" session '(:query "emacs"))
                          "Error: X is not signed in")))))))
 
 (ert-deftest harmless-x-permission-and-plan-mode ()
@@ -565,7 +565,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "x_keyword_search"
+                               '(:tool-call "1" "harmless-tool-x-keyword-search"
                                  "{\"query\":\"emacs\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -596,7 +596,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "x_keyword_search"
+                               '(:tool-call "1" "harmless-tool-x-keyword-search"
                                  "{\"query\":\"emacs\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -630,7 +630,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "x_thread_fetch"
+                               '(:tool-call "1" "harmless-tool-x-thread-fetch"
                                  "{\"post_id\":\"123\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -655,7 +655,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "x_thread_fetch"
+                               '(:tool-call "1" "harmless-tool-x-thread-fetch"
                                  "{\"post_id\":\"123\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -680,27 +680,27 @@
       (let ((names (mapcar #'harmless-tool-name
                            (harmless-agent-filter-tools
                             child (harmless-tools-enabled)))))
-        (dolist (name '("x_keyword_search" "x_thread_fetch"
-                        "x_user_search"))
+        (dolist (name '("harmless-tool-x-keyword-search" "harmless-tool-x-thread-fetch"
+                        "harmless-tool-x-user-search"))
           (should (member name names)))
-        (should-not (member "write_file" names)))
-      (dolist (pair '(("x_keyword_search" (:query "emacs"))
-                      ("x_thread_fetch" (:post_id "123"))
-                      ("x_user_search" (:query "ada"))))
+        (should-not (member "harmless-tool-write-file" names)))
+      (dolist (pair '(("harmless-tool-x-keyword-search" (:query "emacs"))
+                      ("harmless-tool-x-thread-fetch" (:post_id "123"))
+                      ("harmless-tool-x-user-search" (:query "ada"))))
         (should-not (harmless-agent-refuse-call
                      child (harmless-tool-by-name (car pair))
                      (cadr pair))))
       (should (equal (harmless-x-test-call
-                      "x_keyword_search" child '(:query "emacs"))
+                      "harmless-tool-x-keyword-search" child '(:query "emacs"))
                      harmless-x-test-post))
       (setf (plist-get (harmless-session-agent child) :allow)
-            '("read_file"))
-      (dolist (pair '(("x_keyword_search" (:query "emacs")
-                       "Error: this subagent cannot use x_keyword_search")
-                      ("x_thread_fetch" (:post_id "123")
-                       "Error: this subagent cannot use x_thread_fetch")
-                      ("x_user_search" (:query "ada")
-                       "Error: this subagent cannot use x_user_search")))
+            '("harmless-tool-read-file"))
+      (dolist (pair '(("harmless-tool-x-keyword-search" (:query "emacs")
+                       "Error: this subagent cannot use harmless-tool-x-keyword-search")
+                      ("harmless-tool-x-thread-fetch" (:post_id "123")
+                       "Error: this subagent cannot use harmless-tool-x-thread-fetch")
+                      ("harmless-tool-x-user-search" (:query "ada")
+                       "Error: this subagent cannot use harmless-tool-x-user-search")))
         (should (equal (harmless-agent-refuse-call
                         child (harmless-tool-by-name (car pair))
                         (cadr pair))

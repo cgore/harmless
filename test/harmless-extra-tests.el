@@ -237,7 +237,7 @@
       (setf (harmless-session-plan-mode session) t)
       (let ((blocked (expand-file-name "blocked.txt" extra)))
         (harmless-extra-test-error
-         "Plan mode is on. Only plan.md may be edited, with write_plan"
+         "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
          (lambda ()
            (harmless-tools-fs--write
             session (list :path blocked :contents "no\n"))))

@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `spawn_agent' starts a child session.  The child has its own
+;; `harmless-tool-spawn-agent' starts a child session.  The child has its own
 ;; transcript and reports its last reply to the parent.  A definition
 ;; file can set the child's prompt, tools, model, and sandbox.  A
 ;; subagent cannot start another subagent.
@@ -220,9 +220,9 @@ STOP is passed to `harmless-instruction-directories'."
         (dolist (tool allow)
           (unless (harmless-tool-by-name tool)
             (error "unknown tool %s" tool))
-          (when (string= tool "spawn_agent")
+          (when (string= tool "harmless-tool-spawn-agent")
             (error "a subagent cannot start another subagent"))
-          (when (string= tool "run_workflow")
+          (when (string= tool "harmless-tool-run-workflow")
             (error "a subagent cannot start a workflow")))))
     (list :name name
           :description (let ((desc (plist-get keys :description)))
@@ -271,7 +271,7 @@ A definition that fails to parse signals.  STOP defaults to
   (let ((specs (harmless-agent-discover dir stop)))
     (when specs
       (concat
-       "Agents available for this session.  spawn_agent runs one by name.  The child has its own transcript and reports a summary back.\n\n"
+       "Agents available for this session.  harmless-tool-spawn-agent runs one by name.  The child has its own transcript and reports a summary back.\n\n"
        (mapconcat
         (lambda (spec)
           (format "- %s (%s): %s"
@@ -365,7 +365,7 @@ A failure to resolve the sandbox is `edit'."
 
 (defun harmless-agent-plan-refuses-p (session tool args)
   "Return a refusal when plan mode blocks this spawn, or nil."
-  (when (and (string= (harmless-tool-name tool) "spawn_agent")
+  (when (and (string= (harmless-tool-name tool) "harmless-tool-spawn-agent")
              (harmless-session-plan-mode session))
     (cond
      ((and (fboundp 'harmless-worktree-requested-p)
@@ -375,8 +375,8 @@ A failure to resolve the sandbox is `edit'."
       "Error: Plan mode is on. A subagent that can write is refused"))))
 
 (defun harmless-agent--blank-shell-p (tool args)
-  "Return non-nil when TOOL is run_shell with an empty command."
-  (and (string= (harmless-tool-name tool) "run_shell")
+  "Return non-nil when TOOL is harmless-tool-run-shell with an empty command."
+  (and (string= (harmless-tool-name tool) "harmless-tool-run-shell")
        (let ((command (harmless-tool-arg args :command)))
          (or (null command)
              (and (stringp command)
@@ -390,9 +390,9 @@ A failure to resolve the sandbox is `edit'."
            (allow (plist-get agent :allow))
            (name (harmless-tool-name tool)))
       (cond
-       ((or (string= name "spawn_agent")
-            (string= name "run_workflow"))
-        (if (string= name "spawn_agent")
+       ((or (string= name "harmless-tool-spawn-agent")
+            (string= name "harmless-tool-run-workflow"))
+        (if (string= name "harmless-tool-spawn-agent")
             "Error: a subagent cannot start another subagent"
           "Error: a subagent cannot start a workflow"))
        ((eq allow 'none)
@@ -402,19 +402,21 @@ A failure to resolve the sandbox is `edit'."
        ((and (eq (plist-get agent :sandbox) 'read-only)
              (not (eq (harmless-turn--class tool session args) 'read))
              (not (harmless-agent--blank-shell-p tool args))
-             (not (member name '("send_message" "web_search" "web_fetch"
-                                 "x_keyword_search" "x_thread_fetch"
-                                 "x_user_search"
-                                 "mcp_list_resources"
-                                 "mcp_read_resource"))))
+             (not (member name '("harmless-tool-send-message" "harmless-tool-web-search" "harmless-tool-web-fetch"
+                                 "harmless-tool-x-keyword-search" "harmless-tool-x-thread-fetch"
+                                 "harmless-tool-x-user-search"
+                                 "harmless-tool-mcp-list-resources"
+                                 "harmless-tool-mcp-read-resource"))))
         harmless-agent-read-only-refusal)
        (t nil)))))
 
 (defun harmless-agent-filter-tools (session tools)
   "Return TOOLS with a subagent's limits applied.
-A read-only subagent keeps read tools, `run_shell', `monitor',
-`monitor_stop', `send_message', `web_search', `web_fetch', X
-search, and MCP resources.  Computer control is left out."
+A read-only subagent keeps read tools, `harmless-tool-run-shell',
+`harmless-tool-monitor', `harmless-tool-monitor-stop',
+`harmless-tool-send-message', `harmless-tool-web-search',
+`harmless-tool-web-fetch', X search, and MCP resources.
+Computer control is left out."
   (if (not (eq (harmless-session-source session) 'agent))
       tools
     (let* ((agent (harmless-session-agent session))
@@ -424,7 +426,7 @@ search, and MCP resources.  Computer control is left out."
             (seq-remove
              (lambda (tool)
                (member (harmless-tool-name tool)
-                       '("spawn_agent" "run_workflow")))
+                       '("harmless-tool-spawn-agent" "harmless-tool-run-workflow")))
              tools))
       (setq tools
             (cond
@@ -439,13 +441,13 @@ search, and MCP resources.  Computer control is left out."
            (lambda (tool)
              (or (eq (harmless-tool-class tool) 'read)
                  (member (harmless-tool-name tool)
-                         '("run_shell" "monitor" "monitor_stop"
-                           "send_message"
-                           "web_search" "web_fetch"
-                           "x_keyword_search" "x_thread_fetch"
-                           "x_user_search"
-                           "mcp_list_resources"
-                           "mcp_read_resource"))))
+                         '("harmless-tool-run-shell" "harmless-tool-monitor" "harmless-tool-monitor-stop"
+                           "harmless-tool-send-message"
+                           "harmless-tool-web-search" "harmless-tool-web-fetch"
+                           "harmless-tool-x-keyword-search" "harmless-tool-x-thread-fetch"
+                           "harmless-tool-x-user-search"
+                           "harmless-tool-mcp-list-resources"
+                           "harmless-tool-mcp-read-resource"))))
            tools)
         tools))))
 
@@ -615,7 +617,7 @@ A worktree in ARGS is an isolated checkout.  The parent stays put."
     child))
 
 (defun harmless-agent--tool (session args callback)
-  "spawn_agent implementation.  CALLBACK receives the summary."
+  "harmless-tool-spawn-agent implementation.  CALLBACK receives the summary."
   (let (child err)
     (condition-case caught
         (setq child (harmless-agent-create session args callback))
@@ -626,10 +628,10 @@ A worktree in ARGS is an isolated checkout.  The parent stays put."
                                           :task)))))
 
 (defun harmless-agent-register ()
-  "Register the spawn_agent tool."
+  "Register the harmless-tool-spawn-agent tool."
   (harmless-register-tool
    (harmless-tool-create
-    :name "spawn_agent"
+    :name "harmless-tool-spawn-agent"
     :description
     (concat
      "Start a child session and wait for its summary. "

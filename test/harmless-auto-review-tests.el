@@ -143,7 +143,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
 (ert-deftest harmless-auto-review-parses-and-fails-closed ()
   (let ((slash (file-exists-p "/.harmless"))
         (cdrive (file-exists-p "c:/.harmless"))
-        (tool (harmless-tool-by-name "run_shell")))
+        (tool (harmless-tool-by-name "harmless-tool-run-shell")))
     (should (eq 'allow (harmless-auto-review-parse "allow")))
     (should (eq 'allow (harmless-auto-review-parse "  ALLOW \n")))
     (should (eq 'escalate (harmless-auto-review-parse "escalate")))
@@ -161,22 +161,22 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
     (should (equal (harmless-auto-review-prompt "" "")
                    "Tool: \nArguments: "))
     (should (equal (harmless-auto-review-prompt
-                    "run_shell" '(:command nil))
-                   "Tool: run_shell\nArguments: command=nil"))
+                    "harmless-tool-run-shell" '(:command nil))
+                   "Tool: harmless-tool-run-shell\nArguments: command=nil"))
     (should (equal (harmless-auto-review-prompt
-                    "run_shell" '(:command :false))
-                   "Tool: run_shell\nArguments: command=false"))
+                    "harmless-tool-run-shell" '(:command :false))
+                   "Tool: harmless-tool-run-shell\nArguments: command=false"))
     (should (equal (harmless-auto-review-prompt
-                    "run_shell" '(:command ""))
-                   "Tool: run_shell\nArguments: command=\"\""))
+                    "harmless-tool-run-shell" '(:command ""))
+                   "Tool: harmless-tool-run-shell\nArguments: command=\"\""))
     (should (equal (harmless-auto-review-prompt
                     tool '(:path "note.txt/" :command "../note.txt"))
-                   (concat "Tool: run_shell\nArguments: "
+                   (concat "Tool: harmless-tool-run-shell\nArguments: "
                            "path=\"note.txt/\" command=\"../note.txt\"")))
     (let ((prompt (harmless-auto-review-prompt
                    tool '(:command "echo hi > /"))))
       (should (string-search "echo hi > /" prompt))
-      (should (string-search "Tool: run_shell" prompt))
+      (should (string-search "Tool: harmless-tool-run-shell" prompt))
       (should-not (file-exists-p "/echo")))
     (let* ((provider (harmless-auto-make-fake :name "fake" :host "none"))
            (session (harmless-session--create
@@ -214,7 +214,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
       (setf (harmless-auto-fake-script provider)
             (lambda (_messages tools callback)
               (should (null tools))
-              (funcall callback '(:tool-call "9" "run_shell" "{}"))
+              (funcall callback '(:tool-call "9" "harmless-tool-run-shell" "{}"))
               (funcall callback '(:text "allow"))
               (funcall callback '(:stop "stop"))
               (funcall callback '(:stop "stop"))))
@@ -417,7 +417,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'classifier harmless-auto-test-reviews)
                       'allow))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-ok.txt"))
               (should-not harmless-auto-test-reviews)
               (should (equal harmless-auto-test-asked
@@ -443,7 +443,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                          (setq early (file-exists-p path))
                          (funcall callback 'allow)))))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-ok.txt"))
               (should-not early)
               (should (equal harmless-auto-test-reviews
@@ -465,10 +465,10 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                             harmless-auto-test-reviews)
                       'escalate))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>skipped.txt"))
               (should (equal harmless-auto-test-reviews
-                             '(("run_shell" "echo allowed>skipped.txt" nil))))
+                             '(("harmless-tool-run-shell" "echo allowed>skipped.txt" nil))))
               (should (equal harmless-auto-test-asked
                              '((shell "echo allowed>skipped.txt"))))
               (should (equal (harmless-auto-test-last session)
@@ -480,7 +480,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
               (setq harmless-auto-review-function
                     (lambda (&rest _) (error "classifier down")))
               (harmless-auto-test-run
-               session "write_file"
+               session "harmless-tool-write-file"
                '(:path "../note.txt" :contents "nope\n"))
               (should (equal harmless-auto-test-asked
                              '((edit "../note.txt"))))
@@ -499,7 +499,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                         (push path harmless-auto-test-reviews)
                         (if (equal path "note.txt") 'allow 'escalate))))
               (harmless-auto-test-run
-               session "write_file"
+               session "harmless-tool-write-file"
                '(:path "note.txt/" :contents "stay\n"))
               (should (equal harmless-auto-test-reviews '("note.txt/")))
               (should (equal harmless-auto-test-asked '((edit "note.txt/"))))
@@ -507,13 +507,13 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                              "Error: user denied this tool call"))
               (should-not (file-exists-p path))
               (harmless-auto-test-run
-               session "write_file"
+               session "harmless-tool-write-file"
                '(:path "/" :contents "stay\n"))
               (should (equal harmless-auto-test-reviews '("/")))
               (should (equal harmless-auto-test-asked '((edit "/"))))
               (should-not (file-exists-p "/note.txt"))
               (harmless-auto-test-run
-               session "write_file"
+               session "harmless-tool-write-file"
                '(:path "note.txt" :contents "stay\n"))
               (should (equal harmless-auto-test-reviews '("note.txt")))
               (harmless-auto-test-assert-written path repo)
@@ -527,13 +527,13 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                             harmless-auto-test-reviews)
                       'allow))
               (harmless-auto-test-run
-               session "run_shell" '(:command ""))
+               session "harmless-tool-run-shell" '(:command ""))
               (should (equal harmless-auto-test-reviews '("")))
               (should-not harmless-auto-test-asked)
               (should (equal (harmless-auto-test-last session)
                              "Error: command is empty"))
               (harmless-auto-test-run
-               session "run_shell" '(:command nil))
+               session "harmless-tool-run-shell" '(:command nil))
               (should (equal harmless-auto-test-reviews '(nil)))
               (should (equal (harmless-auto-test-last session)
                              "Error: command is empty")))
@@ -545,7 +545,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'allow))
               (harmless-auto-test-run
-               session "run_shell" '(:command "echo hi"))
+               session "harmless-tool-run-shell" '(:command "echo hi"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
               (should (string-match-p
@@ -559,7 +559,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'allow))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-danger.txt"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
@@ -577,7 +577,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'allow))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-plan.txt"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
@@ -596,7 +596,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'escalate))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-rule.txt"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
@@ -608,7 +608,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
               (harmless-perm-set-rules
                session nil '("Bash(echo allowed*)"))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-denied.txt"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
@@ -627,7 +627,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'escalate))
               (harmless-auto-test-run
-               session "write_file"
+               session "harmless-tool-write-file"
                '(:path "always.txt" :contents "yes\n"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
@@ -642,14 +642,14 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'escalate))
               (harmless-auto-test-run
-               session "write_file"
+               session "harmless-tool-write-file"
                '(:path "edit.txt" :contents "edit\n"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)
               (harmless-auto-test-assert-written path repo)
               (should (equal "edit\n" (harmless-auto-test-read path)))
               (harmless-auto-test-run
-               session "run_shell"
+               session "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-edit-shell.txt"))
               (should-not harmless-auto-test-reviews)
               (should (equal harmless-auto-test-asked
@@ -674,7 +674,7 @@ The box's car is (MESSAGES TOOLS MODEL) after the provider runs."
                       (push 'reviewed harmless-auto-test-reviews)
                       'allow))
               (harmless-auto-test-run
-               child "run_shell"
+               child "harmless-tool-run-shell"
                '(:command "echo allowed>harmless-auto-child.txt"))
               (should-not harmless-auto-test-reviews)
               (should-not harmless-auto-test-asked)

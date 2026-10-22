@@ -69,7 +69,7 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
           (harmless-skill-load-test-write
            root "notes" "Take notes." "HSL-NOTES-BODY")
           (let ((text (harmless-skills-catalog root root)))
-            (should (string-match-p "read_file" text))
+            (should (string-match-p "harmless-tool-read-file" text))
             (should (string-match-p "skill tool" text))
             (should (string-match-p "/name" text))
             (should (string-match-p "Take notes." text))
@@ -109,12 +109,12 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
           (let* ((sent (harmless-skill-load-test-system session))
                  (held (harmless-context-messages child nil child nil nil))
                  (held-text (or (harmless-messages-system-text held) "")))
-            (should (string-match-p "read_file" sent))
+            (should (string-match-p "harmless-tool-read-file" sent))
             (should (string-match-p "Loaded skill commit" sent))
             (should (< (string-match "Loaded skill commit" sent)
                        (string-match "HSL-CHILD-BODY" sent)))
             (should-not (string-match-p "HSL-PARENT-BODY" sent))
-            (should (string-match-p "read_file" held-text))
+            (should (string-match-p "harmless-tool-read-file" held-text))
             (should-not (string-match-p "HSL-CHILD-BODY" held-text)))
           (should-not (string-match-p
                        "HSL-CHILD-BODY"
@@ -142,13 +142,13 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
            root "open" "All tools." "HSL-OPEN-BODY")
           (harmless-skill-load-test-write
            root "yaml" "A YAML list." "HSL-YAML-BODY"
-           '("read_file" "grep"))
+           '("harmless-tool-read-file" "harmless-tool-grep"))
           (harmless-skill-load-test-write
            root "scalar" "A scalar list." "HSL-SCALAR-BODY"
-           "read_file, grep")
+           "harmless-tool-read-file, harmless-tool-grep")
           (harmless-skill-load-test-write
            root "bracket" "A bracket list." "HSL-BRACKET-BODY"
-           "[\"read_file\", \"grep\"]")
+           "[\"harmless-tool-read-file\", \"harmless-tool-grep\"]")
           (harmless-skill-load-test-write
            root "none" "No tools." "HSL-NONE-BODY" 'empty)
           (harmless-skill-load-test-write
@@ -159,37 +159,37 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
             (make-directory gap t)
             (make-directory loose t)
             (with-temp-file (expand-file-name "SKILL.md" gap)
-              (insert "---\nname: gap\ndescription: Gap.\nallowed-tools:\n  - read_file\n\n  - not-a-tool\n---\nHSL-GAP-BODY\n"))
+              (insert "---\nname: gap\ndescription: Gap.\nallowed-tools:\n  - harmless-tool-read-file\n\n  - not-a-tool\n---\nHSL-GAP-BODY\n"))
             (with-temp-file (expand-file-name "SKILL.md" loose)
-              (insert "---\nname: loose\ndescription: Loose.\nAllowed-tools: read_file\n---\nHSL-LOOSE-BODY\n")))
+              (insert "---\nname: loose\ndescription: Loose.\nAllowed-tools: harmless-tool-read-file\n---\nHSL-LOOSE-BODY\n")))
           (let ((skill (harmless-skill-load session "open")))
             (should-not (plist-get skill :restricted))
             (let ((names (harmless-skill-load-test-names session)))
-              (should (member "write_file" names))
-              (should (member "skill" names))
-              (should (member "grep" names))))
+              (should (member "harmless-tool-write-file" names))
+              (should (member "harmless-tool-skill" names))
+              (should (member "harmless-tool-grep" names))))
           (dolist (name '("yaml" "scalar" "bracket"))
             (let ((skill (harmless-skill-load session name)))
               (should (plist-get skill :restricted))
-              (should (equal '("read_file" "grep") (plist-get skill :tools)))
+              (should (equal '("harmless-tool-read-file" "harmless-tool-grep") (plist-get skill :tools)))
               (let ((names (harmless-skill-load-test-names session)))
-                (should (member "read_file" names))
-                (should (member "grep" names))
-                (should-not (member "write_file" names))
-                (should-not (member "skill" names)))))
+                (should (member "harmless-tool-read-file" names))
+                (should (member "harmless-tool-grep" names))
+                (should-not (member "harmless-tool-write-file" names))
+                (should-not (member "harmless-tool-skill" names)))))
           (dolist (name '("none" "blank"))
             (let ((skill (harmless-skill-load session name)))
               (should (plist-get skill :restricted))
               (should-not (plist-get skill :tools))
               (should (null (harmless-skill-load-test-names session)))))
           (let ((skill (harmless-skill-load session "gap")))
-            (should (equal '("read_file") (plist-get skill :tools)))
+            (should (equal '("harmless-tool-read-file") (plist-get skill :tools)))
             (let ((names (harmless-skill-load-test-names session)))
-              (should (member "read_file" names))
-              (should-not (member "write_file" names))
+              (should (member "harmless-tool-read-file" names))
+              (should-not (member "harmless-tool-write-file" names))
               (should-not (member "not-a-tool" names))))
           (harmless-skill-load session "loose")
-          (should (member "write_file"
+          (should (member "harmless-tool-write-file"
                           (harmless-skill-load-test-names session))))
       (harmless-skill-load-test-clear session)
       (ignore-errors (delete-directory base t)))))
@@ -204,7 +204,7 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
           (harmless-skill-load-test-write
            root "open" "All tools." "HSL-OPEN-BODY")
           (harmless-skill-load-test-write
-           root "bad" "Unknown tool." "HSL-BAD-BODY" "read_file, NotATool")
+           root "bad" "Unknown tool." "HSL-BAD-BODY" "harmless-tool-read-file, NotATool")
           (harmless-skill-load-test-write
            root "cased" "Wrong case." "HSL-CASED-BODY" "Read_File")
           (harmless-skill-load session "open")
@@ -215,11 +215,11 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
           (should (equal "open"
                          (plist-get (harmless-skill-active session) :name)))
           (should (equal "Error: skill tool is unknown: Read_File"
-                         (harmless-tool-call (harmless-tool-by-name "skill")
+                         (harmless-tool-call (harmless-tool-by-name "harmless-tool-skill")
                                              session '(:name "cased"))))
           (should (equal "open"
                          (plist-get (harmless-skill-active session) :name)))
-          (should (member "write_file"
+          (should (member "harmless-tool-write-file"
                           (harmless-skill-load-test-names session))))
       (harmless-skill-load-test-clear session)
       (ignore-errors (delete-directory base t)))))
@@ -253,10 +253,10 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
               (should (equal (cdr pair) (error-message-string err))))
             (should-not (harmless-skill-active session)))
           (should (equal "Error: skill name is empty"
-                         (harmless-tool-call (harmless-tool-by-name "skill")
+                         (harmless-tool-call (harmless-tool-by-name "harmless-tool-skill")
                                              session nil)))
           (should (equal "Error: no skill named missing"
-                         (harmless-tool-call (harmless-tool-by-name "skill")
+                         (harmless-tool-call (harmless-tool-by-name "harmless-tool-skill")
                                              session '(:name "missing"))))
           (let ((err (should-error (harmless-skill-load nil "notes")
                                    :type 'error)))
@@ -320,7 +320,7 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
             (should-not (harmless-skill-active session)))
           (dolist (pair before)
             (should (eq (cdr pair) (file-exists-p (car pair)))))
-          (should-not (member "skill"
+          (should-not (member "harmless-tool-skill"
                               (harmless-skill-load-test-names
                                (harmless-skill-load-test-session
                                 "skill-load-detached" nil)))))
@@ -394,15 +394,15 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
         (progn
           (harmless-skill-load-test-write
            root "wide" "Reads and writes." "HSL-WIDE-BODY"
-           '("write_file" "read_file"))
+           '("harmless-tool-write-file" "harmless-tool-read-file"))
           (setf (harmless-session-agent session)
                 (list :name "reader" :sandbox 'read-only :allow 'all))
           (harmless-skill-load session "wide")
           (let ((names (harmless-skill-load-test-names session)))
-            (should (member "read_file" names))
-            (should-not (member "write_file" names))
-            (should-not (member "notebook_edit" names))
-            (should-not (member "skill" names))))
+            (should (member "harmless-tool-read-file" names))
+            (should-not (member "harmless-tool-write-file" names))
+            (should-not (member "harmless-tool-notebook-edit" names))
+            (should-not (member "harmless-tool-skill" names))))
       (harmless-skill-load-test-clear session)
       (ignore-errors (delete-directory base t)))))
 
@@ -411,7 +411,7 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
          (root (expand-file-name "proj" base))
          (harmless-directory (expand-file-name ".harmless-state" base))
          (session (harmless-skill-load-test-session "skill-load-plan" root))
-         (tool (harmless-tool-by-name "skill")))
+         (tool (harmless-tool-by-name "harmless-tool-skill")))
     (unwind-protect
         (progn
           (harmless-skill-load-test-write
@@ -419,9 +419,9 @@ the key and no items.  A string is one scalar.  A list is a YAML list."
           (should (eq 'read (harmless-tool-class tool)))
           (should-not (harmless-perm-needed-p session 'read))
           (should (equal "notes" (harmless-ui--tool-summary
-                                  "skill" '(:name "notes"))))
-          (should (equal "" (harmless-ui--tool-summary "skill" nil)))
-          (should (equal "" (harmless-ui--tool-summary "skill" '(:name nil))))
+                                  "harmless-tool-skill" '(:name "notes"))))
+          (should (equal "" (harmless-ui--tool-summary "harmless-tool-skill" nil)))
+          (should (equal "" (harmless-ui--tool-summary "harmless-tool-skill" '(:name nil))))
           (setf (harmless-session-plan-mode session) t)
           (should (equal "Loaded skill notes\n\nHSL-NOTES-BODY"
                          (harmless-tool-call tool session '(:name "notes"))))

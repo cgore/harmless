@@ -87,7 +87,7 @@
 (ert-deftest harmless-openai-responses-input-tools ()
   (let ((items (harmless-openai--responses-input
                 '((:role :assistant :content "ok"
-                   :tool-calls ((:id "c1" :name "read_file"
+                   :tool-calls ((:id "c1" :name "harmless-tool-read-file"
                                  :args "{\"path\":\"a\"}")))
                   (:role :tool :id "c1" :content "data")))))
     (should (equal "assistant" (plist-get (nth 0 items) :role)))
@@ -100,8 +100,8 @@
 (ert-deftest harmless-openai-responses-input-fills-missing-tool-output ()
   (let ((items (harmless-openai--responses-input
                 '((:role :assistant :content ""
-                   :tool-calls ((:id "c1" :name "read_file" :args "{}")
-                                (:id "c2" :name "list_dir" :args "{}")))
+                   :tool-calls ((:id "c1" :name "harmless-tool-read-file" :args "{}")
+                                (:id "c2" :name "harmless-tool-list-dir" :args "{}")))
                   (:role :user :content "What is 3+5?")))))
     (should (equal "function_call" (plist-get (nth 0 items) :type)))
     (should (equal "c1" (plist-get (nth 0 items) :call_id)))
@@ -116,8 +116,8 @@
 (ert-deftest harmless-openai-responses-input-partial-tool-results ()
   (let ((items (harmless-openai--responses-input
                 '((:role :assistant :tool-calls
-                   ((:id "c1" :name "read_file" :args "{}")
-                    (:id "c2" :name "list_dir" :args "{}")))
+                   ((:id "c1" :name "harmless-tool-read-file" :args "{}")
+                    (:id "c2" :name "harmless-tool-list-dir" :args "{}")))
                   (:role :tool :id "c1" :content "ok")
                   (:role :user :content "hi")))))
     (should (equal "ok" (plist-get (nth 2 items) :output)))
@@ -157,7 +157,7 @@
     (cl-labels ((emit (e) (push e events)))
       (harmless-openai-responses-handle
        asm 'response.output_item.added
-       "{\"type\":\"response.output_item.added\",\"item\":{\"id\":\"fc_1\",\"type\":\"function_call\",\"call_id\":\"c1\",\"name\":\"read_file\",\"arguments\":\"\"}}"
+       "{\"type\":\"response.output_item.added\",\"item\":{\"id\":\"fc_1\",\"type\":\"function_call\",\"call_id\":\"c1\",\"name\":\"harmless-tool-read-file\",\"arguments\":\"\"}}"
        #'emit)
       (harmless-openai-responses-handle
        asm 'response.function_call_arguments.delta
@@ -169,13 +169,13 @@
        #'emit)
       (harmless-openai-responses-handle
        asm 'response.output_item.done
-       "{\"type\":\"response.output_item.done\",\"item\":{\"id\":\"fc_1\",\"type\":\"function_call\",\"call_id\":\"c1\",\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\\\"a\\\"}\"}}"
+       "{\"type\":\"response.output_item.done\",\"item\":{\"id\":\"fc_1\",\"type\":\"function_call\",\"call_id\":\"c1\",\"name\":\"harmless-tool-read-file\",\"arguments\":\"{\\\"path\\\":\\\"a\\\"}\"}}"
        #'emit)
       (harmless-openai-responses-finish asm #'emit))
     (setq events (nreverse events))
     (let ((calls (seq-filter (lambda (e) (eq (car e) :tool-call)) events)))
       (should (equal "c1" (nth 1 (car calls))))
-      (should (equal "read_file" (nth 2 (car calls))))
+      (should (equal "harmless-tool-read-file" (nth 2 (car calls))))
       (should (= 2 (length calls)))
       (should (eq :stop (car (car (last events))))))))
 
@@ -189,9 +189,9 @@
 
 (ert-deftest harmless-openai-two-tool-calls ()
   (let* ((events (harmless-test--collect-openai
-                  '("{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\"}}]}}]}"
+                  '("{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"harmless-tool-read-file\",\"arguments\":\"{\\\"path\\\":\"}}]}}]}"
                     "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"a.txt\\\"}\"}}]}}]}"
-                    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":1,\"id\":\"call_2\",\"function\":{\"name\":\"list_dir\",\"arguments\":\"{\\\"path\\\":\\\".\\\"}\"}}]}}]}"
+                    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":1,\"id\":\"call_2\",\"function\":{\"name\":\"harmless-tool-list-dir\",\"arguments\":\"{\\\"path\\\":\\\".\\\"}\"}}]}}]}"
                     "{\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}")))
          (calls (seq-filter (lambda (e) (eq (car e) :tool-call)) events)))
     (should (>= (length calls) 2))

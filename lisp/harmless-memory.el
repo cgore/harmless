@@ -405,7 +405,7 @@ project instruction."
                                 (harmless-memory--scope-index "workspace" cwd))))))
     (when (or user parts)
       (concat
-       "Memory from earlier sessions.  This index is a map.  Read a note with memory_read before relying on it.  Record a durable fact with memory_remember.  Replace a curated topic with memory_write_topic.  Do not edit MEMORY.md.  USER.md is a profile of the person, not project instructions.  Do not store secrets, credentials, or one-off task state.  Use workspace for this project and global for a preference that applies everywhere.\n\n"
+       "Memory from earlier sessions.  This index is a map.  Read a note with harmless-tool-memory-read before relying on it.  Record a durable fact with harmless-tool-memory-remember.  Replace a curated topic with harmless-tool-memory-write-topic.  Do not edit MEMORY.md.  USER.md is a profile of the person, not project instructions.  Do not store secrets, credentials, or one-off task state.  Use workspace for this project and global for a preference that applies everywhere.\n\n"
        (when user (format "User profile:\n\n%s\n\n" user))
        (when parts (mapconcat #'identity parts "\n"))))))
 
@@ -530,7 +530,7 @@ directory is not expanded.  Nothing is written at the filesystem root."
   "Register memory tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "memory_read"
+    :name "harmless-tool-memory-read"
     :description "Read a memory note. PATH is relative to the scope, such as topics/emacs.md, observations/_inbox/NAME.md, or USER.md in the global scope. SCOPE is workspace or global. USER.md is a profile of the person, not a topic and not project instructions."
     :class 'read
     :schema '(:type "object"
@@ -541,7 +541,7 @@ directory is not expanded.  Nothing is written at the filesystem root."
     :fn #'harmless-memory--tool-read))
   (harmless-register-tool
    (harmless-tool-create
-    :name "memory_remember"
+    :name "harmless-tool-memory-remember"
     :description "Save a durable fact to the memory inbox. Use workspace for this project and global for a preference that applies everywhere. TOPIC is an optional slug, such as emacs."
     :class 'read
     :schema '(:type "object"
@@ -554,7 +554,7 @@ directory is not expanded.  Nothing is written at the filesystem root."
     :fn #'harmless-memory--tool-remember))
   (harmless-register-tool
    (harmless-tool-create
-    :name "memory_write_topic"
+    :name "harmless-tool-memory-write-topic"
     :description "Replace a curated memory topic with CONTENTS, which is the full Markdown file. TOPIC is a slug such as emacs. TOPIC USER.md writes the global user profile instead of a topic, and it does not rewrite MEMORY.md."
     :class 'read
     :schema '(:type "object"

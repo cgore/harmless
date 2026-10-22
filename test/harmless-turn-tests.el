@@ -38,7 +38,7 @@
              (setq calls (1+ calls))
              (if (= calls 1)
                  (progn
-                   (funcall callback '(:tool-call "1" "write_file"
+                   (funcall callback '(:tool-call "1" "harmless-tool-write-file"
                                        "{\"path\":\"x.txt\",\"contents\":\"hi\"}"))
                    (funcall callback '(:stop "tool_calls")))
                (should (cl-find-if
@@ -105,7 +105,7 @@
                  (progn
                    (funcall callback '(:text "ok"))
                    (funcall callback '(:stop "stop")))
-               (funcall callback '(:tool-call "1" "write_file"
+               (funcall callback '(:tool-call "1" "harmless-tool-write-file"
                                    "{\"path\":\"nope.txt\",\"contents\":\"x\"}"))
                (funcall callback '(:stop "tool_calls"))))))
          (harmless-providers (list provider))
@@ -427,10 +427,10 @@
              (if (= calls 1)
                  (progn
                    (funcall callback
-                            '(:tool-call "1" "run_shell"
+                            '(:tool-call "1" "harmless-tool-run-shell"
                               "{\"command\":\"echo one\"}"))
                    (funcall callback
-                            '(:tool-call "2" "run_shell"
+                            '(:tool-call "2" "harmless-tool-run-shell"
                               "{\"command\":\"echo two\"}"))
                    (funcall callback '(:stop "tool_calls")))
                (funcall callback '(:text "done"))
@@ -457,7 +457,7 @@
             (if (= calls 1)
                 (progn
                   (funcall callback
-                           (list :tool-call "1" "run_shell"
+                           (list :tool-call "1" "harmless-tool-run-shell"
                                  (format "{\"command\":%S}" command)))
                   (funcall callback '(:stop "tool_calls")))
               (funcall callback '(:text "done"))
@@ -547,10 +547,10 @@
              (if (= calls 1)
                  (progn
                    (funcall callback
-                            '(:tool-call "1" "run_shell"
+                            '(:tool-call "1" "harmless-tool-run-shell"
                               "{\"command\":\"echo hi\"}"))
                    (funcall callback
-                            '(:tool-call "2" "run_shell"
+                            '(:tool-call "2" "harmless-tool-run-shell"
                               "{\"command\":\"echo hi > out.txt\"}"))
                    (funcall callback '(:stop "tool_calls")))
                (funcall callback '(:text "done"))
@@ -600,7 +600,7 @@
              (if (= calls 1)
                  (progn
                    (funcall callback
-                            '(:tool-call "1" "shell_kill" "{\"id\":\"9\"}"))
+                            '(:tool-call "1" "harmless-tool-shell-kill" "{\"id\":\"9\"}"))
                    (funcall callback '(:stop "tool_calls")))
                (funcall callback '(:text "done"))
                (funcall callback '(:stop "stop"))))))

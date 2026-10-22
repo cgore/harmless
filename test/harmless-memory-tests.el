@@ -101,7 +101,7 @@
        (should (string-match-p "Do not edit" index))
        (should (string-match-p "Two spaces" index))
        (should (string-match-p "Pending" catalog))
-       (should (string-match-p "memory_read" catalog))
+       (should (string-match-p "harmless-tool-memory-read" catalog))
        (should-not (string-match-p "### Global" catalog))))))
 
 (ert-deftest harmless-memory-dream-folds-inbox ()
@@ -249,7 +249,7 @@
                     (if (= calls 2)
                         (progn
                           (funcall callback
-                                   '(:tool-call "1" "write_file"
+                                   '(:tool-call "1" "harmless-tool-write-file"
                                      "{\"path\":\"x.txt\",\"contents\":\"hi\"}"))
                           (funcall callback '(:stop "tool_calls")))
                       (funcall callback '(:text "wrote it"))

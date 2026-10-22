@@ -36,9 +36,9 @@
 
 ;;; Commentary:
 ;;
-;; `schedule' stores one prompt and a time.  When that time arrives,
+;; `harmless-tool-schedule' stores one prompt and a time.  When that time arrives,
 ;; the prompt is sent, or queued if a turn is already running.
-;; `schedule_cancel' removes it before then.  An unexpired schedule
+;; `harmless-tool-schedule-cancel' removes it before then.  An unexpired schedule
 ;; is restored when the session is loaded.  An expired one is dropped
 ;; and is not sent.  This is not a repeating job, and it does not
 ;; watch a queue or a context wall.
@@ -275,7 +275,7 @@ kept list differs from what SUMMARY stored."
     kept))
 
 (defun harmless-schedule-tool (session args)
-  "schedule implementation."
+  "harmless-tool-schedule implementation."
   (let* ((prompt (harmless-schedule--prompt
                   (harmless-tool-arg args :prompt)))
          (due (harmless-schedule--time args))
@@ -286,7 +286,7 @@ kept list differs from what SUMMARY stored."
     (format "Scheduled %s at %s" id iso)))
 
 (defun harmless-schedule-cancel-tool (session args)
-  "schedule_cancel implementation."
+  "harmless-tool-schedule-cancel implementation."
   (let* ((id (harmless-schedule--id (harmless-tool-arg args :id)))
          (found (harmless-schedule--find session id)))
     (unless found
@@ -295,10 +295,10 @@ kept list differs from what SUMMARY stored."
     (format "Cancelled schedule %s" id)))
 
 (defun harmless-schedule-register ()
-  "Register the schedule tools."
+  "Register harmless-tool-schedule and harmless-tool-schedule-cancel."
   (harmless-register-tool
    (harmless-tool-create
-    :name "schedule"
+    :name "harmless-tool-schedule"
     :description "Send PROMPT once, after DELAY seconds or at an absolute UTC time AT. Pass one of delay or at. The prompt and the time are saved with the session. An unexpired schedule is restored when the session is loaded. An expired one is dropped and is not sent. This is not a repeating job."
     :class 'edit
     :schema '(:type "object"
@@ -312,7 +312,7 @@ kept list differs from what SUMMARY stored."
     :fn #'harmless-schedule-tool))
   (harmless-register-tool
    (harmless-tool-create
-    :name "schedule_cancel"
+    :name "harmless-tool-schedule-cancel"
     :description "Cancel a scheduled prompt by id. The prompt is not sent."
     :class 'edit
     :schema '(:type "object"

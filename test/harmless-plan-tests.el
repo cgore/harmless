@@ -35,7 +35,7 @@
                                     :new_string "nope"))))
                 :type 'error)))
       (should (equal (error-message-string err)
-                     "Plan mode is on. Only plan.md may be edited, with write_plan")))
+                     "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan")))
     (should (equal "keep"
                    (harmless-tools-fs--read session '(:path "keep.txt"))))
     (should (string-match-p "Wrote plan.md"
@@ -81,11 +81,11 @@
                      (harmless-context-messages dir nil dir)
                      (when (harmless-session-plan-mode session)
                        (harmless-plan-instructions)))))
-      (should (string-match-p "write_plan"
+      (should (string-match-p "harmless-tool-write-plan"
                               (plist-get (car messages) :content)))
-      (should (string-match-p "exit_plan_mode"
+      (should (string-match-p "harmless-tool-exit-plan-mode"
                               (plist-get (car messages) :content)))
-      (should (string-match-p "apply_patch"
+      (should (string-match-p "harmless-tool-apply-patch"
                               (plist-get (car messages) :content)))
       (should (string-match-p "shell command that can write"
                               (plist-get (car messages) :content))))))

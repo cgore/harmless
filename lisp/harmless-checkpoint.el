@@ -452,7 +452,7 @@ repository this command uses."
 
 (harmless-register-tool
  (harmless-tool-create
-  :name "checkpoint_diff"
+  :name "harmless-tool-checkpoint-diff"
   :description "Show the diff from a shadow checkpoint to the current tree. ID is the checkpoint name. PATH limits the diff to one file. Nil and an empty id are refused. A checkpoint that is not in the store is refused. The project's git directory is not read."
   :class 'read
   :schema '(:type "object"
@@ -465,7 +465,7 @@ repository this command uses."
 
 (harmless-register-tool
  (harmless-tool-create
-  :name "checkpoint_restore"
+  :name "harmless-tool-checkpoint-restore"
   :description "Restore a shadow checkpoint. ID is the checkpoint name. PATH restores that one file and keeps later edits of other files. Omit PATH to restore every recorded file. Nil and an empty id are refused. A checkpoint that is not in the store is refused. The project's git directory is not updated."
   :class 'edit
   :schema '(:type "object"

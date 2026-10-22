@@ -136,11 +136,11 @@
 ;;   M-x harmless-team-health ; read what is true for seats and services
 ;;   M-x harmless-team-recover ; match a seat's record to its live session
 ;;   M-x harmless-team-fleet ; topology, health, and rows that need a person
-;;   team_boot ; boot a rig from a spec
-;;   team_inspect ; read seats, edges, order, and rows
-;;   team_message ; send text to an occupied seat
-;;   team_snapshot ; store a named snapshot
-;;   team_restore ; restore that snapshot
+;;   harmless-tool-team-boot ; boot a rig from a spec
+;;   harmless-tool-team-inspect ; read seats, edges, order, and rows
+;;   harmless-tool-team-message ; send text to an occupied seat
+;;   harmless-tool-team-snapshot ; store a named snapshot
+;;   harmless-tool-team-restore ; restore that snapshot
 ;;   M-x harmless-reload-all-harmless ; reload the Lisp checkout
 
 ;;; Code:

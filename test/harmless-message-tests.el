@@ -52,7 +52,7 @@
 
 (defun harmless-message-test-send (session id text)
   "Return the tool result of sending TEXT from SESSION to ID."
-  (harmless-tool-call (harmless-tool-by-name "send_message")
+  (harmless-tool-call (harmless-tool-by-name "harmless-tool-send-message")
                       session
                       (list :session id :text text)))
 
@@ -190,9 +190,9 @@
       (with-current-buffer (harmless-session-buffer target)
         (should (string-search "Finding" (buffer-string)))
         (should (string-search expected (buffer-string))))
-      (should (equal (harmless-ui--tool-verb "send_message") "message"))
-      (should (equal (harmless-ui--tool-verb "list_sessions") "sessions"))
-      (should (equal (harmless-ui--tool-summary "send_message" '(:session "target"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-send-message") "message"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-list-sessions") "sessions"))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-send-message" '(:session "target"))
                      "target"))
       (should (equal (harmless-message-test-send plain "target" "from plain")
                      "Delivered to target"))
@@ -261,7 +261,7 @@
 (ert-deftest harmless-message-lists-live-sessions ()
   (harmless-message-test-with _data
     (should (equal (harmless-message-list-text) "Live sessions:"))
-    (should (equal (harmless-tool-call (harmless-tool-by-name "list_sessions")
+    (should (equal (harmless-tool-call (harmless-tool-by-name "harmless-tool-list-sessions")
                                       nil nil)
                    "Live sessions:"))
     (let ((older (harmless-message-test-session
@@ -304,7 +304,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "send_message"
+                               '(:tool-call "1" "harmless-tool-send-message"
                                  "{\"session\":\"peer\",\"text\":\"found it\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -314,7 +314,7 @@
               (push (list class item) asked)
               (funcall callback 'deny)))
       (harmless-turn-run session "go")
-      (should (equal asked '((edit "send_message"))))
+      (should (equal asked '((edit "harmless-tool-send-message"))))
       (should (equal (cl-loop for msg in (harmless-session-messages session)
                               when (eq (plist-get msg :role) :tool)
                               collect (plist-get msg :content))
@@ -340,7 +340,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "send_message"
+                               '(:tool-call "1" "harmless-tool-send-message"
                                  "{\"session\":\"peer\",\"text\":\"found it\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -375,23 +375,23 @@
       (let ((names (mapcar #'harmless-tool-name
                            (harmless-agent-filter-tools
                             child (harmless-tools-enabled)))))
-        (should (member "send_message" names))
-        (should (member "list_sessions" names))
-        (should-not (member "write_file" names))
-        (should-not (member "spawn_agent" names)))
+        (should (member "harmless-tool-send-message" names))
+        (should (member "harmless-tool-list-sessions" names))
+        (should-not (member "harmless-tool-write-file" names))
+        (should-not (member "harmless-tool-spawn-agent" names)))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "send_message")
+                   child (harmless-tool-by-name "harmless-tool-send-message")
                    '(:session "peer" :text "look")))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "write_file")
+                      child (harmless-tool-by-name "harmless-tool-write-file")
                       '(:path "x" :contents "y"))
                      "Error: This subagent is read-only. A tool that can write is refused"))
       (setf (plist-get (harmless-session-agent child) :allow)
-            '("read_file"))
+            '("harmless-tool-read-file"))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "send_message")
+                      child (harmless-tool-by-name "harmless-tool-send-message")
                       '(:session "peer" :text "look"))
-                     "Error: this subagent cannot use send_message"))
+                     "Error: this subagent cannot use harmless-tool-send-message"))
       (setf (plist-get (harmless-session-agent child) :allow) 'all)
       (should (equal (harmless-message-test-send child "peer" "look")
                      "Delivered to peer"))

@@ -88,41 +88,41 @@
           (make-directory local t)
           (make-directory project t)
           (should (eq 'edit (harmless-tool-class
-                             (harmless-tool-by-name "team_boot"))))
+                             (harmless-tool-by-name "harmless-tool-team-boot"))))
           (should (eq 'read (harmless-tool-class
-                             (harmless-tool-by-name "team_inspect"))))
+                             (harmless-tool-by-name "harmless-tool-team-inspect"))))
           (should (eq 'edit (harmless-tool-class
-                             (harmless-tool-by-name "team_message"))))
+                             (harmless-tool-by-name "harmless-tool-team-message"))))
           (should (eq 'edit (harmless-tool-class
-                             (harmless-tool-by-name "team_snapshot"))))
+                             (harmless-tool-by-name "harmless-tool-team-snapshot"))))
           (should (eq 'edit (harmless-tool-class
-                             (harmless-tool-by-name "team_restore"))))
-          (should (equal "boot" (harmless-ui--tool-verb "team_boot")))
+                             (harmless-tool-by-name "harmless-tool-team-restore"))))
+          (should (equal "boot" (harmless-ui--tool-verb "harmless-tool-team-boot")))
           (should (equal "inspect"
-                         (harmless-ui--tool-verb "team_inspect")))
+                         (harmless-ui--tool-verb "harmless-tool-team-inspect")))
           (should (equal "message"
-                         (harmless-ui--tool-verb "team_message")))
+                         (harmless-ui--tool-verb "harmless-tool-team-message")))
           (should (equal "snapshot"
-                         (harmless-ui--tool-verb "team_snapshot")))
+                         (harmless-ui--tool-verb "harmless-tool-team-snapshot")))
           (should (equal "restore"
-                         (harmless-ui--tool-verb "team_restore")))
+                         (harmless-ui--tool-verb "harmless-tool-team-restore")))
           (should (equal "starter"
                          (harmless-ui--tool-summary
-                          "team_boot" '(:spec "starter"))))
+                          "harmless-tool-team-boot" '(:spec "starter"))))
           (should (equal "starter"
                          (harmless-ui--tool-summary
-                          "team_inspect" '(:rig "starter"))))
+                          "harmless-tool-team-inspect" '(:rig "starter"))))
           (should (equal "Ship it?"
                          (harmless-ui--tool-summary
-                          "team_message" '(:text "Ship it?"))))
+                          "harmless-tool-team-message" '(:text "Ship it?"))))
           (should (equal "dawn"
                          (harmless-ui--tool-summary
-                          "team_snapshot" '(:name "dawn"))))
+                          "harmless-tool-team-snapshot" '(:name "dawn"))))
           (should (equal "dawn"
                          (harmless-ui--tool-summary
-                          "team_restore" '(:name "dawn"))))
-          (dolist (name '("team_boot" "team_inspect" "team_message"
-                          "team_snapshot" "team_restore"))
+                          "harmless-tool-team-restore" '(:name "dawn"))))
+          (dolist (name '("harmless-tool-team-boot" "harmless-tool-team-inspect" "harmless-tool-team-message"
+                          "harmless-tool-team-snapshot" "harmless-tool-team-restore"))
             (should (member name
                             (harmless-team-tools-test-names session)))
             (should-not (member name
@@ -139,7 +139,7 @@
                              detached '(:spec "starter"))))))
           (should (equal "Error: team spec is empty"
                          (harmless-tool-call
-                          (harmless-tool-by-name "team_boot")
+                          (harmless-tool-by-name "harmless-tool-team-boot")
                           session nil)))
           (setf (harmless-session-plan-mode session) t)
           (dolist (fn (list
@@ -157,7 +157,7 @@
                          (harmless-team-tools-restore
                           session '(:rig "starter" :name "dawn")))))
             (should (equal (harmless-team-tools-test-signal fn)
-                           "Plan mode is on. Only plan.md may be edited, with write_plan")))
+                           "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan")))
           (should (equal "team rig is missing"
                          (harmless-team-tools-test-signal
                           (lambda ()

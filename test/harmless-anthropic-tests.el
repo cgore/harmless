@@ -50,7 +50,7 @@
     (cl-labels ((emit (e) (push e events)))
       (harmless-anthropic-handle-event
        asm 'content_block_start
-       "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"read_file\"}}"
+       "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"harmless-tool-read-file\"}}"
        #'emit)
       (harmless-anthropic-handle-event
        asm 'content_block_delta
@@ -59,6 +59,6 @@
       (harmless-anthropic-finish asm #'emit))
     (setq events (nreverse events))
     (should (equal "t1" (nth 1 (cl-find :tool-call events :key #'car))))
-    (should (equal "read_file" (nth 2 (cl-find :tool-call events :key #'car))))))
+    (should (equal "harmless-tool-read-file" (nth 2 (cl-find :tool-call events :key #'car))))))
 
 (provide 'harmless-anthropic-tests)

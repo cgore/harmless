@@ -94,16 +94,16 @@ A screenshot is still allowed.  The caller refuses before
 asking for permission."
   (and (harmless-session-plan-mode session)
        (member (harmless-tool-name tool)
-               '("computer_click" "computer_type"
-                 "computer_key" "browser_open"))
+               '("harmless-tool-computer-click" "harmless-tool-computer-type"
+                 "harmless-tool-computer-key" "harmless-tool-browser-open"))
        harmless-computer-plan-refusal))
 
 (defun harmless-computer--plan (session name)
   "Signal when plan mode refuses NAME on SESSION."
   (when (and session
              (harmless-session-plan-mode session)
-             (member name '("computer_click" "computer_type"
-                            "computer_key" "browser_open")))
+             (member name '("harmless-tool-computer-click" "harmless-tool-computer-type"
+                            "harmless-tool-computer-key" "harmless-tool-browser-open")))
     (error "Plan mode is on. Computer control is refused")))
 
 (defun harmless-computer--coord (args key)
@@ -318,7 +318,7 @@ PowerShell is refused before a process starts when it is missing."
   url)
 
 (defun harmless-computer-screenshot (session _args)
-  "computer_screenshot implementation."
+  "harmless-tool-computer-screenshot implementation."
   (ignore session)
   (let ((shot (funcall harmless-computer-capture-function)))
     (unless (and (listp shot)
@@ -332,8 +332,8 @@ PowerShell is refused before a process starts when it is missing."
     (format "%dx%d\n%s" (nth 0 shot) (nth 1 shot) (nth 2 shot))))
 
 (defun harmless-computer-click (session args)
-  "computer_click implementation."
-  (harmless-computer--plan session "computer_click")
+  "harmless-tool-computer-click implementation."
+  (harmless-computer--plan session "harmless-tool-computer-click")
   (let ((x (harmless-computer--coord args :x))
         (y (harmless-computer--coord args :y))
         (button (harmless-computer--button args)))
@@ -342,22 +342,22 @@ PowerShell is refused before a process starts when it is missing."
     (format "Clicked %s at %d, %d" button x y)))
 
 (defun harmless-computer-type (session args)
-  "computer_type implementation."
-  (harmless-computer--plan session "computer_type")
+  "harmless-tool-computer-type implementation."
+  (harmless-computer--plan session "harmless-tool-computer-type")
   (let ((text (harmless-computer--text args)))
     (funcall harmless-computer-act-function (list :type text))
     (format "Typed %d characters" (length text))))
 
 (defun harmless-computer-key (session args)
-  "computer_key implementation."
-  (harmless-computer--plan session "computer_key")
+  "harmless-tool-computer-key implementation."
+  (harmless-computer--plan session "harmless-tool-computer-key")
   (let ((key (harmless-computer--key args)))
     (funcall harmless-computer-act-function (list :key key))
     "Pressed key"))
 
 (defun harmless-computer-browse (session args)
-  "browser_open implementation."
-  (harmless-computer--plan session "browser_open")
+  "harmless-tool-browser-open implementation."
+  (harmless-computer--plan session "harmless-tool-browser-open")
   (let ((url (harmless-web-url (harmless-tool-arg args :url))))
     (funcall harmless-computer-browse-function url)
     (concat "Opened " url)))
@@ -366,14 +366,14 @@ PowerShell is refused before a process starts when it is missing."
   "Register the computer and browser tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "computer_screenshot"
+    :name "harmless-tool-computer-screenshot"
     :description "Capture the primary screen. The result is the size and a PNG path under the Harmless data directory. Nothing is written into the project."
     :class 'shell
     :schema '(:type "object")
     :fn #'harmless-computer-screenshot))
   (harmless-register-tool
    (harmless-tool-create
-    :name "computer_click"
+    :name "harmless-tool-computer-click"
     :description "Click the desktop at X and Y. BUTTON is left, right, or middle. Nothing is written into the project."
     :class 'shell
     :schema '(:type "object"
@@ -385,7 +385,7 @@ PowerShell is refused before a process starts when it is missing."
     :fn #'harmless-computer-click))
   (harmless-register-tool
    (harmless-tool-create
-    :name "computer_type"
+    :name "harmless-tool-computer-type"
     :description "Type TEXT into the window that has focus. Nothing is written into the project."
     :class 'shell
     :schema '(:type "object"
@@ -395,7 +395,7 @@ PowerShell is refused before a process starts when it is missing."
     :fn #'harmless-computer-type))
   (harmless-register-tool
    (harmless-tool-create
-    :name "computer_key"
+    :name "harmless-tool-computer-key"
     :description "Press one KEY, such as enter, tab, escape, or a single character. Nothing is written into the project."
     :class 'shell
     :schema '(:type "object"
@@ -405,7 +405,7 @@ PowerShell is refused before a process starts when it is missing."
     :fn #'harmless-computer-key))
   (harmless-register-tool
    (harmless-tool-create
-    :name "browser_open"
+    :name "harmless-tool-browser-open"
     :description "Open URL in the desktop browser so the user can watch. Only http and https are accepted. Nothing is written into the project."
     :class 'shell
     :schema '(:type "object"

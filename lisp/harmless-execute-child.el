@@ -1,4 +1,4 @@
-;;; harmless-execute-child.el --- Interpreter for execute_code -*- lexical-binding: t; -*-
+;;; harmless-execute-child.el --- Interpreter for harmless-tool-execute-code -*- lexical-binding: t; -*-
 
 ;;;; Copyright (c) 2026, Christopher Mark Gore,
 ;;;; Soli Deo Gloria,

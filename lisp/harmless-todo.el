@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `todo_write' keeps the list of work for one session.  Each item
+;; `harmless-tool-todo-write' keeps the list of work for one session.  Each item
 ;; has an id, content, a status, and the ids it depends on.  The
 ;; list is saved with the session.  A fork copies it.  A subagent
 ;; starts with an empty list.  Nothing is written into the project.
@@ -462,14 +462,14 @@ Save when the kept list differs from RAW."
     items))
 
 (defun harmless-todo-tool (session args)
-  "todo_write implementation."
+  "harmless-tool-todo-write implementation."
   (harmless-todo-update session args))
 
 (defun harmless-todo-register ()
   "Register the todo tool."
   (harmless-register-tool
    (harmless-tool-create
-    :name "todo_write"
+    :name "harmless-tool-todo-write"
     :description "Update this session's todo list. Each item has id, content, status, and depends. Status is pending, in_progress, completed, or cancelled. merge true, the default, updates by id. merge false replaces the list. The list is saved with the session. A dependency is recorded and does not block a status change. Nothing is written into the project."
     :class 'read
     :schema '(:type "object"

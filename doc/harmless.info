@@ -359,17 +359,17 @@ names the buffer, the file, the major mode, the line and column at
 point, and whether the buffer is modified or narrowed.  The line is
 counted from the start of the buffer.  The column starts at 1.  An
 active region is included, cut at ‘harmless-read-file-max-bytes’ the
-same way ‘read_file’ cuts a file.  With no region, the attachment sends
-the line at point and the name ‘which-function’ can find.  A prompt sent
-from the transcript or the prompt window attaches the other window in
-the selected frame when that window shows a file buffer, and attaches no
-file when it does not.  A non-file buffer is named, with its major mode,
-and contributes no file text.  The minibuffer and a buffer whose name
-starts with a space are not attached.  ‘M-x harmless-steer’ from a file
-buffer attaches that buffer.  The typed text stays, and this attachment
-follows under ‘--- Attached Context ---’, after any ‘@’ references.  A
-file buffer and the transcript keep their text.  The prompt buffer is
-what gets cleared.
+same way ‘harmless-tool-read-file’ cuts a file.  With no region, the
+attachment sends the line at point and the name ‘which-function’ can
+find.  A prompt sent from the transcript or the prompt window attaches
+the other window in the selected frame when that window shows a file
+buffer, and attaches no file when it does not.  A non-file buffer is
+named, with its major mode, and contributes no file text.  The
+minibuffer and a buffer whose name starts with a space are not attached.
+‘M-x harmless-steer’ from a file buffer attaches that buffer.  The typed
+text stays, and this attachment follows under ‘--- Attached Context
+---’, after any ‘@’ references.  A file buffer and the transcript keep
+their text.  The prompt buffer is what gets cleared.
 
    ‘M-x harmless-steer’ reads a follow-up from the minibuffer and queues
 it without aborting the turn.  That includes while a permission question
@@ -390,15 +390,16 @@ File: harmless.info,  Node: Permissions,  Next: Accounts,  Prev: Prompt,  Up: To
 Each tool belongs to a class: ‘read’, ‘edit’, ‘shell’, or ‘network’.  A
 read never asks.  An edit asks.  A shell asks.  A network call asks.
 
-   A ‘run_shell’ command that Harmless can see is read-only is treated
-as a read, so it does not ask.  A command Harmless does not recognize
-still asks.  A redirect that writes, a command substitution, and a
-subshell still ask.  ‘shell_kill’ still asks.  In plan mode a read-only
-shell command still runs, and a shell command that can write is refused
-before the question.  *Note Plan mode::.  A file watch does not ask.  A
-command that can write asks, and the question shows that command.  *Note
-Monitors::.  Scheduling a prompt asks, and the question shows that
-prompt.  Accepting edits does not ask.  *Note Schedules::.
+   A ‘harmless-tool-run-shell’ command that Harmless can see is
+read-only is treated as a read, so it does not ask.  A command Harmless
+does not recognize still asks.  A redirect that writes, a command
+substitution, and a subshell still ask.  ‘harmless-tool-shell-kill’
+still asks.  In plan mode a read-only shell command still runs, and a
+shell command that can write is refused before the question.  *Note Plan
+mode::.  A file watch does not ask.  A command that can write asks, and
+the question shows that command.  *Note Monitors::.  Scheduling a prompt
+asks, and the question shows that prompt.  Accepting edits does not ask.
+*Note Schedules::.
 
    The permission mode of a session changes that.
 
@@ -432,14 +433,14 @@ sandbox must be off, read-only, or workspace-write’.  A saved value
 Harmless does not know is loaded as ‘off’.  ‘off’ is not written into
 the session summary.
 
-   ‘run_shell’ takes ‘network’.  It is a boolean.  Omit it, or pass
-false, and a sandbox that is on denies new network connections.  Pass
-true and the call asks as a network tool before it runs.  A value that
-is not a boolean is refused when the sandbox is on: ‘Error: network must
-be a boolean’.  When the sandbox is ‘off’, ‘network’ is ignored and a
-read-only command still does not ask.  A kernel that cannot restrict the
-network is refused rather than left open: ‘Error: Landlock cannot
-restrict the network on this kernel’.
+   ‘harmless-tool-run-shell’ takes ‘network’.  It is a boolean.  Omit
+it, or pass false, and a sandbox that is on denies new network
+connections.  Pass true and the call asks as a network tool before it
+runs.  A value that is not a boolean is refused when the sandbox is on:
+‘Error: network must be a boolean’.  When the sandbox is ‘off’,
+‘network’ is ignored and a read-only command still does not ask.  A
+kernel that cannot restrict the network is refused rather than left
+open: ‘Error: Landlock cannot restrict the network on this kernel’.
 
    A read-only subagent keeps a read-only Landlock sandbox when the
 session sandbox is not ‘off’.  When the session sandbox is ‘off’, that
@@ -648,15 +649,17 @@ several shell commands overlap.  Results are added to the transcript in
 the order the model requested them.  Abort cancels the calls that are
 still running.  A review reads the working tree, a base branch, or one
 commit and records findings.  It does not edit the project.  *Note
-Review::.  ‘lsp’ asks a language server that is already running for a
-definition, references, or diagnostics.  *Note Language server::.
-‘read_file’ also reads an image, a PDF, and a notebook.  ‘notebook_edit’
-replaces one notebook cell.  ‘I’ attaches an image to the next prompt.
-*Note File tools::.  ‘skill’ loads one skill into later turns.  *Note
-Skills::.  ‘generate_image’ writes a generated image into the project.
-*Note Image generation::.  ‘team_boot’, ‘team_inspect’, ‘team_message’,
-‘team_snapshot’, and ‘team_restore’ call the same team commands a person
-runs.  *Note Team::.
+Review::.  ‘harmless-tool-lsp’ asks a language server that is already
+running for a definition, references, or diagnostics.  *Note Language
+server::.  ‘harmless-tool-read-file’ also reads an image, a PDF, and a
+notebook.  ‘harmless-tool-notebook-edit’ replaces one notebook cell.
+‘I’ attaches an image to the next prompt.  *Note File tools::.
+‘harmless-tool-skill’ loads one skill into later turns.  *Note Skills::.
+‘harmless-tool-generate-image’ writes a generated image into the
+project.  *Note Image generation::.  ‘harmless-tool-team-boot’,
+‘harmless-tool-team-inspect’, ‘harmless-tool-team-message’,
+‘harmless-tool-team-snapshot’, and ‘harmless-tool-team-restore’ call the
+same team commands a person runs.  *Note Team::.
 
    Paths are relative to the project root unless you pass an absolute
 path that is still inside that root, or inside a directory added for
@@ -667,9 +670,9 @@ refused, and Harmless will not store its own state there.
    ‘+’, or ‘M-x harmless-add-directory’, lets this session read and edit
 one directory outside the project.  The same command is ‘+’ in the
 Harmless menu.  The directory is saved with the session.  A fork and a
-subagent keep the list.  ‘glob’ searches the project and every added
-directory.  With no ‘path’, ‘grep’ does too.  The shell's remembered
-directory is still the project only.
+subagent keep the list.  ‘harmless-tool-glob’ searches the project and
+every added directory.  With no ‘path’, ‘harmless-tool-grep’ does too.
+The shell's remembered directory is still the project only.
 
    Nil, ‘""’, and whitespace are refused: ‘extra directory is empty’.  A
 value that is not text is refused: ‘extra directory must be a string’.
@@ -685,15 +688,16 @@ attached to a project’.
    A path outside the project and outside every added directory is still
 refused: ‘Path escapes project: ’, followed by the path.
 
-   A detached chat is offered ‘memory_read’, ‘memory_remember’,
-‘memory_write_topic’, and ‘ask_user’.  *Note Memory::.  *Note
-Questions::.  It can list live sessions and send one a finding.  *Note
-Messages::.  It can search the web and fetch a page.  *Note Web
-search::.  *Note Fetch a page::.  It can search X for posts, a thread,
-and accounts.  *Note X search::.  It can list and read MCP resources.
-*Note MCP::.  It can see the screen, click, type, and open a browser.
-*Note Computer use::.  It can schedule a prompt.  *Note Schedules::.  It
-can keep a todo list.  *Note Todos::.
+   A detached chat is offered ‘harmless-tool-memory-read’,
+‘harmless-tool-memory-remember’, ‘harmless-tool-memory-write-topic’, and
+‘harmless-tool-ask-user’.  *Note Memory::.  *Note Questions::.  It can
+list live sessions and send one a finding.  *Note Messages::.  It can
+search the web and fetch a page.  *Note Web search::.  *Note Fetch a
+page::.  It can search X for posts, a thread, and accounts.  *Note X
+search::.  It can list and read MCP resources.  *Note MCP::.  It can see
+the screen, click, type, and open a browser.  *Note Computer use::.  It
+can schedule a prompt.  *Note Schedules::.  It can keep a todo list.
+*Note Todos::.
 
    A project session can run an Emacs Lisp script that calls these
 tools.  *Note Code execution::.
@@ -727,11 +731,12 @@ File: harmless.info,  Node: File tools,  Next: Search,  Up: Tools
 10.1 File tools
 ===============
 
-‘read_file’, ‘list_dir’, ‘write_file’, ‘replace’, and ‘apply_patch’ also
-accept a path inside a directory added with ‘M-x
-harmless-add-directory’.
+‘harmless-tool-read-file’, ‘harmless-tool-list-dir’,
+‘harmless-tool-write-file’, ‘harmless-tool-replace’, and
+‘harmless-tool-apply-patch’ also accept a path inside a directory added
+with ‘M-x harmless-add-directory’.
 
-‘read_file’
+‘harmless-tool-read-file’
      Read a project file.  ‘offset’ is the first line, counting from 1.
      ‘limit’ is how many lines to return.  Those arguments apply only to
      a text file.  The result is cut at ‘harmless-read-file-max-bytes’
@@ -753,7 +758,7 @@ harmless-add-directory’.
      is refused: ‘notebook is not a notebook’.  A notebook larger than
      the cap is refused: ‘notebook is too large’.
 
-‘notebook_edit’
+‘harmless-tool-notebook-edit’
      Replace the source of one cell in an existing ‘.ipynb’ file.
      ‘path’ is the notebook.  ‘cell’ is a cell id or a 0-based index.
      ‘source’ is the new source.  An empty source clears the cell.
@@ -788,19 +793,19 @@ harmless-add-directory’.
      bytes that are not an image are refused: ‘image is not an image’.
      A file larger than the cap is refused: ‘image is too large’.
 
-‘list_dir’
+‘harmless-tool-list-dir’
      List the names in a directory.  A directory name ends with a slash.
      The default path is the project root.
 
-‘write_file’
+‘harmless-tool-write-file’
      Create or replace a file with the given contents.  This is an edit.
 
-‘replace’
+‘harmless-tool-replace’
      Replace one unique string in a file.  If the string occurs more
      than once, the call fails unless ‘replace_all’ is true.  This is an
      edit.
 
-‘apply_patch’
+‘harmless-tool-apply-patch’
      Apply several hunks in one call.  Each hunk names a ‘path’, an
      ‘old_string’, and a ‘new_string’.  The old string must occur once
      in that file.  Later hunks on the same file see earlier
@@ -809,16 +814,17 @@ harmless-add-directory’.
      file when checkpoints are on, after the edit is accepted and before
      the file changes.  *Note Checkpoints::.
 
-     When a buffer visits the file, ‘read_file’ returns that buffer's
-     accessible text.  Unsaved text ends with ‘[unsaved]’.  Narrowed
-     text ends with ‘[narrowed]’.  The read records the buffer.
-     ‘write_file’, ‘replace’, and ‘apply_patch’ then change that buffer
-     as one undo entry and save it.  The saved bytes use the buffer's
-     coding system and newline convention.  A window that already shows
-     the buffer moves to the first change, and the selected window stays
-     selected.  ‘vc’ is refreshed after the save.  A file that no buffer
-     is visiting is still read and written directly.  An indirect buffer
-     is edited through its base buffer.  Narrowing is restored when the
+     When a buffer visits the file, ‘harmless-tool-read-file’ returns
+     that buffer's accessible text.  Unsaved text ends with ‘[unsaved]’.
+     Narrowed text ends with ‘[narrowed]’.  The read records the buffer.
+     ‘harmless-tool-write-file’, ‘harmless-tool-replace’, and
+     ‘harmless-tool-apply-patch’ then change that buffer as one undo
+     entry and save it.  The saved bytes use the buffer's coding system
+     and newline convention.  A window that already shows the buffer
+     moves to the first change, and the selected window stays selected.
+     ‘vc’ is refreshed after the save.  A file that no buffer is
+     visiting is still read and written directly.  An indirect buffer is
+     edited through its base buffer.  Narrowing is restored when the
      tool returns, and the report says ‘buffer was narrowed’.
 
      A buffer that changed after it was read is refused, and the file is
@@ -830,9 +836,10 @@ harmless-add-directory’.
      signals restores the buffer text and is refused: ‘buffer save
      failed: ’, followed by that message.
 
-     In plan mode, ‘write_file’, ‘replace’, ‘apply_patch’, and
-     ‘notebook_edit’ fail.  The model must write ‘plan.md’ with
-     ‘write_plan’.  *Note Plan mode::.
+     In plan mode, ‘harmless-tool-write-file’, ‘harmless-tool-replace’,
+     ‘harmless-tool-apply-patch’, and ‘harmless-tool-notebook-edit’
+     fail.  The model must write ‘plan.md’ with
+     ‘harmless-tool-write-plan’.  *Note Plan mode::.
 
 
 File: harmless.info,  Node: Search,  Next: Shell,  Prev: File tools,  Up: Tools
@@ -840,12 +847,12 @@ File: harmless.info,  Node: Search,  Next: Shell,  Prev: File tools,  Up: Tools
 10.2 Search
 ===========
 
-‘glob’
+‘harmless-tool-glob’
      Find files whose names match a glob.  The pattern may be a basename
      or a relative path.  The search covers the project and every added
      directory.  A match outside the project is an absolute path.
 
-‘grep’
+‘harmless-tool-grep’
      Search file contents for a regular expression.  The optional
      arguments are ‘path’, ‘glob’, ‘engine’, ‘context’, ‘type’, and
      ‘multiline’.
@@ -877,7 +884,7 @@ Ag refuses it.  The Emacs Lisp scan refuses it.
 
    The pattern is required, and it is case-sensitive.  An ag pattern
 cannot start with a hyphen.  A long result is cut at the same byte cap
-as ‘read_file’.
+as ‘harmless-tool-read-file’.
 
 
 File: harmless.info,  Node: Shell,  Next: Checkpoints,  Prev: Search,  Up: Tools
@@ -885,14 +892,14 @@ File: harmless.info,  Node: Shell,  Next: Checkpoints,  Prev: Search,  Up: Tools
 10.3 Shell
 ==========
 
-‘run_shell’ runs one command in the project root through your shell.
-The next command starts in the same directory when a ‘cd’ stayed inside
-the project.  Nil and ‘""’ mean the project root.  A ‘cd’ that leaves
-the project is not kept.  Harmless reports ‘The shell left the project.
-The next command starts in ’, followed by the directory the next command
-starts in.  A remembered directory is used only when it is still inside
-the project.  The filesystem root is not kept.  The remembered directory
-is saved with the session.
+‘harmless-tool-run-shell’ runs one command in the project root through
+your shell.  The next command starts in the same directory when a ‘cd’
+stayed inside the project.  Nil and ‘""’ mean the project root.  A ‘cd’
+that leaves the project is not kept.  Harmless reports ‘The shell left
+the project. The next command starts in ’, followed by the directory the
+next command starts in.  A remembered directory is used only when it is
+still inside the project.  The filesystem root is not kept.  The
+remembered directory is saved with the session.
 
    ‘timeout’ is how many seconds to wait.  When it is omitted,
 ‘harmless-shell-timeout-seconds’ (120) is used.  A negative number,
@@ -903,17 +910,18 @@ Harmless leaves the process running and returns a background id with the
 output captured so far.  It does not kill the process.  ‘background’
 true returns that id immediately.
 
-   ‘shell_output’ reads one background shell.  ‘id’ is the id
-‘run_shell’ returned.  Without ‘timeout’, the tool returns the output
-already available.  With ‘timeout’, it waits that many seconds for the
-command to exit, then returns whatever it has.  This tool does not ask
-for permission.  An empty id is refused: ‘Error: shell id is empty’.  An
-unknown id is refused: ‘Error: no background shell ’, followed by that
-id.  A bad timeout uses the same refusal as ‘run_shell’.
+   ‘harmless-tool-shell-output’ reads one background shell.  ‘id’ is the
+id ‘harmless-tool-run-shell’ returned.  Without ‘timeout’, the tool
+returns the output already available.  With ‘timeout’, it waits that
+many seconds for the command to exit, then returns whatever it has.
+This tool does not ask for permission.  An empty id is refused: ‘Error:
+shell id is empty’.  An unknown id is refused: ‘Error: no background
+shell ’, followed by that id.  A bad timeout uses the same refusal as
+‘harmless-tool-run-shell’.
 
-   ‘shell_kill’ stops a background shell.  It asks for permission like
-any other shell command.  Killing a shell that is not running is
-refused: ‘Error: shell ’, the id, and ‘ is not running’.
+   ‘harmless-tool-shell-kill’ stops a background shell.  It asks for
+permission like any other shell command.  Killing a shell that is not
+running is refused: ‘Error: shell ’, the id, and ‘ is not running’.
 
    The text returned to the model is cut at
 ‘harmless-shell-output-max-bytes’ (20000).
@@ -934,8 +942,8 @@ read-only command does not.  *Note Permissions::.  *Note Checkpoints::.
    In plan mode, a shell command that can write is refused before any
 permission question: ‘Error: Plan mode is on. A shell command that can
 write is refused’.  Nil, ‘""’, and a blank command are not that refusal.
-A read-only command still runs.  ‘shell_kill’ still asks.  *Note Plan
-mode::.
+A read-only command still runs.  ‘harmless-tool-shell-kill’ still asks.
+*Note Plan mode::.
 
    When ‘harmless-shell-sandbox’ is ‘off’, the default, the shell is not
 sandboxed and ‘network’ is ignored.  The process is your shell.  It is
@@ -993,13 +1001,14 @@ repository for each snapshotted directory.  That repository is not the
 project's ‘.git’.  The project's history stays where it is.  The
 snapshot is not an object in the project's repository.
 
-   ‘write_file’, ‘replace’, and ‘apply_patch’ snapshot the directory
-that contains the file, after the edit is accepted and before the file
-changes.  A patch snapshots only after every hunk is accepted.  A shell
-command that can write snapshots the project.  A read-only command does
-not.  Each directory is snapshotted at most once in a turn.  The next
-turn can snapshot it again.  A second directory has its own repository.
-A snapshot that fails does not block the tool, and the edit still
+   ‘harmless-tool-write-file’, ‘harmless-tool-replace’, and
+‘harmless-tool-apply-patch’ snapshot the directory that contains the
+file, after the edit is accepted and before the file changes.  A patch
+snapshots only after every hunk is accepted.  A shell command that can
+write snapshots the project.  A read-only command does not.  Each
+directory is snapshotted at most once in a turn.  The next turn can
+snapshot it again.  A second directory has its own repository.  A
+snapshot that fails does not block the tool, and the edit still
 proceeds.  A refused edit, including plan mode, does not snapshot.
 
    The filesystem root, a drive root, and a missing directory are
@@ -1009,19 +1018,20 @@ regular files is not snapshotted.  A directory named ‘.git’ is not
 recorded.  A symlink that is a directory, or whose target leaves the
 tree, is not recorded.
 
-   ‘checkpoint_diff’ shows the difference from one snapshot to the
-current tree.  ‘id’ is the snapshot name: ‘cp-1’, then ‘cp-2’, with no
-zero padding.  ‘path’ limits the diff to one file.  Omit it, or pass
-nil, to compare the project.  An empty difference is empty text.  A
-difference longer than 100000 characters is cut and ends with
+   ‘harmless-tool-checkpoint-diff’ shows the difference from one
+snapshot to the current tree.  ‘id’ is the snapshot name: ‘cp-1’, then
+‘cp-2’, with no zero padding.  ‘path’ limits the diff to one file.  Omit
+it, or pass nil, to compare the project.  An empty difference is empty
+text.  A difference longer than 100000 characters is cut and ends with
 ‘[truncated]’.  This tool only reads.
 
-   ‘checkpoint_restore’ puts files back.  ‘path’ restores that one file
-and keeps later edits of other files.  Omit ‘path’, or pass nil, to
-restore every file the snapshot recorded and to remove files created
-after it.  The project's ‘.git’ stays in place.  Restoring one file
-returns ‘Restored ’, the relative path, ‘ in ’, and the id.  Restoring
-the tree returns ‘Restored ’, followed by the id.  This tool is an edit.
+   ‘harmless-tool-checkpoint-restore’ puts files back.  ‘path’ restores
+that one file and keeps later edits of other files.  Omit ‘path’, or
+pass nil, to restore every file the snapshot recorded and to remove
+files created after it.  The project's ‘.git’ stays in place.  Restoring
+one file returns ‘Restored ’, the relative path, ‘ in ’, and the id.
+Restoring the tree returns ‘Restored ’, followed by the id.  This tool
+is an edit.
 
    Nil, ‘""’, and whitespace for the id are refused: ‘checkpoint id is
 empty’.  That check comes before the data directory.  A value that is
@@ -1038,7 +1048,7 @@ path that leaves the project is refused: ‘checkpoint path escapes the
 project’.  No session is refused: ‘No Harmless session’.  A detached
 chat is refused: ‘This chat is not attached to a project’.  In plan mode
 a restore is refused: ‘Plan mode is on. Only plan.md may be edited, with
-write_plan’.
+harmless-tool-write-plan’.
 
    A nil data directory uses the Harmless data directory.  ‘""’  and
 whitespace are refused: ‘checkpoint path is empty’.  ‘/’, a drive root,
@@ -1059,27 +1069,29 @@ File: harmless.info,  Node: Code execution,  Next: Questions,  Prev: Checkpoints
 10.5 Code execution
 ===================
 
-‘execute_code’ evaluates Emacs Lisp in a separate Emacs process.  The
-script is not evaluated in the Emacs that is running Harmless.  Only
-what the script prints is returned.  ‘princ’, ‘prin1’, ‘print’, and
-‘message’ print that output.  A tool's return value is data for the
-script.  It is printed only when the script prints it.  Calling a tool
-does not add a message to the transcript.
+‘harmless-tool-execute-code’ evaluates Emacs Lisp in a separate Emacs
+process.  The script is not evaluated in the Emacs that is running
+Harmless.  Only what the script prints is returned.  ‘princ’, ‘prin1’,
+‘print’, and ‘message’ print that output.  A tool's return value is data
+for the script.  It is printed only when the script prints it.  Calling
+a tool does not add a message to the transcript.
 
-   The script calls a tool by name: ‘(read_file :path "a.txt")’, or
-‘(tool "read_file" :path "a.txt")’.  ‘tool’ accepts the name as text or
-as a symbol.  ‘tool’ is defined again for each script.  A function the
-script defines with ‘defun’, and a variable it sets with ‘setq’, stay
-for the next script in that session.
+   The script calls a tool by name: ‘(harmless-tool-read-file :path
+"a.txt")’, or ‘(tool "harmless-tool-read-file" :path "a.txt")’.  ‘tool’
+accepts the name as text or as a symbol.  ‘tool’ is defined again for
+each script.  A function the script defines with ‘defun’, and a variable
+it sets with ‘setq’, stay for the next script in that session.
 
-   The script cannot call ‘execute_code’, ‘spawn_agent’, ‘run_workflow’,
-or a tool whose name starts with ‘mcp_’.  Those calls are refused:
-‘execute code cannot call execute_code’, ‘execute code cannot call
-spawn_agent’, ‘execute code cannot call run_workflow’, and ‘execute code
-cannot call an MCP tool’.  A name that is not a tool is refused:
-‘execute code cannot call ’, followed by that name.  Calling
-‘execute_code’ as a function is a script error, because that function is
-not defined in the interpreter.
+   The script cannot call ‘harmless-tool-execute-code’,
+‘harmless-tool-spawn-agent’, ‘harmless-tool-run-workflow’, or a tool
+whose name starts with ‘harmless-tool-mcp-’.  Those calls are refused:
+‘execute code cannot call harmless-tool-execute-code’, ‘execute code
+cannot call harmless-tool-spawn-agent’, ‘execute code cannot call
+harmless-tool-run-workflow’, and ‘execute code cannot call an MCP tool’.
+A name that is not a tool is refused: ‘execute code cannot call ’,
+followed by that name.  Calling ‘harmless-tool-execute-code’ as a
+function is a script error, because that function is not defined in the
+interpreter.
 
    One script may make 50 tool calls (‘harmless-execute-max-calls’).
 The next call is refused: ‘execute code tool cap’.  The next script
@@ -1122,10 +1134,10 @@ File: harmless.info,  Node: Questions,  Next: Subagents,  Prev: Code execution, 
 10.6 Questions
 ==============
 
-‘ask_user’ asks one question.  ‘question’ is the prompt.  ‘choices’ are
-the answers.  Emacs asks with completion, and the answer must be one of
-those choices.  The tool returns ‘The user chose: ’ followed by that
-answer.
+‘harmless-tool-ask-user’ asks one question.  ‘question’ is the prompt.
+‘choices’ are the answers.  Emacs asks with completion, and the answer
+must be one of those choices.  The tool returns ‘The user chose: ’
+followed by that answer.
 
    A missing or blank question is refused.  A missing choice list, an
 empty list, a blank choice, a choice that spans lines, and a repeated
@@ -1142,13 +1154,13 @@ File: harmless.info,  Node: Subagents,  Next: Workflows,  Prev: Questions,  Up: 
 10.7 Subagents
 ==============
 
-‘spawn_agent’ starts a child session and waits for its last reply.  The
-child has its own transcript.  It does not see the parent's messages.
-‘prompt’ is the task.  Nil, ‘""’, and whitespace are refused: ‘prompt is
-empty’.  ‘description’ is an optional one-line title.  A value such as
-‘/’ or ‘sub/’ is a title, not a path.  ‘worktree’ is an optional
-checkout name.  The parent project stays where it is.  The child edits
-that checkout.  *Note Worktrees::.
+‘harmless-tool-spawn-agent’ starts a child session and waits for its
+last reply.  The child has its own transcript.  It does not see the
+parent's messages.  ‘prompt’ is the task.  Nil, ‘""’, and whitespace are
+refused: ‘prompt is empty’.  ‘description’ is an optional one-line
+title.  A value such as ‘/’ or ‘sub/’ is a title, not a path.
+‘worktree’ is an optional checkout name.  The parent project stays where
+it is.  The child edits that checkout.  *Note Worktrees::.
 
    ‘agent’ is an optional definition name.  It is not a path.  ‘""’  is
 refused: ‘agent name is empty’.  ‘sub/’, ‘/’, and ‘c:/’ are refused:
@@ -1178,18 +1190,19 @@ frontmatter:
      ---
      name: reviewer
      description: Reviews code
-     tools: read_file, grep
+     tools: harmless-tool-read-file, harmless-tool-grep
      model: grok-4.6
      sandbox: read-only
      ---
      Report findings.  Do not edit files.
 
    ‘tools’ limits the child.  An unknown tool name is refused.
-‘spawn_agent’ cannot be one of them.  ‘model’ replaces the parent's
-model.  ‘inherit’ keeps it.  ‘sandbox’ is ‘workspace’ or ‘read-only’.
-Anything else is refused: ‘sandbox must be workspace or read-only’.  The
-body is extra instructions for that child.  Each turn lists the
-available agents for the parent.  A subagent does not receive that list.
+‘harmless-tool-spawn-agent’ cannot be one of them.  ‘model’ replaces the
+parent's model.  ‘inherit’ keeps it.  ‘sandbox’ is ‘workspace’ or
+‘read-only’.  Anything else is refused: ‘sandbox must be workspace or
+read-only’.  The body is extra instructions for that child.  Each turn
+lists the available agents for the parent.  A subagent does not receive
+that list.
 
    A read-only child may read files and run a shell command that cannot
 write.  A tool that can write is refused before the permission question:
@@ -1237,11 +1250,11 @@ File: harmless.info,  Node: Workflows,  Next: Worktrees,  Prev: Subagents,  Up: 
 10.8 Workflows
 ==============
 
-‘run_workflow’ runs one script.  The script starts child sessions.  The
-tool returns one string, the value of ‘complete’.  The parent transcript
-does not gain a message for each child.  Pass ‘name’ or ‘script’, not
-both.  Neither is refused: ‘workflow needs a name or a script’.  Both
-are refused: ‘workflow takes a name or a script’.
+‘harmless-tool-run-workflow’ runs one script.  The script starts child
+sessions.  The tool returns one string, the value of ‘complete’.  The
+parent transcript does not gain a message for each child.  Pass ‘name’
+or ‘script’, not both.  Neither is refused: ‘workflow needs a name or a
+script’.  Both are refused: ‘workflow takes a name or a script’.
 
    ‘script’ is the text of a script written for this task.  A value that
 is not text is refused: ‘workflow script must be a string’.  ‘""’  and
@@ -1300,14 +1313,14 @@ expression.  Nil, ‘""’, and whitespace are refused: ‘prompt is empty’.
 ‘:sandbox’ is ‘read-only’ or ‘workspace’.  The default is ‘workspace’.
 Anything else is refused: ‘sandbox must be workspace or read-only’.
 ‘:agent’ is an optional definition name, the same names as
-‘spawn_agent’.  ‘:worktree’ is an optional checkout name.  It counts as
-a write even when the child is read-only.  *Note Worktrees::.  ‘:label’
-and ‘:description’ are optional one-line titles.  ‘(parallel (agent ...)
-...)’ starts those children together and keeps their replies in that
-order.  An empty list is refused.  ‘(join SEP EXPR ...)’ joins text with
-‘SEP’, which must be a string.  A list of replies is joined the same
-way.  ‘complete’ of a list joins it with newlines, so the tool still
-returns one string.
+‘harmless-tool-spawn-agent’.  ‘:worktree’ is an optional checkout name.
+It counts as a write even when the child is read-only.  *Note
+Worktrees::.  ‘:label’ and ‘:description’ are optional one-line titles.
+‘(parallel (agent ...) ...)’ starts those children together and keeps
+their replies in that order.  An empty list is refused.  ‘(join SEP EXPR
+...)’ joins text with ‘SEP’, which must be a string.  A list of replies
+is joined the same way.  ‘complete’ of a list joins it with newlines, so
+the tool still returns one string.
 
    ‘harmless-workflow-max-agents’ (8) is how many children one script
 may start.  More than that is refused before the first child: ‘workflow
@@ -1324,8 +1337,9 @@ is on. A workflow that can write is refused’.  A script that does not
 parse is not that refusal.  A read-only workflow still runs.
 
    A subagent cannot run a workflow: ‘a subagent cannot start a
-workflow’.  A definition that lists ‘run_workflow’ is refused the same
-way.  The child cannot start a workflow or another subagent.
+workflow’.  A definition that lists ‘harmless-tool-run-workflow’ is
+refused the same way.  The child cannot start a workflow or another
+subagent.
 
    Aborting the parent aborts a child that is still running.  The
 workflow's result is not added.  A detached chat can run an inline
@@ -1338,11 +1352,12 @@ File: harmless.info,  Node: Worktrees,  Next: Messages,  Prev: Workflows,  Up: T
 10.9 Worktrees
 ==============
 
-‘enter_worktree’ points this session at an isolated checkout of the same
-repository.  ‘name’ is required.  Nil, ‘""’, and whitespace are refused:
-‘worktree name is empty’.  ‘sub/’, ‘/’, and ‘c:/’ are refused: ‘worktree
-name is not a name’.  ‘sub’ is a name.  A value such as ‘/’ passed as
-‘description’ on another tool is not a worktree name.
+‘harmless-tool-enter-worktree’ points this session at an isolated
+checkout of the same repository.  ‘name’ is required.  Nil, ‘""’, and
+whitespace are refused: ‘worktree name is empty’.  ‘sub/’, ‘/’, and
+‘c:/’ are refused: ‘worktree name is not a name’.  ‘sub’ is a name.  A
+value such as ‘/’ passed as ‘description’ on another tool is not a
+worktree name.
 
    The checkout is created with git, under ‘harmless-directory’, outside
 the project.  The branch is ‘harmless/’ plus the name, starting at the
@@ -1365,12 +1380,12 @@ exists’.
    Entering sets the session's project to that checkout and clears a
 remembered shell directory.  The session files stay in the directory
 they already used.  ‘M-x harmless-worktree’ asks for the name.
-‘exit_worktree’, or ‘M-x harmless-worktree-exit’, points the session
-back at the project it left.  The checkout stays on disk.  A session
-that was not entered this way is refused: ‘this session is not in a
-worktree’.  A stored return path that is missing, relative, empty, or
-‘/’ is refused: ‘worktree original is not a directory’, and the session
-stays where it is.
+‘harmless-tool-exit-worktree’, or ‘M-x harmless-worktree-exit’, points
+the session back at the project it left.  The checkout stays on disk.  A
+session that was not entered this way is refused: ‘this session is not
+in a worktree’.  A stored return path that is missing, relative, empty,
+or ‘/’ is refused: ‘worktree original is not a directory’, and the
+session stays where it is.
 
    The tool is an edit.  Ask mode asks before creating the checkout.
 Accept-edits and always-approve do not ask.  In plan mode the checkout
@@ -1378,15 +1393,15 @@ is refused before the question, including when the mode is
 ‘always-approve’: ‘Error: Plan mode is on. A worktree is refused’.
 Leaving does not create a checkout, so plan mode allows it.
 
-   ‘spawn_agent’ takes the same ‘worktree’ name.  The child edits the
-new checkout.  The parent stays in its project.  A child born in a
-checkout has that checkout as its project; it was not moved there, so
-leaving says it is not in a worktree.  A read-only child still cannot
-write, and it is not offered ‘enter_worktree’.  Creating the checkout is
-a write, so plan mode refuses it even for that child.  A workflow agent
-accepts ‘:worktree’.  That script can write.  A fork keeps the checkout
-the session is in.  It does not create another one, and it can leave.
-Aborting a turn does not delete a checkout.
+   ‘harmless-tool-spawn-agent’ takes the same ‘worktree’ name.  The
+child edits the new checkout.  The parent stays in its project.  A child
+born in a checkout has that checkout as its project; it was not moved
+there, so leaving says it is not in a worktree.  A read-only child still
+cannot write, and it is not offered ‘harmless-tool-enter-worktree’.
+Creating the checkout is a write, so plan mode refuses it even for that
+child.  A workflow agent accepts ‘:worktree’.  That script can write.  A
+fork keeps the checkout the session is in.  It does not create another
+one, and it can leave.  Aborting a turn does not delete a checkout.
 
 
 File: harmless.info,  Node: Messages,  Next: Web search,  Prev: Worktrees,  Up: Tools
@@ -1394,18 +1409,18 @@ File: harmless.info,  Node: Messages,  Next: Web search,  Prev: Worktrees,  Up: 
 10.10 Messages
 ==============
 
-‘list_sessions’ lists the sessions that are live in this Emacs.  Each
-line is the id, the status, and the title.  A session that is only on
-disk is not listed.  Nil and an empty registry still return the heading
-‘Live sessions:’.
+‘harmless-tool-list-sessions’ lists the sessions that are live in this
+Emacs.  Each line is the id, the status, and the title.  A session that
+is only on disk is not listed.  Nil and an empty registry still return
+the heading ‘Live sessions:’.
 
-   ‘session_search’ searches saved transcripts on this machine.  ‘query’
-matches without regard to case.  The recall names at most five sessions,
-newest first.  Each hit is the session id, the title when the summary
-has one, and a short excerpt.  A session that is only on disk is
-included.  The search reads the transcript file.  It does not load that
-session, and it does not install that session's tools.  A transcript is
-searched through its first 100000 characters.
+   ‘harmless-tool-session-search’ searches saved transcripts on this
+machine.  ‘query’ matches without regard to case.  The recall names at
+most five sessions, newest first.  Each hit is the session id, the title
+when the summary has one, and a short excerpt.  A session that is only
+on disk is included.  The search reads the transcript file.  It does not
+load that session, and it does not install that session's tools.  A
+transcript is searched through its first 100000 characters.
 
    Nil, ‘""’, and whitespace return an empty recall.  A query that
 matches nothing returns an empty recall.  A value that is not text is
@@ -1416,8 +1431,8 @@ refused: ‘session search path is the filesystem root’.  A relative data
 directory is refused and is not expanded: ‘Harmless data directory must
 be absolute, not ’, followed by the printed value.
 
-   ‘send_message’ sends ‘text’ to the live session whose id is
-‘session’.  Nil, ‘""’, and whitespace are refused: ‘session id is
+   ‘harmless-tool-send-message’ sends ‘text’ to the live session whose
+id is ‘session’.  Nil, ‘""’, and whitespace are refused: ‘session id is
 empty’.  A value that is not text is refused: ‘session id is not an id’.
 A missing or non-text finding is refused: ‘message must be a string’.
 ‘""’  and whitespace are refused: ‘message is empty’.  The sender is
@@ -1446,11 +1461,11 @@ File: harmless.info,  Node: Web search,  Next: Fetch a page,  Prev: Messages,  U
 10.11 Web search
 ================
 
-‘web_search’ looks up ‘query’ on the web.  The query is sent to
-DuckDuckGo over https.  Nothing is written into the project.  Nil is
-refused: ‘query must be a string’.  ‘""’  and whitespace are refused:
-‘query is empty’.  A value such as ‘/’ or ‘c:/’ is text to search for,
-not a path.
+‘harmless-tool-web-search’ looks up ‘query’ on the web.  The query is
+sent to DuckDuckGo over https.  Nothing is written into the project.
+Nil is refused: ‘query must be a string’.  ‘""’  and whitespace are
+refused: ‘query is empty’.  A value such as ‘/’ or ‘c:/’ is text to
+search for, not a path.
 
    Each hit is a title, a URL, and a snippet.  No hits returns ‘No
 results’.  At most eight hits are returned.  The same URL is listed
@@ -1467,8 +1482,8 @@ File: harmless.info,  Node: Fetch a page,  Next: X search,  Prev: Web search,  U
 10.12 Fetch a page
 ==================
 
-‘web_fetch’ reads one page at ‘url’.  Only ‘http’ and ‘https’ are
-accepted.  Nothing is written into the project.
+‘harmless-tool-web-fetch’ reads one page at ‘url’.  Only ‘http’ and
+‘https’ are accepted.  Nothing is written into the project.
 
    Nil, ‘""’, and whitespace are refused: ‘url is empty’.  A value that
 is not text is refused: ‘url must be a string’.  A path, another scheme,
@@ -1493,14 +1508,14 @@ File: harmless.info,  Node: X search,  Next: MCP,  Prev: Fetch a page,  Up: Tool
 10.13 X search
 ==============
 
-‘x_keyword_search’ finds recent posts on X. The search covers the last 7
-days.  ‘query’ is the text, including search operators.  ‘/’ and ‘c:/’
-are text, not paths.  ‘mode’ is ‘Top’ or ‘Latest’.  Latest is the
-default.  Top asks X for relevancy.  Latest asks for the newest posts.
-‘from_date’ and ‘to_date’ are ‘YYYY-MM-DD’.  ‘to_date’ is the day after
-the last day you want.  A date that is not that shape is refused: ‘date
-must be YYYY-MM-DD’.  A start after the end is refused: ‘from_date is
-after to_date’.
+‘harmless-tool-x-keyword-search’ finds recent posts on X. The search
+covers the last 7 days.  ‘query’ is the text, including search
+operators.  ‘/’ and ‘c:/’ are text, not paths.  ‘mode’ is ‘Top’ or
+‘Latest’.  Latest is the default.  Top asks X for relevancy.  Latest
+asks for the newest posts.  ‘from_date’ and ‘to_date’ are ‘YYYY-MM-DD’.
+‘to_date’ is the day after the last day you want.  A date that is not
+that shape is refused: ‘date must be YYYY-MM-DD’.  A start after the end
+is refused: ‘from_date is after to_date’.
 
    Nil is refused: ‘query must be a string’.  ‘""’  and whitespace are
 refused: ‘query is empty’.  An unknown mode is refused: ‘mode must be
@@ -1511,16 +1526,16 @@ must be from 1 to 10’.  The default limit is 8.
    Each post is a handle, a name, a time, a URL, and the text.  No posts
 returns ‘No posts’.
 
-   ‘x_thread_fetch’ reads ‘post_id’ and the posts around it.  Nil, ‘""’,
-and whitespace are refused: ‘post id is empty’.  A value that is not
-text is refused: ‘post id must be a string’.  Anything that is not a
-decimal id, including ‘/’ and ‘c:/’, is refused: ‘post id is not an id’.
-The result is at most 8 posts, oldest first, and it includes the
-requested post.  No posts returns ‘No posts’.
+   ‘harmless-tool-x-thread-fetch’ reads ‘post_id’ and the posts around
+it.  Nil, ‘""’, and whitespace are refused: ‘post id is empty’.  A value
+that is not text is refused: ‘post id must be a string’.  Anything that
+is not a decimal id, including ‘/’ and ‘c:/’, is refused: ‘post id is
+not an id’.  The result is at most 8 posts, oldest first, and it
+includes the requested post.  No posts returns ‘No posts’.
 
-   ‘x_user_search’ finds accounts by name, handle, or bio.  The query
-and limit refusals match post search.  Each account is a name, a handle,
-a URL, and a bio.  No accounts returns ‘No users’.
+   ‘harmless-tool-x-user-search’ finds accounts by name, handle, or bio.
+The query and limit refusals match post search.  Each account is a name,
+a handle, a URL, and a bio.  No accounts returns ‘No users’.
 
    The bearer token is ‘harmless-x-bearer’, or the environment variable
 ‘X_BEARER_TOKEN’, or an auth-source entry for host ‘api.x.com’ and user
@@ -1558,22 +1573,22 @@ argument must be a string’.  A file that is not JSON is refused:
 ‘mcp.json is not valid’.  A file with no ‘mcpServers’ object is refused:
 ‘mcp.json has no servers’.  A missing file means no servers.
 
-   Each server tool is offered as ‘mcp__’, the server name, ‘__’, and
-the tool name.  The offered schema is an empty object.  Harmless loads
-the server's schema when the tool is about to be called.  A missing
-required argument is refused: ‘MCP argument ’, the name, and ‘ is
-required’.  The class is ‘network’.  A tool from the server is not
+   Each server tool is offered as ‘harmless-tool-mcp-’, the server name,
+‘--’, and the tool name.  The offered schema is an empty object.
+Harmless loads the server's schema when the tool is about to be called.
+A missing required argument is refused: ‘MCP argument ’, the name, and ‘
+is required’.  The class is ‘network’.  A tool from the server is not
 offered to a read-only subagent, because that tool can write.
 
-   ‘mcp_list_resources’ lists resources for ‘server’.
-‘mcp_read_resource’ reads ‘uri’ from that server.  Nil, ‘""’, and
-whitespace are refused: ‘server name is empty’ or ‘resource uri is
-empty’.  A value that is not text is refused: ‘server name must be a
-string’ or ‘resource uri must be a string’.  A server name that is not a
-token, including ‘/’ and ‘c:/’, is refused: ‘server name is not a name’.
-‘/’ and ‘c:/’ are ordinary resource URIs.  An unknown server is refused:
-‘no MCP server ’, followed by the name.  No resources returns ‘No
-resources’.  A resource with no text returns ‘resource has no text’.
+   ‘harmless-tool-mcp-list-resources’ lists resources for ‘server’.
+‘harmless-tool-mcp-read-resource’ reads ‘uri’ from that server.  Nil,
+‘""’, and whitespace are refused: ‘server name is empty’ or ‘resource
+uri is empty’.  A value that is not text is refused: ‘server name must
+be a string’ or ‘resource uri must be a string’.  A server name that is
+not a token, including ‘/’ and ‘c:/’, is refused: ‘server name is not a
+name’.  ‘/’ and ‘c:/’ are ordinary resource URIs.  An unknown server is
+refused: ‘no MCP server ’, followed by the name.  No resources returns
+‘No resources’.  A resource with no text returns ‘resource has no text’.
 
    The tools ask in ‘ask’ mode and in ‘accept-edits’.  ‘always-approve’
 does not ask.  Plan mode does not refuse them.  A read-only subagent may
@@ -1591,31 +1606,31 @@ File: harmless.info,  Node: Computer use,  Next: Monitors,  Prev: MCP,  Up: Tool
 Harmless can see the screen, click, type, and open a browser the user
 can watch.
 
-   ‘computer_screenshot’ returns the width, the height, and a PNG path
-under the Harmless data directory, in ‘computer/’.  The file is not in
-the project.
+   ‘harmless-tool-computer-screenshot’ returns the width, the height,
+and a PNG path under the Harmless data directory, in ‘computer/’.  The
+file is not in the project.
 
-   ‘computer_click’ clicks at ‘x’ and ‘y’.  A missing ‘button’ is left.
-Nil and a value that is not an integer are refused: ‘x must be an
-integer’ or ‘y must be an integer’.  A negative integer is refused: ‘x
-must be a non-negative integer’.  A button other than left, right, or
-middle is refused: ‘button must be left, right, or middle’.
+   ‘harmless-tool-computer-click’ clicks at ‘x’ and ‘y’.  A missing
+‘button’ is left.  Nil and a value that is not an integer are refused:
+‘x must be an integer’ or ‘y must be an integer’.  A negative integer is
+refused: ‘x must be a non-negative integer’.  A button other than left,
+right, or middle is refused: ‘button must be left, right, or middle’.
 
-   ‘computer_type’ types ‘text’ into the focused window.  Nil and a
-value that is not text are refused: ‘text must be a string’.  ‘""’  and
-whitespace are refused: ‘text is empty’.  ‘/’ and ‘c:/’ are characters
-to type.
+   ‘harmless-tool-computer-type’ types ‘text’ into the focused window.
+Nil and a value that is not text are refused: ‘text must be a string’.
+‘""’  and whitespace are refused: ‘text is empty’.  ‘/’ and ‘c:/’ are
+characters to type.
 
-   ‘computer_key’ presses one key, such as enter, tab, escape, a
-function key from f1 to f12, or one character.  Nil, ‘""’, and
+   ‘harmless-tool-computer-key’ presses one key, such as enter, tab,
+escape, a function key from f1 to f12, or one character.  Nil, ‘""’, and
 whitespace are refused: ‘key is empty’.  A value that is not text is
 refused: ‘key must be a string’.  Anything else, including ‘c:/’, is
 refused: ‘key is not a key’.  ‘/’ is a key.
 
-   ‘browser_open’ opens ‘url’ in the desktop browser.  Nil, ‘""’, and
-whitespace are refused: ‘url is empty’.  A value that is not text is
-refused: ‘url must be a string’.  ‘/’ and ‘c:/’ are refused: ‘url must
-be http or https’.
+   ‘harmless-tool-browser-open’ opens ‘url’ in the desktop browser.
+Nil, ‘""’, and whitespace are refused: ‘url is empty’.  A value that is
+not text is refused: ‘url must be a string’.  ‘/’ and ‘c:/’ are refused:
+‘url must be http or https’.
 
    The class is ‘shell’.  The tools ask in ‘ask’ mode and in
 ‘accept-edits’.  ‘always-approve’ does not ask.  In plan mode a click,
@@ -1630,11 +1645,11 @@ File: harmless.info,  Node: Monitors,  Next: Schedules,  Prev: Computer use,  Up
 10.16 Monitors
 ==============
 
-‘monitor’ watches one source until a line matches ‘pattern’.  The source
-is a ‘path’ inside the project or an added directory, a ‘command’, or
-the id of a background ‘shell’.  Pass one of those.  None is refused:
-‘monitor source is missing’.  More than one is refused: ‘monitor source
-must be one’.
+‘harmless-tool-monitor’ watches one source until a line matches
+‘pattern’.  The source is a ‘path’ inside the project or an added
+directory, a ‘command’, or the id of a background ‘shell’.  Pass one of
+those.  None is refused: ‘monitor source is missing’.  More than one is
+refused: ‘monitor source must be one’.
 
    Nil and a value that is not text are refused: ‘pattern must be a
 string’.  ‘""’  and whitespace are refused: ‘pattern is empty’.  A regex
@@ -1660,12 +1675,13 @@ followed by the id.  ‘/’ and ‘c:/’ are ids, not paths.
 
    A match sends ‘Monitor ’, the id, ‘ matched:’, and the line.  The
 session is idle, so that starts a turn.  A session that is already in a
-turn queues the line and keeps going.  ‘monitor_stop’ stops the watch.
-A command this monitor started is killed.  A background shell that was
-only watched keeps running.  Nil, ‘""’, and whitespace are refused:
-‘monitor id is empty’.  A value that is not text is refused: ‘monitor id
-must be a string’.  A negative number is refused: ‘monitor id is not an
-id’.  An unknown id is refused: ‘no monitor ’, followed by the id.
+turn queues the line and keeps going.  ‘harmless-tool-monitor-stop’
+stops the watch.  A command this monitor started is killed.  A
+background shell that was only watched keeps running.  Nil, ‘""’, and
+whitespace are refused: ‘harmless-tool-monitor id is empty’.  A value
+that is not text is refused: ‘harmless-tool-monitor id must be a
+string’.  A negative number is refused: ‘harmless-tool-monitor id is not
+an id’.  An unknown id is refused: ‘no monitor ’, followed by the id.
 Stopping a monitor that has already stopped is refused: ‘monitor ’, the
 id, and ‘ is not running’.
 
@@ -1684,10 +1700,11 @@ File: harmless.info,  Node: Schedules,  Next: Todos,  Prev: Monitors,  Up: Tools
 10.17 Schedules
 ===============
 
-‘schedule’ sends ‘prompt’ once, at a later time.  Pass ‘delay’ in
-seconds, or ‘at’ as a UTC time such as ‘2099-01-01T00:00:00Z’.  Pass one
-of those.  None is refused: ‘schedule time is missing’.  More than one
-is refused: ‘schedule time must be one’.
+‘harmless-tool-schedule’ sends ‘prompt’ once, at a later time.  Pass
+‘delay’ in seconds, or ‘at’ as a UTC time such as
+‘2099-01-01T00:00:00Z’.  Pass one of those.  None is refused: ‘schedule
+time is missing’.  More than one is refused: ‘schedule time must be
+one’.
 
    Nil and a value that is not text are refused: ‘prompt must be a
 string’.  ‘""’  and whitespace are refused: ‘prompt is empty’.  ‘/’,
@@ -1709,12 +1726,12 @@ a context wall.
 
    When the time arrives, the prompt is sent.  The session is idle, so
 that starts a turn.  A session that is already in a turn queues the
-prompt and keeps going.  ‘schedule_cancel’ removes a waiting prompt.
-The prompt is not sent.  Nil, ‘""’, and whitespace are refused:
-‘schedule id is empty’.  A value that is not text is refused: ‘schedule
-id must be a string’.  A negative number is refused: ‘schedule id is not
-an id’.  An unknown id is refused: ‘no schedule ’, followed by the id.
-‘/’ and ‘c:/’ are ids, not paths.
+prompt and keeps going.  ‘harmless-tool-schedule-cancel’ removes a
+waiting prompt.  The prompt is not sent.  Nil, ‘""’, and whitespace are
+refused: ‘schedule id is empty’.  A value that is not text is refused:
+‘schedule id must be a string’.  A negative number is refused: ‘schedule
+id is not an id’.  An unknown id is refused: ‘no schedule ’, followed by
+the id.  ‘/’ and ‘c:/’ are ids, not paths.
 
    The class is ‘edit’.  The tools ask in ‘ask’ mode, and the question
 shows the prompt, or the id when cancelling.  ‘accept-edits’ and
@@ -1730,10 +1747,10 @@ File: harmless.info,  Node: Todos,  Next: Review,  Prev: Schedules,  Up: Tools
 10.18 Todos
 ===========
 
-‘todo_write’ keeps a list of work on the session.  Each item has an id,
-content, a status, and the ids it depends on.  Status is ‘pending’,
-‘in_progress’, ‘completed’, or ‘cancelled’.  A missing status on a new
-item is ‘pending’.
+‘harmless-tool-todo-write’ keeps a list of work on the session.  Each
+item has an id, content, a status, and the ids it depends on.  Status is
+‘pending’, ‘in_progress’, ‘completed’, or ‘cancelled’.  A missing status
+on a new item is ‘pending’.
 
    ‘merge’ true, or omitted, updates items by id and appends an id that
 is new.  A field that is omitted stays as it was.  ‘merge’ false
@@ -1780,10 +1797,10 @@ File: harmless.info,  Node: Review,  Next: Language server,  Prev: Todos,  Up: T
 
 ‘M-x harmless-review’ reads the working tree, a base branch, or one
 commit.  The menu key is ‘R’.  The model uses the same choice through
-‘review’.  Omit ‘base’ and ‘commit’ to read the working tree.  ‘base’ is
-a branch name, and the diff is that branch compared with ‘HEAD’.
-‘commit’ is one commit, such as ‘HEAD’ or a hash.  Passing both is
-refused: ‘review has both a base and a commit’.
+‘harmless-tool-review’.  Omit ‘base’ and ‘commit’ to read the working
+tree.  ‘base’ is a branch name, and the diff is that branch compared
+with ‘HEAD’.  ‘commit’ is one commit, such as ‘HEAD’ or a hash.  Passing
+both is refused: ‘review has both a base and a commit’.
 
    Nil, ‘""’, and whitespace are refused: ‘review base is empty’ or
 ‘review commit is empty’.  A value that is not text is refused: ‘review
@@ -1841,9 +1858,9 @@ File: harmless.info,  Node: Language server,  Prev: Review,  Up: Tools
 10.20 Language server
 =====================
 
-‘lsp’ asks a language server that is already running in Emacs.  The
-operation is ‘definition’, ‘references’, or ‘diagnostics’.  ‘M-x
-harmless-lsp’ asks the same way.  The menu key is ‘L’.
+‘harmless-tool-lsp’ asks a language server that is already running in
+Emacs.  The operation is ‘definition’, ‘references’, or ‘diagnostics’.
+‘M-x harmless-lsp’ asks the same way.  The menu key is ‘L’.
 
    ‘path’ is a file in the project, or in a directory added for this
 session.  A definition or a list of references also takes ‘line’ and
@@ -1860,9 +1877,9 @@ Text that spans lines is folded onto one line.
 
    The class is ‘read’, so the tool does not ask.  Plan mode does not
 refuse it.  A read-only subagent may call it.  A detached chat is not
-offered the tool.  Nothing is written into the project.  ‘write_file’
-still reports only the path and the byte count.  Diagnostics are a later
-‘lsp’ call.
+offered the tool.  Nothing is written into the project.
+‘harmless-tool-write-file’ still reports only the path and the byte
+count.  Diagnostics are a later ‘harmless-tool-lsp’ call.
 
    Nil, ‘""’, and whitespace for the operation are refused: ‘lsp
 operation is empty’.  A value that is not text is refused: ‘lsp
@@ -2007,13 +2024,13 @@ uses the first paragraph of the body.
 
    Each turn receives a catalog: the name, the description, and the
 path.  The body stays out of that catalog.  The model can still open the
-file with ‘read_file’.
+file with ‘harmless-tool-read-file’.
 
-   Load one skill with the ‘skill’ tool, with ‘M-x harmless-load-skill’,
-or by starting a prompt with ‘/name’.  The name is a skill id, not a
-path.  Later turns include the body.  The prompt that loaded it stays in
-the transcript.  A detached chat cannot load a skill, and it is not
-offered the tool.
+   Load one skill with the ‘harmless-tool-skill’ tool, with ‘M-x
+harmless-load-skill’, or by starting a prompt with ‘/name’.  The name is
+a skill id, not a path.  Later turns include the body.  The prompt that
+loaded it stays in the transcript.  A detached chat cannot load a skill,
+and it is not offered the tool.
 
    ‘allowed-tools’ in the frontmatter limits the tools on those turns.
 A missing field leaves the tools unchanged.  An empty list offers no
@@ -2178,16 +2195,16 @@ File: harmless.info,  Node: Image generation,  Next: Headless,  Prev: Output sty
 15 Image generation
 *******************
 
-‘generate_image’ writes an image into the project.  The model passes
-‘prompt’ and ‘path’.  A relative path is resolved against the session
-directory.  It is not resolved against the buffer's default directory.
-‘~’ is not expanded.
+‘harmless-tool-generate-image’ writes an image into the project.  The
+model passes ‘prompt’ and ‘path’.  A relative path is resolved against
+the session directory.  It is not resolved against the buffer's default
+directory.  ‘~’ is not expanded.
 
    The bytes come from ‘harmless-image-generate-function’.  When that
 variable is nil, the tool is refused: ‘image generation is not
 configured’.  The function is not called until the prompt and the path
 are accepted.  Plan mode does not call it: ‘Plan mode is on. Only
-plan.md may be edited, with write_plan’.
+plan.md may be edited, with harmless-tool-write-plan’.
 
    Nil, ‘""’, and whitespace are refused: ‘image prompt is empty’.  A
 value that is not text is refused: ‘image prompt must be a string’.  A
@@ -2643,22 +2660,23 @@ seat is refused: ‘team seat is missing’.  A broken rig file is refused:
    A team file is refused at the filesystem root: ‘Refusing to store a
 team at ’, followed by that directory.
 
-   ‘team_boot’ calls ‘M-x harmless-team-boot’.  ‘team_inspect’ reads the
-seats, the edges, the launch order, and the rows.  It writes nothing.
-‘team_message’ calls ‘M-x harmless-team-send’.  The seat must already be
-occupied.  ‘team_snapshot’ calls ‘M-x harmless-team-snapshot’.  The live
-rig is not changed.  ‘team_restore’ calls ‘M-x
+   ‘harmless-tool-team-boot’ calls ‘M-x harmless-team-boot’.
+‘harmless-tool-team-inspect’ reads the seats, the edges, the launch
+order, and the rows.  It writes nothing.  ‘harmless-tool-team-message’
+calls ‘M-x harmless-team-send’.  The seat must already be occupied.
+‘harmless-tool-team-snapshot’ calls ‘M-x harmless-team-snapshot’.  The
+live rig is not changed.  ‘harmless-tool-team-restore’ calls ‘M-x
 harmless-team-snapshot-restore’.  A seat that cannot return writes
 nothing.
 
    A detached chat is not offered these tools.  Calling one there is
 refused: ‘This chat is not attached to a project’.  A missing session is
 refused: ‘No Harmless session’.  Plan mode refuses the tools that write:
-‘Plan mode is on. Only plan.md may be edited, with write_plan’.  Inspect
-still reads.  The command errors are unchanged, including ‘team spec is
-empty’, ‘team rig is missing’, ‘team send is empty’, ‘team seat is not
-occupied’, ‘team snapshot is missing’, and ‘team snapshot cannot
-restore’.
+‘Plan mode is on. Only plan.md may be edited, with
+harmless-tool-write-plan’.  Inspect still reads.  The command errors are
+unchanged, including ‘team spec is empty’, ‘team rig is missing’, ‘team
+send is empty’, ‘team seat is not occupied’, ‘team snapshot is missing’,
+and ‘team snapshot cannot restore’.
 
    A seat can name an auth profile for its runtime.  *Note Profiles::.
 Switching that profile keeps the session and the inbound work.  The rig
@@ -3034,10 +3052,11 @@ receives the profile with the memory index, under ‘User profile:’.  A
 missing or blank file is left out.  Writing the profile does not rewrite
 ‘MEMORY.md’.
 
-   The model writes it with ‘memory_write_topic’ when ‘topic’ is
-‘USER.md’.  ‘scope’ and the project directory are ignored for that
-write.  The file is ‘memory/global/USER.md’.  ‘memory_read’ of ‘USER.md’
-in the global scope reads it back.
+   The model writes it with ‘harmless-tool-memory-write-topic’ when
+‘topic’ is ‘USER.md’.  ‘scope’ and the project directory are ignored for
+that write.  The file is ‘memory/global/USER.md’.
+‘harmless-tool-memory-read’ of ‘USER.md’ in the global scope reads it
+back.
 
    Nil uses the Harmless data directory.  ‘""’  and whitespace are
 refused: ‘USER.md path is empty’.  ‘/’, a drive root, and a string of
@@ -3056,14 +3075,14 @@ that path is refused: ‘USER.md is a directory’.
 
    The model uses three tools.
 
-‘memory_read’
+‘harmless-tool-memory-read’
      Read one memory file.  ‘scope’ is ‘workspace’ or ‘global’.
 
-‘memory_remember’
+‘harmless-tool-memory-remember’
      Append a fact to the inbox.  ‘topic’ is an optional slug, such as
      ‘emacs’.
 
-‘memory_write_topic’
+‘harmless-tool-memory-write-topic’
      Replace one topic file with the full Markdown you supply.  ‘topic’
      ‘USER.md’ writes the global profile instead.
 
@@ -3098,29 +3117,31 @@ File: harmless.info,  Node: Plan mode,  Next: Usage,  Prev: Memory,  Up: Top
 
 ‘M-x harmless-plan’ turns plan mode on for the current session.  A
 prefix argument turns it off.  The menu key is ‘P’.  The model may also
-call ‘enter_plan_mode’, which asks you before it switches.
+call ‘harmless-tool-enter-plan-mode’, which asks you before it switches.
 
    While plan mode is on, the model is told to explore with read-only
-tools, to write the plan only with ‘write_plan’, and to call
-‘exit_plan_mode’ when the plan is ready.  ‘write_file’, ‘replace’,
-‘apply_patch’, ‘notebook_edit’, and ‘generate_image’ fail.  A shell
-command that can write is refused before any permission question:
-‘Error: Plan mode is on. A shell command that can write is refused’.  A
-read-only shell command still runs.  ‘shell_kill’ still asks.  A click,
-typed text, a key, and a browser are refused: ‘Error: Plan mode is on.
-Computer control is refused’.  A screenshot still runs.  *Note Computer
-use::.  A file watch and a read-only command still run.  A command that
-can write is refused.  *Note Monitors::.  Scheduling a prompt still
-runs.  The later turn obeys plan mode.  *Note Schedules::.  A review
-still runs, and it does not edit the project.  *Note Review::.  A
-language server query still runs, and it does not edit the project.
-*Note Language server::.  The header line shows ‘plan’.  ‘ask_user’ can
+tools, to write the plan only with ‘harmless-tool-write-plan’, and to
+call ‘harmless-tool-exit-plan-mode’ when the plan is ready.
+‘harmless-tool-write-file’, ‘harmless-tool-replace’,
+‘harmless-tool-apply-patch’, ‘harmless-tool-notebook-edit’, and
+‘harmless-tool-generate-image’ fail.  A shell command that can write is
+refused before any permission question: ‘Error: Plan mode is on. A shell
+command that can write is refused’.  A read-only shell command still
+runs.  ‘harmless-tool-shell-kill’ still asks.  A click, typed text, a
+key, and a browser are refused: ‘Error: Plan mode is on. Computer
+control is refused’.  A screenshot still runs.  *Note Computer use::.  A
+file watch and a read-only command still run.  A command that can write
+is refused.  *Note Monitors::.  Scheduling a prompt still runs.  The
+later turn obeys plan mode.  *Note Schedules::.  A review still runs,
+and it does not edit the project.  *Note Review::.  A language server
+query still runs, and it does not edit the project.  *Note Language
+server::.  The header line shows ‘plan’.  ‘harmless-tool-ask-user’ can
 still ask a question.  *Note Questions::.
 
-   ‘write_plan’ writes ‘plan.md’ in the session directory.  The contents
-replace the whole file.  An empty plan is refused.
+   ‘harmless-tool-write-plan’ writes ‘plan.md’ in the session directory.
+The contents replace the whole file.  An empty plan is refused.
 
-   ‘exit_plan_mode’ shows the plan and asks:
+   ‘harmless-tool-exit-plan-mode’ shows the plan and asks:
 
      Plan: a approve and build, c comment, s request changes, q quit
 
@@ -3274,7 +3295,8 @@ replaced with ‘/’.
      Memory::.
 
 ‘computer/’
-     Screenshots from ‘computer_screenshot’.  *Note Computer use::.
+     Screenshots from ‘harmless-tool-computer-screenshot’.  *Note
+     Computer use::.
 
    PROJECT in a session path is the project directory encoded as one
 file name, not the project name you see in the buffer.
@@ -3452,13 +3474,10 @@ Command Index
  [index ]
 * Menu:
 
-* enter_plan_mode:                       Plan mode.            (line  6)
-* exit_plan_mode:                        Plan mode.            (line  6)
-* generate_image:                        Image generation.     (line  6)
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
-* harmless-add-directory:                Tools.                (line 32)
-* harmless-attach-image:                 File tools.           (line 51)
+* harmless-add-directory:                Tools.                (line 34)
+* harmless-attach-image:                 File tools.           (line 52)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
 * harmless-context-get:                  Context.              (line  6)
@@ -3525,7 +3544,7 @@ Command Index
 * harmless-set-model:                    Models.               (line  6)
 * harmless-set-permission-mode:          Permissions.          (line  6)
 * harmless-set-reasoning-effort:         Models.               (line  6)
-* harmless-set-shell-sandbox:            Permissions.          (line 42)
+* harmless-set-shell-sandbox:            Permissions.          (line 43)
 * harmless-setup:                        Installation.         (line  6)
 * harmless-skill-loadout:                Skills.               (line 57)
 * harmless-steer:                        Prompt.               (line  6)
@@ -3589,13 +3608,16 @@ Command Index
 * harmless-team-watchdogs:               Team.                 (line  6)
 * harmless-team-workflow:                Team.                 (line  6)
 * harmless-team-workflows:               Team.                 (line  6)
+* harmless-tool-enter-plan-mode:         Plan mode.            (line  6)
+* harmless-tool-exit-plan-mode:          Plan mode.            (line  6)
+* harmless-tool-generate-image:          Image generation.     (line  6)
+* harmless-tool-lsp:                     Language server.      (line  6)
+* harmless-tool-notebook-edit:           File tools.           (line 52)
+* harmless-tool-review:                  Review.               (line  6)
+* harmless-tool-write-plan:              Plan mode.            (line  6)
 * harmless-usage:                        Usage.                (line  6)
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
-* lsp:                                   Language server.      (line  6)
-* notebook_edit:                         File tools.           (line 51)
-* review:                                Review.               (line  6)
-* write_plan:                            Plan mode.            (line  6)
 
 
 File: harmless.info,  Node: Key Index,  Prev: Command Index,  Up: Top
@@ -3607,25 +3629,25 @@ Key Index
 * Menu:
 
 * ! (permission):                        Permissions.          (line  6)
-* + (transcript):                        Tools.                (line 32)
+* + (transcript):                        Tools.                (line 34)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 79)
 * f (transcript):                        Transcript.           (line 88)
 * g (usage):                             Usage.                (line  6)
 * h (Harmless buffers):                  Keys.                 (line  6)
-* I (Harmless menu):                     File tools.           (line 51)
+* I (Harmless menu):                     File tools.           (line 52)
 * k (transcript):                        Transcript.           (line 52)
 * L (Harmless menu):                     Language server.      (line  6)
 * LEFT (transcript):                     Transcript.           (line  6)
 * M-x harmless:                          Starting.             (line  6)
 * M-x harmless-login:                    Accounts.             (line  6)
 * M-x harmless-logout:                   Accounts.             (line  6)
-* M-x harmless-set-shell-sandbox:        Permissions.          (line 42)
+* M-x harmless-set-shell-sandbox:        Permissions.          (line 43)
 * n (permission):                        Permissions.          (line  6)
 * R (Harmless menu):                     Review.               (line  6)
 * RIGHT (transcript):                    Transcript.           (line  6)
-* S (Harmless menu):                     Permissions.          (line 42)
+* S (Harmless menu):                     Permissions.          (line 43)
 * S-TAB (transcript):                    Transcript.           (line  6)
 * t (transcript):                        Sessions.             (line 31)
 * TAB (transcript):                      Transcript.           (line  6)
@@ -3643,54 +3665,54 @@ Node: Starting5238
 Node: Sessions5777
 Node: Transcript8958
 Node: Prompt12719
-Node: Permissions15919
-Node: Accounts24623
-Node: Models26981
-Node: Tools28077
-Node: File tools32788
-Node: Search38832
-Node: Shell40728
-Node: Checkpoints46463
-Node: Code execution50453
-Node: Questions53890
-Node: Subagents54669
-Node: Workflows59052
-Node: Worktrees64055
-Node: Messages67183
-Node: Web search70060
-Node: Fetch a page70917
-Node: X search72150
-Node: MCP74547
-Node: Computer use77251
-Node: Monitors79267
-Node: Schedules82271
-Node: Todos84737
-Node: Review87392
-Node: Language server90975
-Node: Instructions94162
-Node: Skills98684
-Node: Plugins102844
-Node: Output styles105696
-Node: Image generation107749
-Node: Headless109591
-Node: Pages112279
-Node: Team115116
-Node: Machines136195
-Node: People139062
-Node: Profiles141349
-Node: Health144005
-Node: Fleet146017
-Node: Scope146783
-Node: Context150791
-Node: Memory153926
-Node: Plan mode157665
-Node: Usage160651
-Node: Files161670
-Node: Keys165804
-Node: Trouble167515
-Node: Manual168769
-Node: Command Index169474
-Node: Key Index180125
+Node: Permissions15932
+Node: Accounts24677
+Node: Models27035
+Node: Tools28131
+Node: File tools33066
+Node: Search39398
+Node: Shell41336
+Node: Checkpoints47154
+Node: Code execution51228
+Node: Questions54818
+Node: Subagents55610
+Node: Workflows60050
+Node: Worktrees65093
+Node: Messages68277
+Node: Web search71196
+Node: Fetch a page72066
+Node: X search73313
+Node: MCP75752
+Node: Computer use78496
+Node: Monitors80580
+Node: Schedules83655
+Node: Todos86151
+Node: Review88820
+Node: Language server92418
+Node: Instructions95645
+Node: Skills100167
+Node: Plugins104355
+Node: Output styles107207
+Node: Image generation109260
+Node: Headless111131
+Node: Pages113819
+Node: Team116656
+Node: Machines137818
+Node: People140685
+Node: Profiles142972
+Node: Health145628
+Node: Fleet147640
+Node: Scope148406
+Node: Context152414
+Node: Memory155549
+Node: Plan mode159357
+Node: Usage162510
+Node: Files163529
+Node: Keys167682
+Node: Trouble169393
+Node: Manual170647
+Node: Command Index171352
+Node: Key Index182003
 
 End Tag Table
 

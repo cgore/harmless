@@ -213,7 +213,7 @@
          "No Harmless session"
          (lambda () (harmless-lsp nil nil)))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "lsp")
+                        (harmless-tool-by-name "harmless-tool-lsp")
                         session '(:operation "hover"))
                        "Error: lsp operation is not an operation"))
         (should (= calls 0))
@@ -255,7 +255,7 @@
                (harmless-session-directory session) data))
       (should-not (harmless-filesystem-root-p
                    (harmless-session-directory session)))
-      (should-not (member "lsp"
+      (should-not (member "harmless-tool-lsp"
                           (mapcar #'harmless-tool-name
                                   (harmless-tools-for-session chat)))))))
 
@@ -539,19 +539,19 @@
                        "No diagnostics"))
         (should (harmless-session-plan-mode session))
         (should (equal (harmless-lsp-test-text file) text)))
-      (should (eq (harmless-tool-class (harmless-tool-by-name "lsp"))
+      (should (eq (harmless-tool-class (harmless-tool-by-name "harmless-tool-lsp"))
                   'read))
       (should-not (harmless-perm-needed-p session 'read))
-      (should (equal (harmless-ui--tool-verb "lsp") "lsp"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-lsp") "lsp"))
       (should (equal (harmless-ui--tool-summary
-                      "lsp"
+                      "harmless-tool-lsp"
                       '(:operation "definition" :path "lib.el"))
                      "definition lib.el"))
       (should (equal (harmless-ui--tool-summary
-                      "lsp"
+                      "harmless-tool-lsp"
                       '(:operation :references :path "lib.el"))
                      "references lib.el"))
-      (should (equal (harmless-ui--tool-summary "lsp" nil) ""))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-lsp" nil) ""))
       (let ((agent (harmless-agent-create
                     session '(:prompt "look") #'ignore)))
         (should (file-name-absolute-p (harmless-session-directory agent)))
@@ -561,15 +561,15 @@
                  (harmless-session-directory agent) data))
         (setf (plist-get (harmless-session-agent agent) :sandbox)
               'read-only)
-        (should (member "lsp"
+        (should (member "harmless-tool-lsp"
                         (mapcar #'harmless-tool-name
                                 (harmless-tools-for-session agent))))
         (setf (plist-get (harmless-session-agent agent) :allow)
-              '("read_file"))
+              '("harmless-tool-read-file"))
         (should (equal (harmless-agent-refuse-call
-                        agent (harmless-tool-by-name "lsp") nil)
-                       "Error: this subagent cannot use lsp")))
-      (should (member "lsp"
+                        agent (harmless-tool-by-name "harmless-tool-lsp") nil)
+                       "Error: this subagent cannot use harmless-tool-lsp")))
+      (should (member "harmless-tool-lsp"
                       (mapcar #'harmless-tool-name
                               (harmless-tools-for-session session))))
       (should (equal (harmless-lsp-test-text file) text))
@@ -595,7 +595,7 @@
                        :name "fake" :host "none"
                        :script
                        (harmless-lsp-test-tool-script
-                        '(:tool-call "1" "lsp"
+                        '(:tool-call "1" "harmless-tool-lsp"
                           "{\"operation\":\"definition\",\"path\":\"lib.el\",\"line\":2,\"column\":3}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -611,7 +611,7 @@
                        :name "fake" :host "none"
                        :script
                        (harmless-lsp-test-tool-script
-                        '(:tool-call "1" "lsp"
+                        '(:tool-call "1" "harmless-tool-lsp"
                           "{\"operation\":\"diagnostics\",\"path\":\"lib.el\"}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function

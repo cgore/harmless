@@ -1140,7 +1140,7 @@ that session's tools."
 
 (harmless-register-tool
  (harmless-tool-create
-  :name "session_search"
+  :name "harmless-tool-session-search"
   :description "Search saved transcripts on this machine and return a short recall. Nil, an empty query, and a query that matches nothing return an empty recall. The search does not load another session or its tools."
   :class 'read
   :schema '(:type "object"

@@ -28,13 +28,13 @@
   nil)
 
 (defun harmless-agent-test-result (session args)
-  "Call spawn_agent on SESSION with ARGS and return the tool text."
+  "Call harmless-tool-spawn-agent on SESSION with ARGS and return the tool text."
   (let (result)
     (harmless-agent--tool session args (lambda (text) (setq result text)))
     result))
 
 (defun harmless-agent-test-error (session args pattern)
-  "Require spawn_agent on SESSION with ARGS to return PATTERN."
+  "Require harmless-tool-spawn-agent on SESSION with ARGS to return PATTERN."
   (let ((result (harmless-agent-test-result session args)))
     (should (string-match-p pattern result))
     result))
@@ -158,7 +158,7 @@
      "---\nname: maker\ntools: make\n---\nNo.\n")
     (harmless-agent-test--write
      (expand-file-name ".claude/agents/nester.md" dir)
-     "---\nname: nester\ntools: spawn_agent\n---\nNo.\n")
+     "---\nname: nester\ntools: harmless-tool-spawn-agent\n---\nNo.\n")
     (let ((session (harmless-agent-test--session
                     dir (lambda (&rest _) (error "provider ran")))))
       (harmless-agent-test-error
@@ -201,7 +201,7 @@
                           "reviewer"
                           (harmless-agent-test--contents messages)))
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"TASK-TEXT\",\"agent\":\"reviewer\",\"description\":\"Find the bug\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
@@ -228,7 +228,7 @@
            (asked nil))
       (harmless-agent-test--write
        (expand-file-name ".claude/agents/reviewer.md" dir)
-       "---\nname: reviewer\ndescription: Reviews code\ntools: read_file, grep\nmodel: child-model-xhigh\nsandbox: read-only\n---\nAGENT-PROMPT\n")
+       "---\nname: reviewer\ndescription: Reviews code\ntools: harmless-tool-read-file, harmless-tool-grep\nmodel: child-model-xhigh\nsandbox: read-only\n---\nAGENT-PROMPT\n")
       (setq harmless-perm-ask-function
             (lambda (_s class item cb)
               (push (list class item) asked)
@@ -248,9 +248,9 @@
         (should (equal (harmless-session-title child) "Find the bug"))
         (should (eq (harmless-session-plan-mode child) nil))
         (harmless-agent-test--not-root child)
-        (should-not (member "spawn_agent" child-tools))
-        (should (member "read_file" child-tools))
-        (should-not (member "write_file" child-tools))
+        (should-not (member "harmless-tool-spawn-agent" child-tools))
+        (should (member "harmless-tool-read-file" child-tools))
+        (should-not (member "harmless-tool-write-file" child-tools))
         (let* ((file (expand-file-name
                       "summary.json" (harmless-session-directory child)))
                (plist (harmless-json-decode
@@ -262,7 +262,7 @@
                          (harmless-session-id session)))
           (should (equal (plist-get plist :agent-sandbox) "read-only"))
           (should (equal (plist-get plist :agent-prompt) "AGENT-PROMPT"))
-          (should (equal (plist-get plist :agent-allow) '("read_file" "grep")))
+          (should (equal (plist-get plist :agent-allow) '("harmless-tool-read-file" "harmless-tool-grep")))
           (should-not (plist-member plist :callback))
           (should-not (plist-member plist :task)))
         (let ((dir (harmless-session-directory child)))
@@ -276,13 +276,13 @@
             (should (eq (plist-get (harmless-session-agent loaded) :sandbox)
                         'read-only))
             (should (equal (plist-get (harmless-session-agent loaded) :allow)
-                           '("read_file" "grep")))
+                           '("harmless-tool-read-file" "harmless-tool-grep")))
             (should-not (plist-get (harmless-session-agent loaded) :callback))
             (let ((names (mapcar #'harmless-tool-name
                                  (harmless-tools-for-session loaded))))
-              (should (member "read_file" names))
-              (should-not (member "write_file" names))
-              (should-not (member "spawn_agent" names)))))))))
+              (should (member "harmless-tool-read-file" names))
+              (should-not (member "harmless-tool-write-file" names))
+              (should-not (member "harmless-tool-spawn-agent" names)))))))))
 
 (ert-deftest harmless-agent-workspace-write-and-title-edges ()
   (harmless-agent-test-with dir
@@ -296,12 +296,12 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"write the note\",\"description\":\"/\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
                  (funcall callback
-                          '(:tool-call "w" "write_file"
+                          '(:tool-call "w" "harmless-tool-write-file"
                             "{\"path\":\"note.txt\",\"contents\":\"hi\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 3)
@@ -316,7 +316,7 @@
               (funcall cb 'allow)))
       (harmless-turn-run session "go")
       (should (equal (harmless-agent-test--tools session) '("wrote")))
-      (should (member '(edit "spawn_agent") asked))
+      (should (member '(edit "harmless-tool-spawn-agent") asked))
       (let ((path (expand-file-name "note.txt" dir))
             (child (car (harmless-agent-children session))))
         (should (file-exists-p path))
@@ -338,12 +338,12 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"edit\",\"agent\":\"reader\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
                  (funcall callback
-                          '(:tool-call "w" "write_file"
+                          '(:tool-call "w" "harmless-tool-write-file"
                             "{\"path\":\"nope.txt\",\"contents\":\"x\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 3)
@@ -376,25 +376,25 @@
             (list :allow 'all :sandbox 'read-only :callback nil
                   :turns 0 :max 8 :error nil :prompt nil :task nil))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "run_shell")
+                   child (harmless-tool-by-name "harmless-tool-run-shell")
                    '(:command "echo hi")))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "run_shell")
+                      child (harmless-tool-by-name "harmless-tool-run-shell")
                       '(:command "echo hi > x"))
                      "Error: This subagent is read-only. A tool that can write is refused"))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "run_shell")
+                   child (harmless-tool-by-name "harmless-tool-run-shell")
                    '(:command "   ")))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "run_shell")
+                   child (harmless-tool-by-name "harmless-tool-run-shell")
                    nil))
-      (setf (plist-get (harmless-session-agent child) :allow) '("read_file"))
+      (setf (plist-get (harmless-session-agent child) :allow) '("harmless-tool-read-file"))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "grep")
+                      child (harmless-tool-by-name "harmless-tool-grep")
                       '(:pattern "x"))
-                     "Error: this subagent cannot use grep"))
+                     "Error: this subagent cannot use harmless-tool-grep"))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "spawn_agent")
+                      child (harmless-tool-by-name "harmless-tool-spawn-agent")
                       '(:prompt "more"))
                      "Error: a subagent cannot start another subagent")))))
 
@@ -409,12 +409,12 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"nest\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
                  (funcall callback
-                          '(:tool-call "2" "spawn_agent"
+                          '(:tool-call "2" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"again\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 3)
@@ -442,12 +442,12 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"count\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
                  (funcall callback
-                          '(:tool-call "r" "read_file"
+                          '(:tool-call "r" "harmless-tool-read-file"
                             "{\"path\":\"missing.txt\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 (t
@@ -471,7 +471,7 @@
                (setq calls (1+ calls))
                (when (= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"hold\"}"))
                  (funcall callback '(:stop "tool_calls")))))))
       (harmless-turn-run session "go")
@@ -495,7 +495,7 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"hold\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2) nil)
@@ -523,7 +523,7 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"reply\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
@@ -554,7 +554,7 @@
                (if (= calls 1)
                    (progn
                      (funcall callback
-                              '(:tool-call "1" "spawn_agent"
+                              '(:tool-call "1" "harmless-tool-spawn-agent"
                                 "{\"prompt\":\"edit\"}"))
                      (funcall callback '(:stop "tool_calls")))
                  (funcall callback '(:text "after"))
@@ -580,7 +580,7 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "spawn_agent"
+                          '(:tool-call "1" "harmless-tool-spawn-agent"
                             "{\"prompt\":\"TASK-RO\",\"agent\":\"reader\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
@@ -612,7 +612,7 @@
                (if (= calls 1)
                    (progn
                      (funcall callback
-                              '(:tool-call "1" "spawn_agent"
+                              '(:tool-call "1" "harmless-tool-spawn-agent"
                                 "{\"prompt\":\"nope\"}"))
                      (funcall callback '(:stop "tool_calls")))
                  (funcall callback '(:text "denied"))
@@ -620,7 +620,7 @@
       (setq harmless-perm-ask-function
             (lambda (_s class item cb)
               (should (eq class 'edit))
-              (should (equal item "spawn_agent"))
+              (should (equal item "harmless-tool-spawn-agent"))
               (funcall cb 'deny)))
       (harmless-turn-run session "go")
       (should-not (harmless-agent-children session))
@@ -641,7 +641,7 @@
                           (cond
                            ((= calls 1)
                             (funcall callback
-                                     '(:tool-call "1" "spawn_agent"
+                                     '(:tool-call "1" "harmless-tool-spawn-agent"
                                        "{\"prompt\":\"think\"}"))
                             (funcall callback '(:stop "tool_calls")))
                            ((= calls 2)
@@ -666,9 +666,9 @@
         (harmless-agent-test--not-root child)
         (let ((names (mapcar #'harmless-tool-name
                              (harmless-tools-for-session child))))
-          (should (member "ask_user" names))
-          (should-not (member "read_file" names))
-          (should-not (member "spawn_agent" names))))
+          (should (member "harmless-tool-ask-user" names))
+          (should-not (member "harmless-tool-read-file" names))
+          (should-not (member "harmless-tool-spawn-agent" names))))
       (should (equal (harmless-agent-test--tools session) '("thought"))))))
 
 (ert-deftest harmless-agent-description-edges-and-ui ()
@@ -683,11 +683,11 @@
                     (lambda (_) nil))))
         (should (equal (harmless-session-title child) "sub/"))
         (harmless-agent-test--not-root child))))
-  (should (equal (harmless-ui--tool-verb "spawn_agent") "agent"))
+  (should (equal (harmless-ui--tool-verb "harmless-tool-spawn-agent") "agent"))
   (should (equal (harmless-ui--tool-summary
-                  "spawn_agent" "{\"prompt\":\"Find it\"}")
+                  "harmless-tool-spawn-agent" "{\"prompt\":\"Find it\"}")
                  "Find it"))
-  (let ((tool (harmless-tool-by-name "spawn_agent")))
+  (let ((tool (harmless-tool-by-name "harmless-tool-spawn-agent")))
     (should (harmless-tool-async tool))
     (should (eq (harmless-tool-class tool) 'edit))))
 

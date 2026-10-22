@@ -364,7 +364,7 @@
       (should (string-match-p "\\.git/secret.txt:1:needle git" elisp)))))
 
 (defun harmless-tools-patch-error (session args)
-  "Return the error string from apply_patch on SESSION with ARGS."
+  "Return the error string from harmless-tool-apply-patch on SESSION with ARGS."
   (error-message-string
    (should-error (harmless-tools-fs--apply-patch session args) :type 'error)))
 
@@ -387,7 +387,7 @@
          (seq (harmless-tools-test-abs session "seq.txt"))
          (del (harmless-tools-test-abs session "del.txt"))
          (nested (harmless-tools-test-abs session "sub/c.txt"))
-         (tool (harmless-tool-by-name "apply_patch")))
+         (tool (harmless-tool-by-name "harmless-tool-apply-patch")))
     (should tool)
     (should (eq 'edit (harmless-tool-class tool)))
     (make-directory (expand-file-name "sub" root))
@@ -640,11 +640,11 @@
                               (error-message-string err))))
     (should-not (harmless-session-shell-jobs detached))
     (should-not (file-exists-p "/echo"))
-    (should (eq 'read (harmless-tool-class (harmless-tool-by-name "shell_output"))))
-    (should (eq 'shell (harmless-tool-class (harmless-tool-by-name "shell_kill"))))
+    (should (eq 'read (harmless-tool-class (harmless-tool-by-name "harmless-tool-shell-output"))))
+    (should (eq 'shell (harmless-tool-class (harmless-tool-by-name "harmless-tool-shell-kill"))))
     (let ((asked nil)
           (harmless-perm-ask-function (lambda (&rest _) (setq asked t))))
-      (harmless-perm-confirm session 'read "shell_output" #'ignore)
+      (harmless-perm-confirm session 'read "harmless-tool-shell-output" #'ignore)
       (should-not asked))))
 
 (ert-deftest harmless-shell-background-is-remembered-only-in-memory ()
@@ -977,14 +977,14 @@
                          "FOO=1 rm x" "echo 'hi" "\"\""))
     (should (equal (list command 'write)
                    (list command (harmless-shell-command-kind command)))))
-  (should (eq 'shell (harmless-tool-class (harmless-tool-by-name "run_shell"))))
+  (should (eq 'shell (harmless-tool-class (harmless-tool-by-name "harmless-tool-run-shell"))))
   (should (eq 'read (harmless-shell-run-class nil '(:command "echo hi"))))
   (should (eq 'shell (harmless-shell-run-class nil '(:command "rm x"))))
   (should (eq 'shell (harmless-shell-run-class nil '(:command nil))))
   (should (eq 'shell (harmless-shell-run-class nil nil)))
   (should (eq 'shell (harmless-shell-run-class nil '(:command ""))))
   (should (eq 'shell (harmless-shell-run-class nil '(:command "/"))))
-  (should-not (harmless-tool-classify (harmless-tool-by-name "shell_kill"))))
+  (should-not (harmless-tool-classify (harmless-tool-by-name "harmless-tool-shell-kill"))))
 
 (ert-deftest harmless-shell-plan-mode-refuses-a-write ()
   (let* ((dir (make-temp-file "harmless-shell-plan-" t))

@@ -150,8 +150,8 @@ No timer starts unless BODY asks."
            (cdrive (file-exists-p "c:/schedule"))
            (session (harmless-schedule-test-session
                      :cwd repo :id "bad" :title "Keep"))
-           (tool (harmless-tool-by-name "schedule"))
-           (cancel (harmless-tool-by-name "schedule_cancel")))
+           (tool (harmless-tool-by-name "harmless-tool-schedule"))
+           (cancel (harmless-tool-by-name "harmless-tool-schedule-cancel")))
       (should (eq (harmless-tool-class tool) 'edit))
       (should-not (harmless-tool-async tool))
       (should-not (harmless-tool-classify tool))
@@ -159,42 +159,42 @@ No timer starts unless BODY asks."
                      ["prompt"]))
       (should (equal (plist-get (harmless-tool-schema cancel) :required)
                      ["id"]))
-      (should (equal (harmless-ui--tool-verb "schedule") "schedule"))
-      (should (equal (harmless-ui--tool-verb "schedule_cancel") "cancel"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-schedule") "schedule"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-schedule-cancel") "cancel"))
       (should (equal (harmless-ui--tool-summary
-                      "schedule" '(:prompt "remind me"))
+                      "harmless-tool-schedule" '(:prompt "remind me"))
                      "remind me"))
       (should (equal (harmless-ui--tool-summary
-                      "schedule_cancel" '(:id "1"))
+                      "harmless-tool-schedule-cancel" '(:id "1"))
                      "1"))
       (should (equal (harmless-ui--tool-summary
-                      "schedule_cancel" '(:id 2))
+                      "harmless-tool-schedule-cancel" '(:id 2))
                      "2"))
-      (should (equal (harmless-ui--tool-summary "schedule" nil) ""))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-schedule" nil) ""))
       (should (equal (harmless-turn--item-for tool '(:prompt "remind me"))
                      "remind me"))
       (should (equal (harmless-turn--item-for cancel '(:id 2)) "2"))
       (should (equal (harmless-turn--item-for cancel nil)
-                     "schedule_cancel"))
+                     "harmless-tool-schedule-cancel"))
       (dolist (prompt '(nil :false 42))
         (harmless-schedule-test-expect
-         session "schedule" (list :prompt prompt :delay 5)
+         session "harmless-tool-schedule" (list :prompt prompt :delay 5)
          "prompt must be a string"))
       (dolist (prompt '("" "   " "\n"))
         (harmless-schedule-test-expect
-         session "schedule" (list :prompt prompt :delay 5)
+         session "harmless-tool-schedule" (list :prompt prompt :delay 5)
          "prompt is empty"))
       (harmless-schedule-test-expect
-       session "schedule" '(:prompt "later") "schedule time is missing")
+       session "harmless-tool-schedule" '(:prompt "later") "schedule time is missing")
       (harmless-schedule-test-expect
-       session "schedule" '(:prompt "later" :delay nil :at nil)
+       session "harmless-tool-schedule" '(:prompt "later" :delay nil :at nil)
        "schedule time is missing")
       (harmless-schedule-test-expect
-       session "schedule"
+       session "harmless-tool-schedule"
        (harmless-json-decode "{\"prompt\":\"later\",\"delay\":null}")
        "schedule time is missing")
       (harmless-schedule-test-expect
-       session "schedule"
+       session "harmless-tool-schedule"
        (harmless-json-decode
         "{\"prompt\":\"later\",\"delay\":null,\"at\":null}")
        "schedule time is missing")
@@ -203,50 +203,50 @@ No timer starts unless BODY asks."
                       (:prompt "later" :delay 5 :at "2099-01-01T00:00:00Z")
                       (:prompt "later" :delay 0 :at "")))
         (harmless-schedule-test-expect
-         session "schedule" args "schedule time must be one"))
+         session "harmless-tool-schedule" args "schedule time must be one"))
       (dolist (delay '(:false "5" 0 -1 0.0))
         (harmless-schedule-test-expect
-         session "schedule" (list :prompt "later" :delay delay)
+         session "harmless-tool-schedule" (list :prompt "later" :delay delay)
          "delay must be a positive number"))
       (harmless-schedule-test-expect
-       session "schedule"
+       session "harmless-tool-schedule"
        (harmless-json-decode "{\"prompt\":\"later\",\"delay\":false}")
        "delay must be a positive number")
       (dolist (at '(:false 42))
         (harmless-schedule-test-expect
-         session "schedule" (list :prompt "later" :at at)
+         session "harmless-tool-schedule" (list :prompt "later" :at at)
          "at must be a string"))
       (dolist (at '("" "   " "\n"))
         (harmless-schedule-test-expect
-         session "schedule" (list :prompt "later" :at at)
+         session "harmless-tool-schedule" (list :prompt "later" :at at)
          "at is empty"))
       (dolist (at '("nope" "/" "c:/"))
         (harmless-schedule-test-expect
-         session "schedule" (list :prompt "later" :at at)
+         session "harmless-tool-schedule" (list :prompt "later" :at at)
          "at is not a time"))
       (harmless-schedule-test-expect
-       session "schedule" '(:prompt "later" :at "2020-01-01T00:00:00Z")
+       session "harmless-tool-schedule" '(:prompt "later" :at "2020-01-01T00:00:00Z")
        "schedule time has passed")
       (dolist (id `(nil "" "   " "\n"))
         (harmless-schedule-test-expect
-         session "schedule_cancel" (list :id id) "schedule id is empty"))
+         session "harmless-tool-schedule-cancel" (list :id id) "schedule id is empty"))
       (dolist (id '(:false 42.5))
         (harmless-schedule-test-expect
-         session "schedule_cancel" (list :id id)
+         session "harmless-tool-schedule-cancel" (list :id id)
          "schedule id must be a string"))
       (harmless-schedule-test-expect
-       session "schedule_cancel" '(:id -2) "schedule id is not an id")
+       session "harmless-tool-schedule-cancel" '(:id -2) "schedule id is not an id")
       (harmless-schedule-test-expect
-       session "schedule_cancel" '(:id "-3") "schedule id is not an id")
+       session "harmless-tool-schedule-cancel" '(:id "-3") "schedule id is not an id")
       (dolist (id '("/" "c:/" "1" 0))
         (harmless-schedule-test-expect
-         session "schedule_cancel" (list :id id)
+         session "harmless-tool-schedule-cancel" (list :id id)
          (format "no schedule %s"
                  (if (integerp id) (number-to-string id) id))))
       (should-not (harmless-session-schedules session))
       (should-not harmless-schedule-test-armed)
       (should (equal (harmless-schedule-test-call
-                      session "schedule"
+                      session "harmless-tool-schedule"
                       (harmless-json-decode
                        "{\"prompt\":\"kept-after-failures\",\"delay\":null,\"at\":\"2099-01-01T00:00:00Z\"}"))
                      "Scheduled 1 at 2099-01-01T00:00:00Z"))
@@ -273,7 +273,7 @@ No timer starts unless BODY asks."
            (other (harmless-schedule-test-session
                    :cwd repo :id "other" :title "Other")))
       (let* ((result (harmless-schedule-test-call
-                      session "schedule" '(:prompt "soon" :delay 1.5)))
+                      session "harmless-tool-schedule" '(:prompt "soon" :delay 1.5)))
              (item (car (harmless-session-schedules session)))
              (at (plist-get item :at))
              (time (encode-time (iso8601-parse at))))
@@ -288,16 +288,16 @@ No timer starts unless BODY asks."
           (should (equal (plist-get saved :at) at))
           (should-not (plist-member saved :timer))))
       (should (equal (harmless-schedule-test-call
-                      session "schedule"
+                      session "harmless-tool-schedule"
                       '("prompt" "second" "at" "2099-01-01T00:00:00Z"))
                      "Scheduled 2 at 2099-01-01T00:00:00Z"))
       (should (equal (harmless-schedule-test-call
-                      session "schedule"
+                      session "harmless-tool-schedule"
                       '(:prompt "  third  "
                         :at "  2099-06-01T00:00:00Z  "))
                      "Scheduled 3 at 2099-06-01T00:00:00Z"))
       (should (equal (harmless-schedule-test-call
-                      session "schedule_cancel" '("id" "  1  "))
+                      session "harmless-tool-schedule-cancel" '("id" "  1  "))
                      "Cancelled schedule 1"))
       (should-not (cl-find "soon"
                            (plist-get (harmless-schedule-test-summary session)
@@ -309,11 +309,11 @@ No timer starts unless BODY asks."
       (should (= 0 (harmless-schedule-test-wakes session)))
       (should (null (harmless-schedule-test-user-texts session)))
       (should (equal (harmless-schedule-test-call
-                      session "schedule"
+                      session "harmless-tool-schedule"
                       '(:prompt "fourth" :at "2099-07-01T00:00:00Z"))
                      "Scheduled 4 at 2099-07-01T00:00:00Z"))
       (should (equal (harmless-schedule-test-call
-                      session "schedule_cancel" '(:id 2))
+                      session "harmless-tool-schedule-cancel" '(:id 2))
                      "Cancelled schedule 2"))
       (should (equal (harmless-schedule-test-prompts
                       (harmless-session-schedules session))
@@ -323,7 +323,7 @@ No timer starts unless BODY asks."
                       (harmless-session-schedules session))
                      '("third" "fourth")))
       (should (equal (harmless-schedule-test-call
-                      other "schedule" '(:prompt "only-other" :delay 5))
+                      other "harmless-tool-schedule" '(:prompt "only-other" :delay 5))
                      (format "Scheduled 1 at %s"
                              (plist-get
                               (car (harmless-session-schedules other))
@@ -334,7 +334,7 @@ No timer starts unless BODY asks."
                      "only-other"))
       (dolist (prompt '("/" "c:/" "log.txt" "  sub/  "))
         (harmless-schedule-test-call
-         session "schedule"
+         session "harmless-tool-schedule"
          (list :prompt prompt :at "2099-08-01T00:00:00Z")))
       (should (equal (last (harmless-schedule-test-prompts
                             (harmless-session-schedules session))
@@ -365,7 +365,7 @@ No timer starts unless BODY asks."
                   (timed (harmless-schedule-test-session
                           :cwd repo :id "timed" :title "Keep")))
               (should (equal (harmless-schedule-test-call
-                              timed "schedule"
+                              timed "harmless-tool-schedule"
                               '(:prompt "far" :at "2099-01-01T00:00:00Z"))
                              "Scheduled 1 at 2099-01-01T00:00:00Z"))
               (setq timer (cdr (assoc "1"
@@ -373,7 +373,7 @@ No timer starts unless BODY asks."
                                                harmless-schedule--timers))))
               (should (timerp timer))
               (should (equal (harmless-schedule-test-call
-                              timed "schedule_cancel" '(:id "1"))
+                              timed "harmless-tool-schedule-cancel" '(:id "1"))
                              "Cancelled schedule 1"))
               (should-not (assoc "1"
                                  (gethash timed harmless-schedule--timers)))
@@ -393,7 +393,7 @@ No timer starts unless BODY asks."
       (let ((session (harmless-schedule-test-session
                       :cwd repo :id "idle" :title "Keep")))
         (should (equal (harmless-schedule-test-call
-                        session "schedule"
+                        session "harmless-tool-schedule"
                         '(:prompt "/" :at "2099-01-01T00:00:00Z"))
                        "Scheduled 1 at 2099-01-01T00:00:00Z"))
         (setq harmless-schedule-test-calls 0)
@@ -411,7 +411,7 @@ No timer starts unless BODY asks."
       (let ((session (harmless-schedule-test-session
                       :cwd repo :id "busy" :title "Keep")))
         (should (equal (harmless-schedule-test-call
-                        session "schedule"
+                        session "harmless-tool-schedule"
                         '(:prompt "c:/" :delay 9))
                        (format "Scheduled 1 at %s"
                                (plist-get
@@ -430,7 +430,7 @@ No timer starts unless BODY asks."
                       :cwd repo :id "paths" :title "Keep")))
         (dolist (prompt '("log.txt" "sub/"))
           (harmless-schedule-test-call
-           session "schedule"
+           session "harmless-tool-schedule"
            (list :prompt prompt :at "2099-01-01T00:00:00Z")))
         (setq harmless-schedule-test-calls 0)
         (harmless-schedule-fire session "1")
@@ -446,7 +446,7 @@ No timer starts unless BODY asks."
                       (harmless-schedule-make-fake
                        :name "fake" :host "none"
                        :script (harmless-schedule-test-tool-script
-                                '(:tool-call "1" "schedule"
+                                '(:tool-call "1" "harmless-tool-schedule"
                                   "{\"prompt\":\"remind me\",\"at\":\"2099-01-01T00:00:00Z\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (_session class item callback)
@@ -467,7 +467,7 @@ No timer starts unless BODY asks."
                       (harmless-schedule-make-fake
                        :name "fake" :host "none"
                        :script (harmless-schedule-test-tool-script
-                                '(:tool-call "1" "schedule"
+                                '(:tool-call "1" "harmless-tool-schedule"
                                   "{\"prompt\":\"remind me\",\"delay\":30}"))))))
         (setq harmless-perm-ask-function
               (lambda (_session class item callback)
@@ -492,7 +492,7 @@ No timer starts unless BODY asks."
                       (harmless-schedule-make-fake
                        :name "fake" :host "none"
                        :script (harmless-schedule-test-tool-script
-                                '(:tool-call "1" "schedule"
+                                '(:tool-call "1" "harmless-tool-schedule"
                                   "{\"prompt\":\"edit-ok\",\"at\":\"2099-02-01T00:00:00Z\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -508,7 +508,7 @@ No timer starts unless BODY asks."
                       (harmless-schedule-make-fake
                        :name "fake" :host "none"
                        :script (harmless-schedule-test-tool-script
-                                '(:tool-call "1" "schedule"
+                                '(:tool-call "1" "harmless-tool-schedule"
                                   "{\"prompt\":\"always-ok\",\"at\":\"2099-03-01T00:00:00Z\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -523,7 +523,7 @@ No timer starts unless BODY asks."
                       (harmless-schedule-make-fake
                        :name "fake" :host "none"
                        :script (harmless-schedule-test-tool-script
-                                '(:tool-call "1" "schedule"
+                                '(:tool-call "1" "harmless-tool-schedule"
                                   "{\"prompt\":\"plan-ok\",\"at\":\"2099-04-01T00:00:00Z\"}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function
@@ -543,10 +543,10 @@ No timer starts unless BODY asks."
                       (harmless-schedule-make-fake
                        :name "fake" :host "none"
                        :script (harmless-schedule-test-tool-script
-                                '(:tool-call "1" "schedule_cancel"
+                                '(:tool-call "1" "harmless-tool-schedule-cancel"
                                   "{\"id\":\"1\"}"))))))
         (should (equal (harmless-schedule-test-call
-                        session "schedule"
+                        session "harmless-tool-schedule"
                         '(:prompt "stay" :at "2099-05-01T00:00:00Z"))
                        "Scheduled 1 at 2099-05-01T00:00:00Z"))
         (setf (harmless-session-plan-mode session) t)
@@ -573,11 +573,11 @@ No timer starts unless BODY asks."
            (dir (harmless-session-dir session))
            (loaded nil))
       (should (equal (harmless-schedule-test-call
-                      session "schedule"
+                      session "harmless-tool-schedule"
                       '(:prompt "keep-me" :at "2099-01-01T00:00:00Z"))
                      "Scheduled 1 at 2099-01-01T00:00:00Z"))
       (should (equal (harmless-schedule-test-call
-                      session "schedule"
+                      session "harmless-tool-schedule"
                       '(:prompt "drop-me" :at "2099-02-01T00:00:00Z"))
                      "Scheduled 2 at 2099-02-01T00:00:00Z"))
       (plist-put (nth 1 (harmless-session-schedules session))
@@ -640,7 +640,7 @@ No timer starts unless BODY asks."
       (should (equal (harmless-session-title loaded) "Keep"))
       (should-not (harmless-session-schedules loaded))
       (should (equal (harmless-schedule-test-call
-                      loaded "schedule"
+                      loaded "harmless-tool-schedule"
                       '(:prompt "next" :at "2099-03-01T00:00:00Z"))
                      "Scheduled 1 at 2099-03-01T00:00:00Z"))
       (harmless-schedule-test-assert-session loaded)
@@ -662,43 +662,43 @@ No timer starts unless BODY asks."
             (list :allow 'all :sandbox 'read-only :prompt "p"))
       (let ((offered (mapcar #'harmless-tool-name
                              (harmless-tools-for-session child))))
-        (should-not (member "schedule" offered))
-        (should-not (member "schedule_cancel" offered)))
+        (should-not (member "harmless-tool-schedule" offered))
+        (should-not (member "harmless-tool-schedule-cancel" offered)))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "schedule")
+                      child (harmless-tool-by-name "harmless-tool-schedule")
                       '(:prompt "x" :delay 5))
                      harmless-agent-read-only-refusal))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "schedule_cancel")
+                      child (harmless-tool-by-name "harmless-tool-schedule-cancel")
                       '(:id "1"))
                      harmless-agent-read-only-refusal))
       (setf (plist-get (harmless-session-agent child) :sandbox) 'workspace)
       (let ((offered (mapcar #'harmless-tool-name
                              (harmless-tools-for-session child))))
-        (should (member "schedule" offered))
-        (should (member "schedule_cancel" offered)))
+        (should (member "harmless-tool-schedule" offered))
+        (should (member "harmless-tool-schedule-cancel" offered)))
       (should (equal (harmless-schedule-test-call
-                      child "schedule"
+                      child "harmless-tool-schedule"
                       '(:prompt "from-child" :at "2099-01-01T00:00:00Z"))
                      "Scheduled 1 at 2099-01-01T00:00:00Z"))
-      (setf (plist-get (harmless-session-agent child) :allow) '("read_file"))
+      (setf (plist-get (harmless-session-agent child) :allow) '("harmless-tool-read-file"))
       (setf (plist-get (harmless-session-agent child) :sandbox) 'read-only)
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "schedule") nil)
-                     "Error: this subagent cannot use schedule"))
+                      child (harmless-tool-by-name "harmless-tool-schedule") nil)
+                     "Error: this subagent cannot use harmless-tool-schedule"))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "schedule_cancel") nil)
-                     "Error: this subagent cannot use schedule_cancel"))
+                      child (harmless-tool-by-name "harmless-tool-schedule-cancel") nil)
+                     "Error: this subagent cannot use harmless-tool-schedule-cancel"))
       (let ((detached (harmless-schedule-test-session
                        :detached t :id "chat" :title "Keep")))
         (let ((names (mapcar #'harmless-tool-name
                              (harmless-tools-for-session detached))))
-          (should (member "schedule" names))
-          (should (member "schedule_cancel" names))
-          (should-not (member "monitor" names))
-          (should-not (member "read_file" names)))
+          (should (member "harmless-tool-schedule" names))
+          (should (member "harmless-tool-schedule-cancel" names))
+          (should-not (member "harmless-tool-monitor" names))
+          (should-not (member "harmless-tool-read-file" names)))
         (should (equal (harmless-schedule-test-call
-                        detached "schedule"
+                        detached "harmless-tool-schedule"
                         '(:prompt "log.txt" :delay 4))
                        (format "Scheduled 1 at %s"
                                (plist-get

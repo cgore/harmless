@@ -600,16 +600,16 @@ BODY may push onto `bufs'.  Nothing is written at the filesystem root."
             (goto-char (point-max))
             (insert "!"))
           (setf (harmless-session-plan-mode session) t)
-          (should (equal "Plan mode is on. Only plan.md may be edited, with write_plan"
+          (should (equal "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
                          (harmless-editor-test-signal
                           (harmless-tools-fs--write
                            session '(:path "a.txt" :contents "NEW")))))
-          (should (equal "Plan mode is on. Only plan.md may be edited, with write_plan"
+          (should (equal "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
                          (harmless-editor-test-signal
                           (harmless-tools-fs--replace
                            session '(:path "a.txt" :old_string "OLD"
                                      :new_string "NEW")))))
-          (should (equal "Plan mode is on. Only plan.md may be edited, with write_plan"
+          (should (equal "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
                          (harmless-editor-test-signal
                           (harmless-tools-fs--apply-patch
                            session '(:hunks ((:path "a.txt"

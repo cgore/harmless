@@ -164,7 +164,7 @@
         (write-region "stay\n" nil keep nil 'silent))
       (should (file-regular-p keep))
       (harmless-dangerous-test-run
-       session "run_shell" '(:command "shutdown -h now"))
+       session "harmless-tool-run-shell" '(:command "shutdown -h now"))
       (should-not harmless-dangerous-test-asked)
       (should (equal (harmless-dangerous-test-last session)
                      "Error: dangerous command refused: shutdown"))
@@ -173,14 +173,14 @@
                        (buffer-string))
                      "stay\n"))
       (harmless-dangerous-test-run
-       session "run_shell" '(:command "rm -rf /"))
+       session "harmless-tool-run-shell" '(:command "rm -rf /"))
       (should-not harmless-dangerous-test-asked)
       (should (equal (harmless-dangerous-test-last session)
                      "Error: dangerous command refused: rm"))
       (should (file-regular-p keep))
       (should (file-directory-p "/"))
       (harmless-dangerous-test-run
-       session "run_shell" '(:command "rm keep.txt"))
+       session "harmless-tool-run-shell" '(:command "rm keep.txt"))
       (should (equal harmless-dangerous-test-asked
                      '((shell "rm keep.txt"))))
       (should (equal (harmless-dangerous-test-last session)
@@ -191,26 +191,26 @@
         (setf (harmless-session-permission-mode session)
               'always-approve)
         (harmless-dangerous-test-run
-         session "run_shell" '(:command "echo hi"))
+         session "harmless-tool-run-shell" '(:command "echo hi"))
         (should-not harmless-dangerous-test-asked)
         (should (equal (harmless-dangerous-test-last session)
                        "Error: dangerous command refused: echo")))
       (setf (harmless-session-permission-mode session) 'ask)
       (setf (harmless-session-plan-mode session) t)
       (harmless-dangerous-test-run
-       session "run_shell" '(:command "shutdown -h now"))
+       session "harmless-tool-run-shell" '(:command "shutdown -h now"))
       (should-not harmless-dangerous-test-asked)
       (should (equal (harmless-dangerous-test-last session)
                      harmless-shell-plan-refusal))
       (setf (harmless-session-plan-mode session) nil)
       (setq harmless-dangerous-test-commands nil)
       (harmless-dangerous-test-run
-       session "monitor" '(:pattern "x" :command "shutdown"))
+       session "harmless-tool-monitor" '(:pattern "x" :command "shutdown"))
       (should-not harmless-dangerous-test-commands)
       (should (equal (harmless-dangerous-test-last session)
                      "Error: dangerous command refused: shutdown"))
       (harmless-dangerous-test-run
-       session "monitor" '(:pattern "nope" :path "keep.txt"))
+       session "harmless-tool-monitor" '(:pattern "nope" :path "keep.txt"))
       (should-not harmless-dangerous-test-commands)
       (should (string-match-p
                "\\`Watching "

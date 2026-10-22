@@ -220,7 +220,7 @@
       (should-not (file-exists-p (expand-file-name "sub" dir)))
       (should-not (file-exists-p "/plan.md"))
       (should (eq (harmless-tool-class
-                   (harmless-tool-by-name "todo_write"))
+                   (harmless-tool-by-name "harmless-tool-todo-write"))
                   'read))
       (should-not (harmless-perm-needed-p session 'read))
       (let ((calls 0)
@@ -332,7 +332,7 @@
       (should (equal (harmless-session-todos session) kept))
       (setf (harmless-session-agent agent)
             (list :allow 'all :sandbox 'read-only :prompt "p"))
-      (should (member "todo_write"
+      (should (member "harmless-tool-todo-write"
                       (mapcar #'harmless-tool-name
                               (harmless-tools-for-session agent))))
       (should (equal (harmless-todo-update
@@ -340,13 +340,13 @@
                      "[pending] z: child"))
       (should (equal (harmless-session-todos session) kept))
       (setf (plist-get (harmless-session-agent agent) :allow)
-            '("read_file"))
+            '("harmless-tool-read-file"))
       (should (equal (harmless-agent-refuse-call
-                      agent (harmless-tool-by-name "todo_write") nil)
-                     "Error: this subagent cannot use todo_write"))
+                      agent (harmless-tool-by-name "harmless-tool-todo-write") nil)
+                     "Error: this subagent cannot use harmless-tool-todo-write"))
       (setq chat (harmless-session-new
                   :detached t :provider provider :model "m" :title "Chat"))
-      (should (member "todo_write"
+      (should (member "harmless-tool-todo-write"
                       (mapcar #'harmless-tool-name
                               (harmless-tools-for-session chat))))
       (should (equal (harmless-todo-update
@@ -354,13 +354,13 @@
                      "[pending] /: c:/"))
       (should (harmless-directory-strictly-under-p
                (harmless-session-directory chat) data))
-      (should (equal (harmless-ui--tool-verb "todo_write") "todo"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-todo-write") "todo"))
       (should (equal (harmless-ui--tool-summary
-                      "todo_write"
+                      "harmless-tool-todo-write"
                       '(:todos ((:id "a" :content "write the tests")
                                 (:id "b" :content "run them"))))
                      "write the tests, run them"))
-      (should (equal (harmless-ui--tool-summary "todo_write" nil) ""))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-todo-write" nil) ""))
       (unwind-protect
           (let ((harmless--session session))
             (harmless-ui-render-session session)
@@ -391,7 +391,7 @@
                        :name "fake" :host "none"
                        :script
                        (harmless-todo-test-tool-script
-                        '(:tool-call "1" "todo_write"
+                        '(:tool-call "1" "harmless-tool-todo-write"
                           "{\"todos\":[{\"id\":\"a\",\"content\":\"c:/\"}]}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -408,7 +408,7 @@
                        :name "fake" :host "none"
                        :script
                        (harmless-todo-test-tool-script
-                        '(:tool-call "1" "todo_write"
+                        '(:tool-call "1" "harmless-tool-todo-write"
                           "{\"todos\":[{\"id\":\"b\",\"content\":\"/\"}]}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function

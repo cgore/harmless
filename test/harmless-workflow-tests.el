@@ -27,13 +27,13 @@
   nil)
 
 (defun harmless-workflow-test-result (session args)
-  "Call run_workflow on SESSION with ARGS and return the tool text."
+  "Call harmless-tool-run-workflow on SESSION with ARGS and return the tool text."
   (let (result)
     (harmless-workflow--tool session args (lambda (text) (setq result text)))
     result))
 
 (defun harmless-workflow-test-error (session args pattern)
-  "Require run_workflow on SESSION with ARGS to return PATTERN."
+  "Require harmless-tool-run-workflow on SESSION with ARGS to return PATTERN."
   (let ((result (harmless-workflow-test-result session args)))
     (should (string-match-p pattern result))
     result))
@@ -277,7 +277,7 @@
                           "PARENT-SECRET"
                           (harmless-workflow-test--contents messages)))
                  (funcall callback
-                          '(:tool-call "1" "run_workflow"
+                          '(:tool-call "1" "harmless-tool-run-workflow"
                             "{\"name\":\"review\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
@@ -326,10 +326,10 @@
         (harmless-workflow-test--not-root second)
         (let ((names (mapcar #'harmless-tool-name
                              (harmless-tools-for-session second))))
-          (should (member "read_file" names))
-          (should-not (member "write_file" names))
-          (should-not (member "spawn_agent" names))
-          (should-not (member "run_workflow" names)))))))
+          (should (member "harmless-tool-read-file" names))
+          (should-not (member "harmless-tool-write-file" names))
+          (should-not (member "harmless-tool-spawn-agent" names))
+          (should-not (member "harmless-tool-run-workflow" names)))))))
 
 (ert-deftest harmless-workflow-parallel-keeps-order ()
   (harmless-workflow-test-with dir
@@ -378,7 +378,7 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "run_workflow"
+                          '(:tool-call "1" "harmless-tool-run-workflow"
                             "{\"script\":\"(complete (agent \\\"look\\\" :agent reviewer))\"}"))
                  (funcall callback '(:stop "tool_calls")))
                 ((= calls 2)
@@ -418,7 +418,7 @@
                (if (= calls 1)
                    (progn
                      (funcall callback
-                              '(:tool-call "1" "run_workflow"
+                              '(:tool-call "1" "harmless-tool-run-workflow"
                                 "{\"script\":\"(complete (agent \\\"edit\\\"))\"}"))
                      (funcall callback '(:stop "tool_calls")))
                  (funcall callback '(:text "wrote"))
@@ -428,7 +428,7 @@
               (push (list class item) asked)
               (funcall cb 'allow)))
       (harmless-turn-run session "go")
-      (should (member '(edit "run_workflow") asked))
+      (should (member '(edit "harmless-tool-run-workflow") asked))
       (should (equal (harmless-workflow-test--tools session) '("wrote")))
       (let ((child (car (harmless-agent-children session))))
         (should (eq (plist-get (harmless-session-agent child) :sandbox)
@@ -448,7 +448,7 @@
                (cond
                 ((= calls 1)
                  (funcall callback
-                          (list :tool-call "1" "run_workflow"
+                          (list :tool-call "1" "harmless-tool-run-workflow"
                                 (format "{\"script\":%S}" script)))
                  (funcall callback '(:stop "tool_calls")))
                 ((and (= calls 2)
@@ -490,7 +490,7 @@
   (harmless-workflow-test-with dir
     (harmless-workflow-test--write
      (expand-file-name ".claude/agents/nester.md" dir)
-     "---\nname: nester\ntools: run_workflow\n---\nNo.\n")
+     "---\nname: nester\ntools: harmless-tool-run-workflow\n---\nNo.\n")
     (condition-case err
         (progn
           (harmless-agent-find dir "nester")
@@ -509,8 +509,8 @@
       (should-not (harmless-agent-children child))
       (let ((names (mapcar #'harmless-tool-name
                            (harmless-tools-for-session child))))
-        (should-not (member "run_workflow" names))
-        (should-not (member "spawn_agent" names))))))
+        (should-not (member "harmless-tool-run-workflow" names))
+        (should-not (member "harmless-tool-spawn-agent" names))))))
 
 (ert-deftest harmless-workflow-parent-abort-cancels-children ()
   (harmless-workflow-test-with dir
@@ -522,7 +522,7 @@
                (setq calls (1+ calls))
                (when (= calls 1)
                  (funcall callback
-                          '(:tool-call "1" "run_workflow"
+                          '(:tool-call "1" "harmless-tool-run-workflow"
                             "{\"script\":\"(complete (parallel (agent \\\"one\\\") (agent \\\"two\\\")))\"}"))
                  (funcall callback '(:stop "tool_calls")))))))
       (harmless-turn-run session "go")
@@ -559,15 +559,15 @@
                      "ok"))
       (should-not (harmless-agent-children session))
       (harmless-workflow-test--not-root session)))
-  (should (equal (harmless-ui--tool-verb "run_workflow") "workflow"))
+  (should (equal (harmless-ui--tool-verb "harmless-tool-run-workflow") "workflow"))
   (should (equal (harmless-ui--tool-summary
-                  "run_workflow" "{\"name\":\"review\"}")
+                  "harmless-tool-run-workflow" "{\"name\":\"review\"}")
                  "review"))
   (should (equal (harmless-ui--tool-summary
-                  "run_workflow"
+                  "harmless-tool-run-workflow"
                   "{\"description\":\"/\",\"name\":\"review\"}")
                  "/"))
-  (let ((tool (harmless-tool-by-name "run_workflow")))
+  (let ((tool (harmless-tool-by-name "harmless-tool-run-workflow")))
     (should (harmless-tool-async tool))
     (should (eq (harmless-tool-class tool) 'edit))))
 
@@ -582,7 +582,7 @@
                (if (= calls 1)
                    (progn
                      (funcall callback
-                              '(:tool-call "1" "run_workflow"
+                              '(:tool-call "1" "harmless-tool-run-workflow"
                                 "{\"script\":\"(complete \\\"ok\\\")\"}"))
                      (funcall callback '(:stop "tool_calls")))
                  (funcall callback '(:text "after"))

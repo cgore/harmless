@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `review' reads the working tree, a base branch, or one commit and
+;; `harmless-tool-review' reads the working tree, a base branch, or one commit and
 ;; can record a list of findings.  Git is used only to read.  A
 ;; finding is not applied as an edit.  Nothing is written into the
 ;; project.  The latest review is saved with the session.  A fork
@@ -560,7 +560,7 @@ when something was dropped.  This does not edit the project."
     review))
 
 (defun harmless-review-tool (session args)
-  "review implementation."
+  "harmless-tool-review implementation."
   (harmless-review-run session args))
 
 (defun harmless-review-read-args ()
@@ -618,10 +618,10 @@ The project is not edited.  Findings are not applied as edits."
     result))
 
 (defun harmless-review-register ()
-  "Register the review tool."
+  "Register harmless-tool-review."
   (harmless-register-tool
    (harmless-tool-create
-    :name "review"
+    :name "harmless-tool-review"
     :description "Read the working tree, a base branch, or one commit. Omit base and commit to read the working tree. base is a branch name. commit is one commit. findings records a list of severity, file, line, and text. The list is the result of the review. Nothing is applied as an edit and nothing is written into the project."
     :class 'read
     :schema '(:type "object"

@@ -249,7 +249,7 @@ STOP is passed to `harmless-skills-discover'."
   (let ((skills (harmless-skills-discover dir stop)))
     (when skills
       (concat
-       "Skills available for this session.  Read a skill's SKILL.md with read_file when it applies to the task.  Load one with the skill tool, or start the prompt with /name.\n\n"
+       "Skills available for this session.  Read a skill's SKILL.md with harmless-tool-read-file when it applies to the task.  Load one with the skill tool, or start the prompt with /name.\n\n"
        (mapconcat
         (lambda (skill)
           (format "- %s (%s): %s"
@@ -441,17 +441,17 @@ A skill with no allowed-tools list does not narrow TOOLS."
        tools))))
 
 (defun harmless-skill--tool (session args)
-  "skill implementation.  Load the named skill and return its body."
+  "harmless-tool-skill implementation.  Load the named skill and return its body."
   (let ((skill (harmless-skill-load session (harmless-tool-arg args :name))))
     (format "Loaded skill %s\n\n%s"
             (plist-get skill :name)
             (or (plist-get skill :body) ""))))
 
 (defun harmless-skill-register ()
-  "Register the skill tool."
+  "Register harmless-tool-skill."
   (harmless-register-tool
    (harmless-tool-create
-    :name "skill"
+    :name "harmless-tool-skill"
     :description "Load a skill by name. The body is included on later turns. allowed-tools in the skill limits which tools those turns can call. The name is a skill id, not a path."
     :class 'read
     :schema '(:type "object"

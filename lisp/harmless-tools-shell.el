@@ -36,10 +36,10 @@
 
 ;;; Commentary:
 ;;
-;; run_shell: async `make-process' in the session cwd.  The tool function
+;; harmless-tool-run-shell: async `make-process' in the session cwd.  The tool function
 ;; takes a callback so the turn loop can keep Emacs responsive.  A command
 ;; that is still running at its timeout stays running in the background.
-;; shell_output reads that job.  shell_kill stops it.  When the session
+;; harmless-tool-shell-output reads that job.  harmless-tool-shell-kill stops it.  When the session
 ;; shell sandbox is not off, Landlock wraps the process.
 
 ;;; Code:
@@ -217,10 +217,10 @@ denied when any simple command is denied."
 A file monitor and a shell monitor are not commands."
   (let ((name (harmless-tool-name tool)))
     (cond
-     ((string= name "run_shell")
+     ((string= name "harmless-tool-run-shell")
       (let ((command (harmless-tool-arg args :command)))
         (and (stringp command) command)))
-     ((string= name "monitor")
+     ((string= name "harmless-tool-monitor")
       (when (and (null (harmless-tool-arg args :path))
                  (null (harmless-tool-arg args :shell))
                  (stringp (harmless-tool-arg args :command)))
@@ -282,7 +282,7 @@ refuses before asking for permission."
        (eq (harmless-shell-command-kind command) 'write)))
 
 (defun harmless-shell-run-class (session args)
-  "Return the permission class for a run_shell call in ARGS.
+  "Return the permission class for a harmless-tool-run-shell call in ARGS.
 `network' when the sandbox is on and ARGS allows the network.
 A read-only command is `read'.  Anything else is `shell'."
   (let ((mode (harmless-shell-sandbox-effective session)))
@@ -782,7 +782,7 @@ Store the text the model should see."
     text))
 
 (defun harmless-shell--run-timeout (args)
-  "Return how long `run_shell' should wait, or an error string.
+  "Return how long `harmless-tool-run-shell' should wait, or an error string.
 A missing timeout uses `harmless-shell-timeout-seconds'.  Nil, zero,
 a negative number, and a non-number are refused."
   (if (not (harmless-shell--arg-present-p args :timeout))
@@ -801,7 +801,7 @@ a negative number, and a non-number are refused."
                       thereis (and (stringp k) (string= k name)))))))
 
 (defun harmless-shell--output-timeout (args)
-  "Return how long `shell_output' should wait, or an error string.
+  "Return how long `harmless-tool-shell-output' should wait, or an error string.
 Nil means return the output already available.  A present timeout that
 is not a positive number is refused."
   (if (not (harmless-shell--arg-present-p args :timeout))
@@ -881,7 +881,7 @@ is not a positive number is refused."
                id (or (harmless-shell-job-exit job) "?") raw)))))
 
 (defun harmless-shell--snapshot (job)
-  "Return the `shell_output' text for JOB."
+  "Return the `harmless-tool-shell-output' text for JOB."
   (let ((raw (harmless-shell--text job))
         (id (harmless-shell-job-id job)))
     (harmless-shell--for-model
@@ -1109,8 +1109,8 @@ An unknown id, an empty id, and a shell that is not running are refused."
   "Register the shell tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "run_shell"
-    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. A read-only command does not ask for permission. In plan mode a command that can write is refused. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with shell_output and stop it with shell_kill. network true allows the network when the shell sandbox is on and asks first. Omit network to deny it. The sandbox is off unless the session sets one."
+    :name "harmless-tool-run-shell"
+    :description "Run a shell command in the project. A cd that stays inside the project is remembered for the next command. A read-only command does not ask for permission. In plan mode a command that can write is refused. timeout is seconds to wait before the command is left running in the background. background true returns an id immediately. Read it with harmless-tool-shell-output and stop it with harmless-tool-shell-kill. network true allows the network when the shell sandbox is on and asks first. Omit network to deny it. The sandbox is off unless the session sets one."
     :class 'shell
     :classify #'harmless-shell-run-class
     :async t
@@ -1127,7 +1127,7 @@ An unknown id, an empty id, and a shell that is not running are refused."
     :fn #'harmless-tools-shell--run))
   (harmless-register-tool
    (harmless-tool-create
-    :name "shell_output"
+    :name "harmless-tool-shell-output"
     :description "Read a background shell by id. timeout waits that many seconds for it to exit. Omit timeout to return the output already available."
     :class 'read
     :async t
@@ -1140,7 +1140,7 @@ An unknown id, an empty id, and a shell that is not running are refused."
     :fn #'harmless-tools-shell--output))
   (harmless-register-tool
    (harmless-tool-create
-    :name "shell_kill"
+    :name "harmless-tool-shell-kill"
     :description "Stop a background shell by id."
     :class 'shell
     :schema '(:type "object"

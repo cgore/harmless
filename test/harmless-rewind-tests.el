@@ -26,9 +26,9 @@
   (list (list :role :summary :content "EARLIER")
         (list :role :user :content "OLD-GOAL")
         (list :role :assistant :content "looking"
-              :tool-calls (list (list :id "1" :name "read_file"
+              :tool-calls (list (list :id "1" :name "harmless-tool-read-file"
                                       :args '(:path "old.txt"))))
-        (list :role :tool :id "1" :name "read_file" :content "old body")
+        (list :role :tool :id "1" :name "harmless-tool-read-file" :content "old body")
         (list :role :user :content "MID-TURN")
         (list :role :assistant :content "MID-TURN-reply")
         (list :role :user :content "LATE-TURN")
@@ -97,9 +97,9 @@ ARGS are passed to `harmless-session-new'."
 
 (ert-deftest harmless-rewind-split-keeps-the-chosen-turn ()
   (let* ((summary (list :role :summary :content "EARLIER"))
-         (tool (list :role :tool :id "1" :name "read_file" :content "old body"))
+         (tool (list :role :tool :id "1" :name "harmless-tool-read-file" :content "old body"))
          (call (list :role :assistant :content "looking"
-                     :tool-calls (list (list :id "1" :name "read_file"
+                     :tool-calls (list (list :id "1" :name "harmless-tool-read-file"
                                              :args '(:path "old.txt")))))
          (first (list :role :user :content "OLD-GOAL"))
          (second (list :role 'user :content "MID-TURN"))
@@ -218,9 +218,9 @@ ARGS are passed to `harmless-session-new'."
           (messages (list (list :role :summary :content "EARLIER")
                           (list :role :user :content "OLD-GOAL")
                           (list :role :assistant :content "looking"
-                                :tool-calls (list (list :id "1" :name "read_file"
+                                :tool-calls (list (list :id "1" :name "harmless-tool-read-file"
                                                         :args '(:path "old.txt"))))
-                          (list :role :tool :id "1" :name "read_file"
+                          (list :role :tool :id "1" :name "harmless-tool-read-file"
                                 :content "old body")
                           (list :role 'user :content "MID-TURN")
                           (list :role :assistant :content "MID-TURN-reply")

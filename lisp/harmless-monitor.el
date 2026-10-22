@@ -94,7 +94,7 @@ Tests bind this so no process starts.")
   "Return a refusal when plan mode blocks TOOL on SESSION.
 A file watch and a read-only command still run.  The caller
 refuses before asking for permission."
-  (and (string= (harmless-tool-name tool) "monitor")
+  (and (string= (harmless-tool-name tool) "harmless-tool-monitor")
        (null (harmless-tool-arg args :path))
        (null (harmless-tool-arg args :shell))
        (let ((command (harmless-tool-arg args :command)))
@@ -404,7 +404,7 @@ A background shell that was only watched keeps running."
               (and (not (null (harmless-tool-arg args :shell))) 'shell))))
 
 (defun harmless-monitor-tool (session args)
-  "monitor implementation."
+  "harmless-tool-monitor implementation."
   (let ((pattern (harmless-monitor--pattern args))
         (sources (harmless-monitor--sources args)))
     (cond
@@ -428,8 +428,8 @@ A background shell that was only watched keeps running."
   (format "Watching %s" (harmless-monitor-id monitor)))
 
 (defun harmless-monitor-stop-tool (session args)
-  "monitor_stop implementation."
-  (let* ((id (harmless-monitor--id (harmless-tool-arg args :id) "monitor"))
+  "harmless-tool-monitor-stop implementation."
+  (let* ((id (harmless-monitor--id (harmless-tool-arg args :id) "harmless-tool-monitor"))
          (monitor (harmless-monitor-find session id)))
     (cond
      ((null monitor) (error "no monitor %s" id))
@@ -443,7 +443,7 @@ A background shell that was only watched keeps running."
   "Return `shell' when stopping a command monitor, else `read'."
   (let* ((id (condition-case nil
                  (harmless-monitor--id
-                  (harmless-tool-arg args :id) "monitor")
+                  (harmless-tool-arg args :id) "harmless-tool-monitor")
                (error nil)))
          (monitor (and id (harmless-monitor-find session id))))
     (if (and monitor (eq (harmless-monitor-kind monitor) 'command))
@@ -451,10 +451,10 @@ A background shell that was only watched keeps running."
       'read)))
 
 (defun harmless-monitor-register ()
-  "Register the monitor tools."
+  "Register harmless-tool-monitor and harmless-tool-monitor-stop."
   (harmless-register-tool
    (harmless-tool-create
-    :name "monitor"
+    :name "harmless-tool-monitor"
     :description "Watch a file, a command, or a background shell. PATTERN is a regular expression. A matching line wakes the session. Pass one of path, command, or shell. A file watch does not ask. A command that can write asks, and plan mode refuses it. Nothing is written into the project."
     :class 'shell
     :classify #'harmless-monitor-class
@@ -471,7 +471,7 @@ A background shell that was only watched keeps running."
     :fn #'harmless-monitor-tool))
   (harmless-register-tool
    (harmless-tool-create
-    :name "monitor_stop"
+    :name "harmless-tool-monitor-stop"
     :description "Stop a monitor by id. A command this monitor started is killed. A background shell that was only watched keeps running. Nothing is written into the project."
     :class 'shell
     :classify #'harmless-monitor-stop-class

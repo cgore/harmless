@@ -169,123 +169,123 @@ No timer starts and no command process starts unless BODY asks."
       (setq files (harmless-monitor-test-files repo))
       (dolist (pattern '(nil :false 42))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern pattern)
+         session "harmless-tool-monitor" (list :pattern pattern)
          "pattern must be a string"))
       (dolist (pattern '("" "   " "\n" "  \t"))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern pattern)
+         session "harmless-tool-monitor" (list :pattern pattern)
          "pattern is empty"))
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "[")
+       session "harmless-tool-monitor" '(:pattern "[")
        "pattern is not a pattern")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "[" :path "/" :command "rm x")
+       session "harmless-tool-monitor" '(:pattern "[" :path "/" :command "rm x")
        "pattern is not a pattern")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error")
+       session "harmless-tool-monitor" '(:pattern "error")
        "monitor source is missing")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path nil)
+       session "harmless-tool-monitor" '(:pattern "error" :path nil)
        "monitor source is missing")
       (dolist (args '((:pattern "error" :path "log.txt" :command "echo")
                       (:pattern "error" :path "log.txt" :shell "1")
                       (:pattern "error" :command "echo" :shell "1")
                       (:pattern "error" :path "a" :command "b" :shell "c")))
         (harmless-monitor-test-expect
-         session "monitor" args "monitor source must be one"))
+         session "harmless-tool-monitor" args "monitor source must be one"))
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path :false)
+       session "harmless-tool-monitor" '(:pattern "error" :path :false)
        "path must be a string")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path 42)
+       session "harmless-tool-monitor" '(:pattern "error" :path 42)
        "path must be a string")
       (dolist (path '("" "   " "\n"))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern "error" :path path)
+         session "harmless-tool-monitor" (list :pattern "error" :path path)
          "Path is empty"))
       (dolist (path '("/" "  /  " "c:/" "../x" "  ../x  "))
         (harmless-monitor-test-expect
-         session "monitor"
+         session "harmless-tool-monitor"
          (list :pattern "error" :path path)
          (concat "Path escapes project: " (string-trim path))))
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path "log.txt/")
+       session "harmless-tool-monitor" '(:pattern "error" :path "log.txt/")
        "monitor path is a directory")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path "sub")
+       session "harmless-tool-monitor" '(:pattern "error" :path "sub")
        "monitor path is a directory")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path "sub/")
+       session "harmless-tool-monitor" '(:pattern "error" :path "sub/")
        "monitor path is a directory")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path "gone.txt")
+       session "harmless-tool-monitor" '(:pattern "error" :path "gone.txt")
        "monitor file is missing")
       (let ((missing (expand-file-name "missing-dir" repo)))
         (should-not (file-exists-p missing))
         (harmless-monitor-test-expect
-         session "monitor" '(:pattern "error" :path "missing-dir/log.txt")
+         session "harmless-tool-monitor" '(:pattern "error" :path "missing-dir/log.txt")
          "monitor file is missing")
         (should-not (file-exists-p missing))
         (should-not (file-exists-p (expand-file-name "log.txt" missing))))
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :command nil)
+       session "harmless-tool-monitor" '(:pattern "error" :command nil)
        "monitor source is missing")
       (dolist (command '(:false 42))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern "error" :command command)
+         session "harmless-tool-monitor" (list :pattern "error" :command command)
          "command must be a string"))
       (dolist (command '("" "   " "\n"))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern "error" :command command)
+         session "harmless-tool-monitor" (list :pattern "error" :command command)
          "command is empty"))
       (setf (harmless-session-plan-mode session) t)
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :command "   ")
+       session "harmless-tool-monitor" '(:pattern "error" :command "   ")
        "command is empty")
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :path "log.txt" :command "rm x")
+       session "harmless-tool-monitor" '(:pattern "error" :path "log.txt" :command "rm x")
        "monitor source must be one")
       (setf (harmless-session-plan-mode session) nil)
       (dolist (shell '(:false 42.5))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern "error" :shell shell)
+         session "harmless-tool-monitor" (list :pattern "error" :shell shell)
          "shell id must be a string"))
       (harmless-monitor-test-expect
-       session "monitor" '(:pattern "error" :shell -1)
+       session "harmless-tool-monitor" '(:pattern "error" :shell -1)
        "shell id is not an id")
       (dolist (shell '("" "   " "\n"))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern "error" :shell shell)
+         session "harmless-tool-monitor" (list :pattern "error" :shell shell)
          "shell id is empty"))
       (dolist (shell '("/" "c:/" "nope" 42))
         (harmless-monitor-test-expect
-         session "monitor" (list :pattern "error" :shell shell)
+         session "harmless-tool-monitor" (list :pattern "error" :shell shell)
          (format "no background shell %s"
                  (if (integerp shell) (number-to-string shell) shell))))
       (let ((detached (harmless-monitor-test-session
                        :detached t :id "chat" :title "Keep")))
         (harmless-monitor-test-expect
-         detached "monitor" '(:pattern "error" :path "log.txt")
+         detached "harmless-tool-monitor" '(:pattern "error" :path "log.txt")
          "This chat is not attached to a project")
         (harmless-monitor-test-expect
-         detached "monitor" '(:pattern "error" :command "echo hi")
+         detached "harmless-tool-monitor" '(:pattern "error" :command "echo hi")
          "This chat is not attached to a project")
         (setf (harmless-session-plan-mode detached) t)
         (harmless-monitor-test-expect
-         detached "monitor" '(:pattern "error" :command "rm x")
+         detached "harmless-tool-monitor" '(:pattern "error" :command "rm x")
          "Plan mode is on. A shell command that can write is refused")
         (harmless-monitor-test-expect
-         detached "monitor" '(:pattern "error" :command "echo hi")
+         detached "harmless-tool-monitor" '(:pattern "error" :command "echo hi")
          "This chat is not attached to a project")
-        (should-not (member "monitor"
+        (should-not (member "harmless-tool-monitor"
                             (mapcar #'harmless-tool-name
                                     (harmless-tools-for-session detached))))
-        (should-not (member "monitor_stop"
+        (should-not (member "harmless-tool-monitor-stop"
                             (mapcar #'harmless-tool-name
                                     (harmless-tools-for-session detached))))
         (harmless-monitor-test-assert-session detached))
       (should (equal (harmless-monitor-test-call
-                      session "monitor"
+                      session "harmless-tool-monitor"
                       '("pattern" "  error  " "path" "  log.txt  "))
                      "Watching 1"))
       (setq monitor (harmless-monitor-find session "1"))
@@ -300,31 +300,31 @@ No timer starts and no command process starts unless BODY asks."
        (harmless-monitor-path monitor) repo)
       (should-not (harmless-monitor-find other "1"))
       (should (equal (harmless-monitor-test-call
-                      other "monitor" '(:pattern "error" :path "log.txt"))
+                      other "harmless-tool-monitor" '(:pattern "error" :path "log.txt"))
                      "Watching 1"))
       (dolist (id '(nil "" "   " "\n"))
         (harmless-monitor-test-expect
-         session "monitor_stop" (list :id id) "monitor id is empty"))
+         session "harmless-tool-monitor-stop" (list :id id) "harmless-tool-monitor id is empty"))
       (dolist (id '(:false 42.5))
         (harmless-monitor-test-expect
-         session "monitor_stop" (list :id id)
-         "monitor id must be a string"))
+         session "harmless-tool-monitor-stop" (list :id id)
+         "harmless-tool-monitor id must be a string"))
       (harmless-monitor-test-expect
-       session "monitor_stop" '(:id -2) "monitor id is not an id")
+       session "harmless-tool-monitor-stop" '(:id -2) "harmless-tool-monitor id is not an id")
       (dolist (id '("9" "/" "c:/"))
         (harmless-monitor-test-expect
-         session "monitor_stop" (list :id id)
+         session "harmless-tool-monitor-stop" (list :id id)
          (concat "no monitor " id)))
       (should (equal (harmless-monitor-test-call
-                      session "monitor_stop" '("id" "  1  "))
+                      session "harmless-tool-monitor-stop" '("id" "  1  "))
                      "Stopped monitor 1"))
       (harmless-monitor-test-expect
-       session "monitor_stop" '(:id 1) "monitor 1 is not running")
+       session "harmless-tool-monitor-stop" '(:id 1) "monitor 1 is not running")
       (should (eq (harmless-monitor-status
                    (harmless-monitor-find other "1"))
                   'running))
-      (let ((tool (harmless-tool-by-name "monitor"))
-            (stop (harmless-tool-by-name "monitor_stop")))
+      (let ((tool (harmless-tool-by-name "harmless-tool-monitor"))
+            (stop (harmless-tool-by-name "harmless-tool-monitor-stop")))
         (should (eq (harmless-tool-class tool) 'shell))
         (should (eq (harmless-tool-class stop) 'shell))
         (should-not (harmless-tool-async tool))
@@ -351,29 +351,29 @@ No timer starts and no command process starts unless BODY asks."
                   'read))
       (should (eq (harmless-monitor-stop-class other '(:id "1")) 'read))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "monitor")
+                      (harmless-tool-by-name "harmless-tool-monitor")
                       '(:path "log.txt" :pattern "error"))
-                     "monitor"))
+                     "harmless-tool-monitor"))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "monitor")
+                      (harmless-tool-by-name "harmless-tool-monitor")
                       '(:command "rm x" :pattern "error"))
                      "rm x"))
       (should (equal (harmless-turn--item-for
-                      (harmless-tool-by-name "monitor_stop")
+                      (harmless-tool-by-name "harmless-tool-monitor-stop")
                       '(:id "1"))
-                     "monitor_stop"))
-      (should (equal (harmless-ui--tool-verb "monitor") "watch"))
-      (should (equal (harmless-ui--tool-verb "monitor_stop") "stop"))
+                     "harmless-tool-monitor-stop"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-monitor") "watch"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-monitor-stop") "stop"))
       (should (equal (harmless-ui--tool-summary
-                      "monitor" '(:pattern "error"))
+                      "harmless-tool-monitor" '(:pattern "error"))
                      "error"))
       (should (equal (harmless-ui--tool-summary
-                      "monitor_stop" '(:id "1"))
+                      "harmless-tool-monitor-stop" '(:id "1"))
                      "1"))
       (should (equal (harmless-ui--tool-summary
-                      "monitor_stop" '(:id 2))
+                      "harmless-tool-monitor-stop" '(:id 2))
                      "2"))
-      (should (equal (harmless-ui--tool-summary "monitor" nil) ""))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-monitor" nil) ""))
       (should (= 0 (harmless-monitor-test-wakes session)))
       (should-not started)
       (should (equal (harmless-monitor-test-files repo) files))
@@ -406,7 +406,7 @@ No timer starts and no command process starts unless BODY asks."
       (harmless-monitor-test-write cfile "keep\n")
       (setq files (harmless-monitor-test-files repo))
       (should (equal (harmless-monitor-test-call
-                      session "monitor"
+                      session "harmless-tool-monitor"
                       '(:pattern "error" :path "log.txt"))
                      "Watching 1"))
       (setq monitor (harmless-monitor-find session "1"))
@@ -467,7 +467,7 @@ No timer starts and no command process starts unless BODY asks."
       (harmless-monitor-poll monitor)
       (should (= 4 (harmless-monitor-test-wakes session)))
       (harmless-monitor-test-expect
-       session "monitor_stop" '(:id "1") "monitor 1 is not running")
+       session "harmless-tool-monitor-stop" '(:id "1") "monitor 1 is not running")
       (should (equal (harmless-session-title session) "Keep"))
       (should (null (harmless-monitor-test-user-texts child)))
       (should-not (string-search
@@ -485,7 +485,7 @@ No timer starts and no command process starts unless BODY asks."
                             :cwd repo :id "slash" :title "Keep")))
         (setq harmless-monitor-test-calls 0)
         (should (equal (harmless-monitor-test-call
-                        slash-session "monitor"
+                        slash-session "harmless-tool-monitor"
                         '(:pattern "/" :path "slash.txt"))
                        "Watching 1"))
         (harmless-monitor-poll (harmless-monitor-find slash-session "1"))
@@ -501,7 +501,7 @@ No timer starts and no command process starts unless BODY asks."
                         :cwd repo :id "cpath" :title "Keep")))
         (setq harmless-monitor-test-calls 0)
         (should (equal (harmless-monitor-test-call
-                        c-session "monitor"
+                        c-session "harmless-tool-monitor"
                         '(:pattern "c:/" :path "cfile.txt"))
                        "Watching 1"))
         (harmless-monitor-test-write cfile "see c:/ here\n" t)
@@ -514,7 +514,7 @@ No timer starts and no command process starts unless BODY asks."
                     :cwd repo :id "blank" :title "Keep")))
         (setq harmless-monitor-test-calls 0)
         (should (equal (harmless-monitor-test-call
-                        blank "monitor"
+                        blank "harmless-tool-monitor"
                         '(:pattern "^$" :path "README"))
                        "Watching 1"))
         (harmless-monitor-test-write readme "\n" t)
@@ -525,7 +525,7 @@ No timer starts and no command process starts unless BODY asks."
                    :cwd repo :id "busy" :title "Keep")))
         (setq harmless-monitor-test-calls 0)
         (should (equal (harmless-monitor-test-call
-                        busy "monitor"
+                        busy "harmless-tool-monitor"
                         '(:pattern "error" :path "log.txt"))
                        "Watching 1"))
         (setf (harmless-session-status busy) 'streaming)
@@ -566,7 +566,7 @@ No timer starts and no command process starts unless BODY asks."
                   (lambda (item) (push (harmless-monitor-kind item)
                                        scheduled)))
             (should (equal (harmless-monitor-test-call
-                            session "monitor"
+                            session "harmless-tool-monitor"
                             '(:pattern "error" :shell "  1  "))
                            "Watching 1"))
             (setq monitor (harmless-monitor-find session "1"))
@@ -589,7 +589,7 @@ No timer starts and no command process starts unless BODY asks."
             (harmless-monitor-test-assert-saved
              session "Monitor 1 matched:\nerror")
             (should (equal (harmless-monitor-test-call
-                            session "monitor_stop" '(:id 1))
+                            session "harmless-tool-monitor-stop" '(:id 1))
                            "Stopped monitor 1"))
             (should-not killed)
             (should (buffer-live-p buf))
@@ -608,7 +608,7 @@ No timer starts and no command process starts unless BODY asks."
               (setq harmless-monitor-command-function
                     (lambda (&rest _) (error "boom")))
               (harmless-monitor-test-expect
-               boom "monitor" '(:pattern "error" :command "echo hi")
+               boom "harmless-tool-monitor" '(:pattern "error" :command "echo hi")
                "boom")
               (should (eq (harmless-monitor-status
                            (harmless-monitor-find boom "1"))
@@ -617,7 +617,7 @@ No timer starts and no command process starts unless BODY asks."
                     (lambda (&rest _) nil))
               (setq scheduled nil)
               (should (equal (harmless-monitor-test-call
-                              boom "monitor"
+                              boom "harmless-tool-monitor"
                               '(:pattern "error" :command "echo hi"))
                              "Watching 2"))
               (should-not scheduled)
@@ -640,7 +640,7 @@ No timer starts and no command process starts unless BODY asks."
                     (cmd (harmless-monitor-test-session
                           :cwd repo :id "cmd" :title "Keep")))
                 (should (equal (harmless-monitor-test-call
-                                cmd "monitor"
+                                cmd "harmless-tool-monitor"
                                 '(:pattern "error" :command "echo hi"))
                                "Watching 1"))
                 (should (equal (plist-get seen :name) "harmless-monitor"))
@@ -660,7 +660,7 @@ No timer starts and no command process starts unless BODY asks."
                   (should (buffer-live-p
                            (harmless-monitor-buffer cmd-monitor)))
                   (should (equal (harmless-monitor-test-call
-                                  cmd "monitor_stop" '(:id "1"))
+                                  cmd "harmless-tool-monitor-stop" '(:id "1"))
                                  "Stopped monitor 1"))
                   (should-not (buffer-live-p
                                (harmless-monitor-buffer cmd-monitor))))
@@ -689,7 +689,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"path\":\"log.txt\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -709,7 +709,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"command\":\"echo hi\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -727,7 +727,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"command\":\"rm x\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (_session class item callback)
@@ -748,7 +748,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"command\":\"rm x\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (_session class item callback)
@@ -768,7 +768,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"command\":\"rm x\"}"))))))
         (setq harmless-perm-ask-function
               (lambda (&rest _) (error "permission asked")))
@@ -785,7 +785,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"path\":\"log.txt\"}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function
@@ -803,7 +803,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"command\":\"echo hi\"}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function
@@ -821,7 +821,7 @@ No timer starts and no command process starts unless BODY asks."
                       (harmless-monitor-make-fake
                        :name "fake" :host "none"
                        :script (harmless-monitor-test-tool-script
-                                '(:tool-call "1" "monitor"
+                                '(:tool-call "1" "harmless-tool-monitor"
                                   "{\"pattern\":\"error\",\"command\":\"rm x\"}"))))))
         (setf (harmless-session-plan-mode session) t)
         (setq harmless-perm-ask-function
@@ -836,20 +836,20 @@ No timer starts and no command process starts unless BODY asks."
                       :cwd repo :id "plan-direct" :title "Keep")))
         (setf (harmless-session-plan-mode session) t)
         (should (equal (harmless-monitor-plan-refuses-p
-                        session (harmless-tool-by-name "monitor")
+                        session (harmless-tool-by-name "harmless-tool-monitor")
                         '(:pattern "error" :command "rm x"))
                        harmless-shell-plan-refusal))
         (should-not (harmless-monitor-plan-refuses-p
-                     session (harmless-tool-by-name "monitor")
+                     session (harmless-tool-by-name "harmless-tool-monitor")
                      '(:pattern "error" :command "echo hi")))
         (should-not (harmless-monitor-plan-refuses-p
-                     session (harmless-tool-by-name "monitor")
+                     session (harmless-tool-by-name "harmless-tool-monitor")
                      '(:pattern "error" :path "log.txt")))
         (should-not (harmless-monitor-plan-refuses-p
-                     session (harmless-tool-by-name "monitor")
+                     session (harmless-tool-by-name "harmless-tool-monitor")
                      '(:pattern "error" :path "log.txt" :command "rm x")))
         (harmless-monitor-test-expect
-         session "monitor" '(:pattern "error" :command "rm x")
+         session "harmless-tool-monitor" '(:pattern "error" :command "rm x")
          "Plan mode is on. A shell command that can write is refused")
         (should-not started)))))
 
@@ -867,36 +867,36 @@ No timer starts and no command process starts unless BODY asks."
                   :turns 0 :max 8 :error nil :prompt nil :task nil))
       (let ((offered (mapcar #'harmless-tool-name
                              (harmless-tools-for-session child))))
-        (should (member "monitor" offered))
-        (should (member "monitor_stop" offered))
-        (should (member "read_file" offered))
-        (should-not (member "write_file" offered))
-        (should-not (member "computer_screenshot" offered)))
+        (should (member "harmless-tool-monitor" offered))
+        (should (member "harmless-tool-monitor-stop" offered))
+        (should (member "harmless-tool-read-file" offered))
+        (should-not (member "harmless-tool-write-file" offered))
+        (should-not (member "harmless-tool-computer-screenshot" offered)))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "monitor")
+                   child (harmless-tool-by-name "harmless-tool-monitor")
                    '(:pattern "error" :path "log.txt")))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "monitor")
+                   child (harmless-tool-by-name "harmless-tool-monitor")
                    '(:pattern "error" :command "echo hi")))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "monitor")
+                      child (harmless-tool-by-name "harmless-tool-monitor")
                       '(:pattern "error" :command "rm x"))
                      harmless-agent-read-only-refusal))
       (setq harmless-monitor-command-function
             (lambda (&rest _) nil))
       (should (equal (harmless-monitor-test-call
-                      child "monitor"
+                      child "harmless-tool-monitor"
                       '(:pattern "error" :path "log.txt"))
                      "Watching 1"))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "monitor_stop")
+                   child (harmless-tool-by-name "harmless-tool-monitor-stop")
                    '(:id "1")))
       (should (equal (harmless-monitor-test-call
-                      child "monitor" '(:pattern "error" :command "echo hi"))
+                      child "harmless-tool-monitor" '(:pattern "error" :command "echo hi"))
                      "Watching 2"))
       (should (eq (harmless-monitor-stop-class child '(:id "2")) 'shell))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "monitor_stop")
+                      child (harmless-tool-by-name "harmless-tool-monitor-stop")
                       '(:id "2"))
                      harmless-agent-read-only-refusal))
       (setq harmless-monitor-kill-function
@@ -909,12 +909,12 @@ No timer starts and no command process starts unless BODY asks."
                            (harmless-monitor-make-fake
                             :name "fake" :host "none"
                             :script (harmless-monitor-test-tool-script
-                                     '(:tool-call "1" "monitor_stop"
+                                     '(:tool-call "1" "harmless-tool-monitor-stop"
                                        "{\"id\":\"1\"}"))))))
         (setf (harmless-session-agent stop-session)
               (list :allow 'all :sandbox 'read-only))
         (should (equal (harmless-monitor-test-call
-                        stop-session "monitor"
+                        stop-session "harmless-tool-monitor"
                         '(:pattern "error" :command "echo hi"))
                        "Watching 1"))
         (setq harmless-monitor-test-calls 0)
@@ -928,17 +928,17 @@ No timer starts and no command process starts unless BODY asks."
       (setf (plist-get (harmless-session-agent child) :sandbox) 'workspace)
       (let ((offered (mapcar #'harmless-tool-name
                              (harmless-tools-for-session child))))
-        (should (member "monitor" offered))
-        (should (member "computer_screenshot" offered)))
-      (setf (plist-get (harmless-session-agent child) :allow) '("read_file"))
+        (should (member "harmless-tool-monitor" offered))
+        (should (member "harmless-tool-computer-screenshot" offered)))
+      (setf (plist-get (harmless-session-agent child) :allow) '("harmless-tool-read-file"))
       (setf (plist-get (harmless-session-agent child) :sandbox) 'read-only)
-      (should-not (member "monitor"
+      (should-not (member "harmless-tool-monitor"
                           (mapcar #'harmless-tool-name
                                   (harmless-tools-for-session child))))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "monitor")
+                      child (harmless-tool-by-name "harmless-tool-monitor")
                       '(:pattern "error" :path "log.txt"))
-                     "Error: this subagent cannot use monitor"))
+                     "Error: this subagent cannot use harmless-tool-monitor"))
       (let* ((buf (generate-new-buffer " *harmless-monitor-detached*"))
              (detached (harmless-monitor-test-session
                         :detached t :id "det" :title "Keep")))
@@ -951,7 +951,7 @@ No timer starts and no command process starts unless BODY asks."
                     (harmless-session-shell-jobs detached))
               (setq harmless-monitor-test-calls 0)
               (should (equal (harmless-monitor-test-call
-                              detached "monitor"
+                              detached "harmless-tool-monitor"
                               '(:pattern "error" :shell 7))
                              "Watching 1"))
               (with-current-buffer buf
@@ -964,7 +964,7 @@ No timer starts and no command process starts unless BODY asks."
               (harmless-monitor-test-assert-saved
                detached "Monitor 1 matched:\nerror")
               (should (equal (harmless-monitor-test-call
-                              detached "monitor_stop" '(:id "1"))
+                              detached "harmless-tool-monitor-stop" '(:id "1"))
                              "Stopped monitor 1"))
               (should (eq (harmless-shell-job-status
                            (harmless-shell-find detached "7"))

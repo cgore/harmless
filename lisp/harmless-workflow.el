@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `run_workflow' runs one script.  The script starts child sessions
+;; `harmless-tool-run-workflow' runs one script.  The script starts child sessions
 ;; and the tool returns one string, the value of `complete'.  A fixed
 ;; script is a NAME.hw file.  The model can also pass the script text
 ;; for this task.  A subagent cannot run a workflow.
@@ -239,7 +239,7 @@ A definition that fails to parse signals.  STOP defaults to
     (when specs
       (concat
        "Workflows available for this session.  "
-       "run_workflow runs one by name.  "
+       "harmless-tool-run-workflow runs one by name.  "
        "The script starts child sessions and returns one result.\n\n"
        (mapconcat
         (lambda (spec)
@@ -500,7 +500,7 @@ when :sandbox is set."
 
 (defun harmless-workflow-plan-refuses-p (session tool args)
   "Return a refusal when plan mode blocks this workflow, or nil."
-  (when (and (string= (harmless-tool-name tool) "run_workflow")
+  (when (and (string= (harmless-tool-name tool) "harmless-tool-run-workflow")
              (harmless-session-plan-mode session))
     (condition-case nil
         (when (harmless-workflow--writes-p session args)
@@ -727,7 +727,7 @@ A signal becomes the workflow result."
         :batch batch))
 
 (defun harmless-workflow--tool (session args callback)
-  "run_workflow implementation.  CALLBACK receives one result."
+  "harmless-tool-run-workflow implementation.  CALLBACK receives one result."
   (let ((state (harmless-workflow--state
                 session callback
                 (harmless-session-tool-batch session))))
@@ -744,10 +744,10 @@ A signal becomes the workflow result."
          (harmless-workflow--forms state nil forms))))))
 
 (defun harmless-workflow-register ()
-  "Register the run_workflow tool."
+  "Register the harmless-tool-run-workflow tool."
   (harmless-register-tool
    (harmless-tool-create
-    :name "run_workflow"
+    :name "harmless-tool-run-workflow"
     :description
     (concat
      "Run one workflow script and return one result. "

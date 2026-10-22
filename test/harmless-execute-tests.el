@@ -1,4 +1,4 @@
-;;; harmless-execute-tests.el --- Tests for execute_code -*- lexical-binding: t; -*-
+;;; harmless-execute-tests.el --- Tests for harmless-tool-execute-code -*- lexical-binding: t; -*-
 
 (require 'ert)
 (require 'cl-lib)
@@ -25,7 +25,7 @@
 
 (defun harmless-execute-test-logical (file)
   "Return FILE as UTF-8 text with carriage returns removed.
-`write_file' follows the platform newline convention."
+`harmless-tool-write-file' follows the platform newline convention."
   (with-temp-buffer
     (let ((coding-system-for-read 'utf-8-unix))
       (insert-file-contents file))
@@ -50,23 +50,23 @@
                         :model "m"))
 
 (ert-deftest harmless-execute-ui ()
-  (let ((tool (harmless-tool-by-name "execute_code")))
+  (let ((tool (harmless-tool-by-name "harmless-tool-execute-code")))
     (should tool)
     (should (eq 'shell (harmless-tool-class tool)))
-    (should (equal "run" (harmless-ui--tool-verb "execute_code")))
+    (should (equal "run" (harmless-ui--tool-verb "harmless-tool-execute-code")))
     (should (equal "(princ 1)"
                    (harmless-ui--tool-summary
-                    "execute_code"
+                    "harmless-tool-execute-code"
                     '(:code "(princ 1)\n(princ 2)"))))
     (should (equal "(princ 1)"
                    (harmless-ui--tool-summary
-                    "execute_code"
+                    "harmless-tool-execute-code"
                     '(:code "  (princ 1)  \n(princ 2)"))))
-    (should (equal "" (harmless-ui--tool-summary "execute_code" nil)))
-    (should (equal "" (harmless-ui--tool-summary "execute_code" '(:code nil))))
+    (should (equal "" (harmless-ui--tool-summary "harmless-tool-execute-code" nil)))
+    (should (equal "" (harmless-ui--tool-summary "harmless-tool-execute-code" '(:code nil))))
     (should (equal (concat (make-string 71 ?a) (char-to-string #x2026))
                    (harmless-ui--tool-summary
-                    "execute_code"
+                    "harmless-tool-execute-code"
                     (list :code (concat (make-string 81 ?a) "\nrest")))))
     (let* ((session (harmless-session--create
                      :id "execute-ui"
@@ -75,8 +75,8 @@
            (names (mapcar #'harmless-tool-name
                           (harmless-agent-filter-tools
                            session (harmless-tools-enabled)))))
-      (should-not (member "execute_code" names))
-      (should (member "read_file" names)))))
+      (should-not (member "harmless-tool-execute-code" names))
+      (should (member "harmless-tool-read-file" names)))))
 
 (ert-deftest harmless-execute-refuses-a-bad-request ()
   (let* ((data (make-temp-file "harmless-ex-bad-" t))
@@ -124,19 +124,19 @@
                (harmless-execute session "(princ 1)"))))
           (should (equal "Error: code is empty"
                          (harmless-tool-call
-                          (harmless-tool-by-name "execute_code")
+                          (harmless-tool-by-name "harmless-tool-execute-code")
                           session '(:code "  "))))
           (should (equal "Error: code must be a string"
                          (harmless-tool-call
-                          (harmless-tool-by-name "execute_code")
+                          (harmless-tool-by-name "harmless-tool-execute-code")
                           session '(:code 42))))
           (should (equal "Error: timeout must be a positive number"
                          (harmless-tool-call
-                          (harmless-tool-by-name "execute_code")
+                          (harmless-tool-by-name "harmless-tool-execute-code")
                           session '(:code "(princ 1)" :timeout 0))))
           (should (equal "Error: No Harmless session"
                          (harmless-tool-call
-                          (harmless-tool-by-name "execute_code")
+                          (harmless-tool-by-name "harmless-tool-execute-code")
                           nil '(:code "(princ 1)"))))
           (should-not (harmless-execute--state session)))
       (when session (harmless-execute-stop session))
@@ -157,7 +157,7 @@
           (setq session (harmless-execute-test-session project))
           (should (equal "hi"
                          (harmless-tool-call
-                          (harmless-tool-by-name "execute_code")
+                          (harmless-tool-by-name "harmless-tool-execute-code")
                           session '(:code "(princ \"hi\")"))))
           (should (equal "" (harmless-execute session "1")))
           (should (equal "1" (harmless-execute session "(princ 1)" 30)))
@@ -175,31 +175,31 @@
           (should (equal "mine" (harmless-execute session "(princ (kept-fn))")))
           (should (equal "A\n"
                          (harmless-execute session
-                           "(princ (read_file :path \"a.txt\"))")))
+                           "(princ (harmless-tool-read-file :path \"a.txt\"))")))
           (should (null (harmless-session-messages session)))
           (should (equal "A\n"
                          (harmless-execute session
-                           "(princ (tool 'read_file :path \"a.txt\"))")))
+                           "(princ (tool 'harmless-tool-read-file :path \"a.txt\"))")))
           (should (equal "A\n"
                          (harmless-execute session
-                           "(princ (tool \"read_file\" :path \"a.txt\"))")))
+                           "(princ (tool \"harmless-tool-read-file\" :path \"a.txt\"))")))
           (should (null (harmless-session-messages session)))
           (let ((written (expand-file-name "w.txt" project)))
             (should (string-prefix-p
                      "Wrote "
                      (harmless-execute session
-                       "(princ (write_file :path \"w.txt\" :contents \"W\\n\"))")))
+                       "(princ (harmless-tool-write-file :path \"w.txt\" :contents \"W\\n\"))")))
             (should (equal "W\n" (harmless-execute-test-logical written)))
             (should (null (harmless-session-messages session))))
           (should (equal ""
                          (harmless-execute session "(defun tool (&rest _) \"stolen\")")))
           (should (equal "A\n"
                          (harmless-execute session
-                           "(princ (tool \"read_file\" :path \"a.txt\"))")))
+                           "(princ (tool \"harmless-tool-read-file\" :path \"a.txt\"))")))
           (setf (harmless-session-plan-mode session) t)
-          (should (equal "Error: Plan mode is on. Only plan.md may be edited, with write_plan"
+          (should (equal "Error: Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
                          (harmless-execute session
-                           "(princ (write_file :path \"z.txt\" :contents \"Z\\n\"))")))
+                           "(princ (harmless-tool-write-file :path \"z.txt\" :contents \"Z\\n\"))")))
           (should-not (file-exists-p (expand-file-name "z.txt" project)))
           (setf (harmless-session-plan-mode session) nil)
           (let ((harmless-execute-max-bytes 4))
@@ -212,42 +212,42 @@
              "execute code tool cap"
              (lambda ()
                (harmless-execute session
-                 "(read_file :path \"a.txt\") (read_file :path \"a.txt\")")))
+                 "(harmless-tool-read-file :path \"a.txt\") (harmless-tool-read-file :path \"a.txt\")")))
             (should (equal "Error: execute code tool cap"
                            (harmless-tool-call
-                            (harmless-tool-by-name "execute_code")
+                            (harmless-tool-by-name "harmless-tool-execute-code")
                             session
-                            '(:code "(read_file :path \"a.txt\") (read_file :path \"a.txt\")")))))
+                            '(:code "(harmless-tool-read-file :path \"a.txt\") (harmless-tool-read-file :path \"a.txt\")")))))
           (should (equal "kept" (harmless-execute session "(princ box)")))
           (harmless-execute-test-error
-           "execute code cannot call execute_code"
+           "execute code cannot call harmless-tool-execute-code"
            (lambda ()
              (harmless-execute session
-               "(tool \"execute_code\" :code \"(princ 1)\")")))
+               "(tool \"harmless-tool-execute-code\" :code \"(princ 1)\")")))
           (harmless-execute-test-error
-           "execute code cannot call spawn_agent"
-           (lambda () (harmless-execute session "(tool \"spawn_agent\")")))
-          (should (equal "Error: execute code cannot call spawn_agent"
+           "execute code cannot call harmless-tool-spawn-agent"
+           (lambda () (harmless-execute session "(tool \"harmless-tool-spawn-agent\")")))
+          (should (equal "Error: execute code cannot call harmless-tool-spawn-agent"
                          (harmless-tool-call
-                          (harmless-tool-by-name "execute_code")
-                          session '(:code "(tool \"spawn_agent\")"))))
+                          (harmless-tool-by-name "harmless-tool-execute-code")
+                          session '(:code "(tool \"harmless-tool-spawn-agent\")"))))
           (harmless-execute-test-error
-           "execute code cannot call run_workflow"
-           (lambda () (harmless-execute session "(tool \"run_workflow\")")))
+           "execute code cannot call harmless-tool-run-workflow"
+           (lambda () (harmless-execute session "(tool \"harmless-tool-run-workflow\")")))
           (harmless-execute-test-error
            "execute code cannot call an MCP tool"
            (lambda ()
-             (harmless-execute session "(tool \"mcp_list_resources\")")))
+             (harmless-execute session "(tool \"harmless-tool-mcp-list-resources\")")))
           (harmless-execute-test-error
            "execute code cannot call an MCP tool"
-           (lambda () (harmless-execute session "(tool \"mcp__demo\")")))
+           (lambda () (harmless-execute session "(tool \"harmless-tool-mcp-demo\")")))
           (harmless-execute-test-error
            "execute code cannot call no_such_tool"
            (lambda () (harmless-execute session "(tool \"no_such_tool\")")))
           (let ((text (harmless-execute session
-                        "(execute_code :code \"(princ 1)\")")))
+                        "(harmless-tool-execute-code :code \"(princ 1)\")")))
             (should (string-prefix-p "execute code failed: " text))
-            (should (string-search "execute_code" text))
+            (should (string-search "harmless-tool-execute-code" text))
             (should-not (string-search "cannot call" text)))
           (should (equal "kept" (harmless-execute session "(princ box)")))
           (setq other (harmless-execute-test-session project))
@@ -257,10 +257,10 @@
           (should (equal "kept" (harmless-execute session "(princ box)")))
           (should (equal ""
                          (harmless-execute session
-                           "(defun read_file (&rest _) \"mine-read\")")))
+                           "(defun harmless-tool-read-file (&rest _) \"mine-read\")")))
           (should (equal "mine-read"
                          (harmless-execute session
-                           "(princ (read_file :path \"a.txt\"))")))
+                           "(princ (harmless-tool-read-file :path \"a.txt\"))")))
           (let* ((proc (plist-get (harmless-execute--state session) :emacs))
                  (text (harmless-execute session "(princ box)" nil t)))
             (should-not (process-live-p proc))
@@ -268,7 +268,7 @@
             (should (string-search "box" text)))
           (should (equal "A\n"
                          (harmless-execute session
-                           "(princ (read_file :path \"a.txt\"))")))
+                           "(princ (harmless-tool-read-file :path \"a.txt\"))")))
           (should (equal "after" (harmless-execute session "(princ \"after\")")))
           (let ((proc (plist-get (harmless-execute--state session) :emacs)))
             (should (process-live-p proc))
@@ -355,7 +355,7 @@
                          :detached t
                          :provider (harmless-execute-test-provider)
                          :model "m"))
-          (should-not (member "execute_code"
+          (should-not (member "harmless-tool-execute-code"
                               (mapcar #'harmless-tool-name
                                       (harmless-tools-for-session session))))
           (should (equal "hi" (harmless-execute session "(princ \"hi\")")))

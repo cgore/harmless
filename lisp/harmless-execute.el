@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `execute_code' evaluates an Emacs Lisp script in a separate Emacs.
+;; `harmless-tool-execute-code' evaluates an Emacs Lisp script in a separate Emacs.
 ;; The parent listens on 127.0.0.1.  The child connects with
 ;; HARMLESS_EXECUTE_PORT.  Only what the script prints is returned.
 ;; A tool result is data for the script and is not added to the transcript.
@@ -153,8 +153,8 @@ A detached chat, a missing directory, and a root use
 (defun harmless-execute--blocked-p (name)
   "Return non-nil if a script must not call NAME."
   (and (stringp name)
-       (or (member name '("execute_code" "spawn_agent" "run_workflow"))
-           (string-prefix-p "mcp_" name))))
+       (or (member name '("harmless-tool-execute-code" "harmless-tool-spawn-agent" "harmless-tool-run-workflow"))
+           (string-prefix-p "harmless-tool-mcp-" name))))
 
 (defun harmless-execute--names ()
   "Return tool names the interpreter may define."
@@ -170,13 +170,13 @@ A detached chat, a missing directory, and a root use
   (cond
    ((not (stringp name))
     "execute code cannot call ")
-   ((equal name "execute_code")
-    "execute code cannot call execute_code")
-   ((equal name "spawn_agent")
-    "execute code cannot call spawn_agent")
-   ((equal name "run_workflow")
-    "execute code cannot call run_workflow")
-   ((string-prefix-p "mcp_" name)
+   ((equal name "harmless-tool-execute-code")
+    "execute code cannot call harmless-tool-execute-code")
+   ((equal name "harmless-tool-spawn-agent")
+    "execute code cannot call harmless-tool-spawn-agent")
+   ((equal name "harmless-tool-run-workflow")
+    "execute code cannot call harmless-tool-run-workflow")
+   ((string-prefix-p "harmless-tool-mcp-" name)
     "execute code cannot call an MCP tool")
    ((null (harmless-tool-by-name name))
     (format "execute code cannot call %s" name))
@@ -503,8 +503,8 @@ whitespace are refused before a process starts."
 
 (harmless-register-tool
  (harmless-tool-create
-  :name "execute_code"
-  :description "Evaluate Emacs Lisp in a separate Emacs. CODE is the script. Only what it prints is returned. Call a tool as (read_file :path \"a.txt\") or (tool \"read_file\" :path \"a.txt\"). A tool result is not printed and is not added to the transcript. The script cannot call execute_code, spawn_agent, run_workflow, or an MCP tool. TIMEOUT is seconds; nil uses the default of 300. RESET true starts a fresh Emacs first. A failed script leaves the interpreter up until reset or a timeout."
+  :name "harmless-tool-execute-code"
+  :description "Evaluate Emacs Lisp in a separate Emacs. CODE is the script. Only what it prints is returned. Call a tool as (harmless-tool-read-file :path \"a.txt\") or (tool \"harmless-tool-read-file\" :path \"a.txt\"). A tool result is not printed and is not added to the transcript. The script cannot call harmless-tool-execute-code, harmless-tool-spawn-agent, harmless-tool-run-workflow, or an MCP tool. TIMEOUT is seconds; nil uses the default of 300. RESET true starts a fresh Emacs first. A failed script leaves the interpreter up until reset or a timeout."
   :class 'shell
   :schema '(:type "object"
             :properties (:code (:type "string"

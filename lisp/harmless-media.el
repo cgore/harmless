@@ -36,8 +36,8 @@
 
 ;;; Commentary:
 ;;
-;; `read_file' returns an image, PDF text, or notebook cells when the
-;; file is one of those.  `notebook_edit' replaces one cell's source.
+;; `harmless-tool-read-file' returns an image, PDF text, or notebook cells when the
+;; file is one of those.  `harmless-tool-notebook-edit' replaces one cell's source.
 ;; `harmless-attach-image' queues an image on the next user turn.
 ;; Nothing is written except a notebook edit.  A read does not start
 ;; a converter and does not change the file.
@@ -138,7 +138,7 @@ PATH is not created."
        (string-match-p "\\.pdf\\'" (downcase path))))
 
 (defun harmless-media-read-p (path)
-  "Return non-nil when `read_file' should treat PATH as media.
+  "Return non-nil when `harmless-tool-read-file' should treat PATH as media.
 A missing file is not media."
   (and (stringp path)
        (not (directory-name-p path))
@@ -164,7 +164,7 @@ A missing file is not media."
     100000))
 
 (defun harmless-media-image-text (path type bytes)
-  "Return the `read_file' text for image BYTES at PATH of TYPE."
+  "Return the `harmless-tool-read-file' text for image BYTES at PATH of TYPE."
   (format "Image %s\n%s\n%d bytes\n\n%s"
           type path (length bytes)
           (base64-encode-string bytes t)))
@@ -418,7 +418,7 @@ notebook is not created."
                 full)))))
 
 (defun harmless-media-edit-tool (session args)
-  "notebook_edit implementation."
+  "harmless-tool-notebook-edit implementation."
   (harmless-media-edit session args))
 
 (defun harmless-media--queue (session)
@@ -529,7 +529,7 @@ OPENAI selects image_url blocks.  Otherwise Anthropic image blocks."
 
 (defun harmless-media-openai-tool (msg)
   "Return OpenAI content for tool MSG, or nil when it stays text."
-  (let ((parts (and (equal (plist-get msg :name) "read_file")
+  (let ((parts (and (equal (plist-get msg :name) "harmless-tool-read-file")
                     (harmless-media-image-parts (plist-get msg :content)))))
     (when parts
       (harmless-media--image-blocks
@@ -548,7 +548,7 @@ OPENAI selects image_url blocks.  Otherwise Anthropic image blocks."
 
 (defun harmless-media-anthropic-tool (msg)
   "Return Anthropic tool_result content, or nil when it stays text."
-  (let ((parts (and (equal (plist-get msg :name) "read_file")
+  (let ((parts (and (equal (plist-get msg :name) "harmless-tool-read-file")
                     (harmless-media-image-parts (plist-get msg :content)))))
     (when parts
       (harmless-media--image-blocks
@@ -585,7 +585,7 @@ not change it.  A filesystem root is refused."
   "Register the notebook edit tool."
   (harmless-register-tool
    (harmless-tool-create
-    :name "notebook_edit"
+    :name "harmless-tool-notebook-edit"
     :description "Replace the source of one notebook cell. path is a project .ipynb file. cell is a cell id or a 0-based index. source is the new source. Other cells stay. The file is not created."
     :class 'edit
     :schema '(:type "object"

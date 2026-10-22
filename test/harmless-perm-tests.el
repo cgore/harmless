@@ -296,103 +296,103 @@ DECISION is the answer to a question.  Nil denies."
       (harmless-perm-set-rules
        session nil '("Bash(npm run *)" "Bash(echo *)"))
       (should (equal (harmless-perm-test-refusal
-                      session "run_shell" '(:command "npm run test"))
+                      session "harmless-tool-run-shell" '(:command "npm run test"))
                      "Error: Permission rule denied Bash(npm run *)"))
       (should-not (harmless-perm-test-refusal
-                   session "run_shell" '(:command "npm run")))
+                   session "harmless-tool-run-shell" '(:command "npm run")))
       (should (equal (harmless-perm-test-refusal
-                      session "run_shell" '(:command "  echo hi  "))
+                      session "harmless-tool-run-shell" '(:command "  echo hi  "))
                      "Error: Permission rule denied Bash(echo *)"))
       (should-not (harmless-perm-test-refusal
-                   session "run_shell" '(:command "echo")))
+                   session "harmless-tool-run-shell" '(:command "echo")))
       (harmless-perm-set-rules session nil '("Bash(*)"))
       (should (harmless-perm-test-refusal
-               session "run_shell" '(:command "echo hi")))
+               session "harmless-tool-run-shell" '(:command "echo hi")))
       (harmless-perm-set-rules session nil '("Edit(src/*)"))
       (should (harmless-perm-test-refusal
-               session "write_file" '(:path "src/a.txt")))
+               session "harmless-tool-write-file" '(:path "src/a.txt")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "src/a/b.txt")))
+                   session "harmless-tool-write-file" '(:path "src/a/b.txt")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "src")))
+                   session "harmless-tool-write-file" '(:path "src")))
       (harmless-perm-set-rules session nil '("Edit(src/**)"))
       (should (harmless-perm-test-refusal
-               session "write_file" '(:path "src/a/b.txt")))
+               session "harmless-tool-write-file" '(:path "src/a/b.txt")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "src")))
+                   session "harmless-tool-write-file" '(:path "src")))
       (harmless-perm-set-rules session nil '("Edit(src/)"))
       (should (harmless-perm-test-refusal
-               session "replace" '(:path "src/a.txt")))
+               session "harmless-tool-replace" '(:path "src/a.txt")))
       (should-not (harmless-perm-test-refusal
-                   session "replace" '(:path "src")))
+                   session "harmless-tool-replace" '(:path "src")))
       (harmless-perm-set-rules session nil '("Edit(src)"))
       (should (harmless-perm-test-refusal
-               session "write_file" '(:path "src")))
+               session "harmless-tool-write-file" '(:path "src")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "src/a.txt")))
+                   session "harmless-tool-write-file" '(:path "src/a.txt")))
       (harmless-perm-set-rules session nil '("Edit(src/file.txt)"))
       (should (harmless-perm-test-refusal
-               session "write_file" '(:path "src/file.txt")))
+               session "harmless-tool-write-file" '(:path "src/file.txt")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "src/file.txt/")))
+                   session "harmless-tool-write-file" '(:path "src/file.txt/")))
       (harmless-perm-set-rules session nil '("Edit(**)"))
       (should (harmless-perm-test-refusal
-               session "write_file" '(:path "src/a/b.txt")))
+               session "harmless-tool-write-file" '(:path "src/a/b.txt")))
       (should (harmless-perm-test-refusal
-               session "write_file" (list :path abs)))
+               session "harmless-tool-write-file" (list :path abs)))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "../outside.txt")))
+                   session "harmless-tool-write-file" '(:path "../outside.txt")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "/")))
+                   session "harmless-tool-write-file" '(:path "/")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "c:/")))
+                   session "harmless-tool-write-file" '(:path "c:/")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path "")))
+                   session "harmless-tool-write-file" '(:path "")))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path nil)))
+                   session "harmless-tool-write-file" '(:path nil)))
       (should-not (harmless-perm-test-refusal
-                   session "write_file" '(:path :false)))
+                   session "harmless-tool-write-file" '(:path :false)))
       (harmless-perm-set-rules session nil '("Edit(src/a.txt)"))
       (if (file-name-case-insensitive-p repo)
           (should (harmless-perm-test-refusal
-                   session "write_file" '(:path "SRC/A.TXT")))
+                   session "harmless-tool-write-file" '(:path "SRC/A.TXT")))
         (should-not (harmless-perm-test-refusal
-                     session "write_file" '(:path "SRC/A.TXT"))))
+                     session "harmless-tool-write-file" '(:path "SRC/A.TXT"))))
       (harmless-perm-set-rules session nil '("Edit(/src/**)"))
       (should (equal (harmless-perm-test-refusal
-                      session "write_file" '(:path "src/a.txt"))
+                      session "harmless-tool-write-file" '(:path "src/a.txt"))
                      "Error: Permission rule denied Edit(/src/**)"))
       (harmless-perm-set-rules
        session '("Edit(src/a.txt)") '("Edit(src/b.txt)"))
       (should (equal (harmless-perm-test-refusal
-                      session "apply_patch"
+                      session "harmless-tool-apply-patch"
                       (list :hunks
                             (vector '(:path "src/a.txt")
                                     '(:path "src/b.txt"))))
                      "Error: Permission rule denied Edit(src/b.txt)"))
       (should-not (harmless-perm-test-allows-p
-                   session "apply_patch"
+                   session "harmless-tool-apply-patch"
                    '(:hunks ((:path "src/a.txt")
                              (:path "src/b.txt")))))
       (should (harmless-perm-test-allows-p
-               session "apply_patch"
+               session "harmless-tool-apply-patch"
                '(:hunks ((:path "src/a.txt")))))
       (harmless-perm-set-rules session '("Edit(**)") nil)
       (should (harmless-perm-test-allows-p
-               session "apply_patch"
+               session "harmless-tool-apply-patch"
                '(:hunks ((:path "src/a.txt")
                          (:path "src/b.txt")))))
       (should-not (harmless-perm-test-allows-p
-                   session "write_file" '(:path "../outside.txt")))
+                   session "harmless-tool-write-file" '(:path "../outside.txt")))
       (should-not (harmless-perm-test-allows-p
-                   session "write_file" '(:path "/")))
+                   session "harmless-tool-write-file" '(:path "/")))
       (harmless-perm-set-rules
        session nil '("WebFetch(domain:example.com)"))
       (dolist (url '("https://example.com/a"
                      "https://a.example.com/a"
                      "https://user:pass@a.example.com:443/x"))
         (should (equal (harmless-perm-test-refusal
-                        session "web_fetch" (list :url url))
+                        session "harmless-tool-web-fetch" (list :url url))
                        "Error: Permission rule denied WebFetch(domain:example.com)")))
       (dolist (url '("https://notexample.com/a"
                      "https://example.com.evil/a"
@@ -400,30 +400,30 @@ DECISION is the answer to a question.  Nil denies."
                      "c:/"
                      ""))
         (should-not (harmless-perm-test-refusal
-                     session "web_fetch" (list :url url))))
+                     session "harmless-tool-web-fetch" (list :url url))))
       (should-not (harmless-perm-test-allows-p
-                   session "web_fetch" '(:url "/")))
+                   session "harmless-tool-web-fetch" '(:url "/")))
       (harmless-perm-set-rules
        session nil
        '("Bash(*)" "Edit(**)" "WebFetch(domain:example.com)"))
       (should-not (harmless-perm-test-refusal
-                   session "shell_kill" '(:id "1")))
+                   session "harmless-tool-shell-kill" '(:id "1")))
       (should-not (harmless-perm-test-refusal
-                   session "computer_click" '(:x 1 :y 2)))
+                   session "harmless-tool-computer-click" '(:x 1 :y 2)))
       (should-not (harmless-perm-test-refusal
-                   session "web_search" '(:query "q")))
+                   session "harmless-tool-web-search" '(:query "q")))
       (should-not (harmless-perm-test-refusal
-                   session "monitor"
+                   session "harmless-tool-monitor"
                    '(:pattern "x" :path "log.txt" :command "rm x")))
       (should (harmless-perm-test-refusal
-               session "monitor"
+               session "harmless-tool-monitor"
                '(:pattern "x" :command "rm x")))
       (harmless-perm-set-rules
        session '("Bash(echo *)") '("Bash(echo *)"))
       (should (harmless-perm-test-allows-p
-               session "run_shell" '(:command "echo hi")))
+               session "harmless-tool-run-shell" '(:command "echo hi")))
       (should (equal (harmless-perm-test-refusal
-                      session "run_shell" '(:command "echo hi"))
+                      session "harmless-tool-run-shell" '(:command "echo hi"))
                      "Error: Permission rule denied Bash(echo *)"))
       (harmless-perm-test-assert-session session))))
 
@@ -444,7 +444,7 @@ DECISION is the answer to a question.  Nil denies."
       (harmless-perm-set-rules
        session '("Bash(echo *)") '("Bash(echo denied*)"))
       (harmless-perm-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo denied>harmless-perm-denied.txt"))
       (should-not harmless-perm-test-asked)
       (should (equal (harmless-perm-test-last-tool session)
@@ -453,7 +453,7 @@ DECISION is the answer to a question.  Nil denies."
                    (expand-file-name "harmless-perm-denied.txt" repo)))
       (setf (harmless-session-permission-mode session) 'always-approve)
       (harmless-perm-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo denied>harmless-perm-denied.txt"))
       (should-not harmless-perm-test-asked)
       (should (equal (harmless-perm-test-last-tool session)
@@ -461,7 +461,7 @@ DECISION is the answer to a question.  Nil denies."
       (setf (harmless-session-permission-mode session) 'accept-edits)
       (harmless-perm-set-rules session nil '("Edit(skipped.txt)"))
       (harmless-perm-test-run
-       session "write_file"
+       session "harmless-tool-write-file"
        '(:path "skipped.txt" :contents "nope\n"))
       (should-not harmless-perm-test-asked)
       (should (equal (harmless-perm-test-last-tool session)
@@ -472,7 +472,7 @@ DECISION is the answer to a question.  Nil denies."
       (harmless-perm-set-rules
        session '("Bash(echo allowed*)") nil)
       (harmless-perm-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo allowed>harmless-perm-allowed.txt"))
       (should-not harmless-perm-test-asked)
       (should (eq 'idle (harmless-session-status session)))
@@ -491,7 +491,7 @@ DECISION is the answer to a question.  Nil denies."
         (should (string-match-p "allowed" (harmless-perm-test-read path))))
       (harmless-perm-set-rules session '("Bash(npm run *)") nil)
       (harmless-perm-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo other>harmless-perm-other.txt"))
       (should (equal harmless-perm-test-asked
                      '((shell "echo other>harmless-perm-other.txt"))))
@@ -500,14 +500,14 @@ DECISION is the answer to a question.  Nil denies."
       (should-not (file-exists-p
                    (expand-file-name "harmless-perm-other.txt" repo)))
       (harmless-perm-set-rules session nil '("Bash(echo *)"))
-      (harmless-perm-test-run session "run_shell" '(:command "echo hi"))
+      (harmless-perm-test-run session "harmless-tool-run-shell" '(:command "echo hi"))
       (should-not harmless-perm-test-asked)
       (should (equal (harmless-perm-test-last-tool session)
                      "Error: Permission rule denied Bash(echo *)"))
       (harmless-perm-set-rules session '("Bash(*)") nil)
       (setf (harmless-session-plan-mode session) t)
       (harmless-perm-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo plan>harmless-perm-plan.txt"))
       (should-not harmless-perm-test-asked)
       (should (equal (harmless-perm-test-last-tool session)
@@ -515,7 +515,7 @@ DECISION is the answer to a question.  Nil denies."
       (should-not (file-exists-p
                    (expand-file-name "harmless-perm-plan.txt" repo)))
       (harmless-perm-set-rules session nil '("Bash(echo *)"))
-      (harmless-perm-test-run session "run_shell" '(:command "echo hi"))
+      (harmless-perm-test-run session "harmless-tool-run-shell" '(:command "echo hi"))
       (should (equal (harmless-perm-test-last-tool session)
                      "Error: Permission rule denied Bash(echo *)"))
       (setf (harmless-session-plan-mode session) nil)
@@ -524,13 +524,13 @@ DECISION is the answer to a question.  Nil denies."
       (dolist (url '("https://example.com/a"
                      "https://a.example.com/x"))
         (setq harmless-perm-test-fetches nil)
-        (harmless-perm-test-run session "web_fetch" (list :url url))
+        (harmless-perm-test-run session "harmless-tool-web-fetch" (list :url url))
         (should-not harmless-perm-test-asked)
         (should-not harmless-perm-test-fetches)
         (should (equal (harmless-perm-test-last-tool session)
                        "Error: Permission rule denied WebFetch(domain:example.com)")))
       (harmless-perm-test-run
-       session "web_fetch" '(:url "https://example.com.evil/a"))
+       session "harmless-tool-web-fetch" '(:url "https://example.com.evil/a"))
       (should (equal (car harmless-perm-test-asked)
                      '(network "https://example.com.evil/a")))
       (should-not harmless-perm-test-fetches)
@@ -538,25 +538,25 @@ DECISION is the answer to a question.  Nil denies."
        session '("WebFetch(domain:example.com)") nil)
       (setq harmless-perm-test-fetches nil)
       (harmless-perm-test-run
-       session "web_fetch" '(:url "https://a.example.com/x"))
+       session "harmless-tool-web-fetch" '(:url "https://a.example.com/x"))
       (should-not harmless-perm-test-asked)
       (should (equal harmless-perm-test-fetches
                      '("https://a.example.com/x")))
       (should (equal (harmless-perm-test-last-tool session)
                      "fetched page"))
-      (harmless-perm-test-run session "web_fetch" '(:url "/"))
+      (harmless-perm-test-run session "harmless-tool-web-fetch" '(:url "/"))
       (should (consp harmless-perm-test-asked))
       (should (equal (harmless-perm-test-last-tool session)
                      "Error: user denied this tool call"))
       (setq harmless-perm-test-commands nil)
       (harmless-perm-set-rules session nil '("Bash(rm *)"))
       (harmless-perm-test-run
-       session "monitor" '(:pattern "x" :command "rm x"))
+       session "harmless-tool-monitor" '(:pattern "x" :command "rm x"))
       (should-not harmless-perm-test-commands)
       (should (equal (harmless-perm-test-last-tool session)
                      "Error: Permission rule denied Bash(rm *)"))
       (harmless-perm-test-run
-       session "monitor" '(:pattern "nope" :path "log.txt"))
+       session "harmless-tool-monitor" '(:pattern "nope" :path "log.txt"))
       (should-not harmless-perm-test-commands)
       (should (string-match-p
                "\\`Watching "
@@ -564,7 +564,7 @@ DECISION is the answer to a question.  Nil denies."
       (harmless-perm-set-rules
        session '("Edit(**)") '("Edit(src/b.txt)"))
       (harmless-perm-test-run
-       session "apply_patch"
+       session "harmless-tool-apply-patch"
        (list :hunks
              (list (list :path "src/a.txt"
                          :old_string "old\n" :new_string "new\n")
@@ -577,7 +577,7 @@ DECISION is the answer to a question.  Nil denies."
       (should (equal (harmless-perm-test-read b) "old\n"))
       (harmless-perm-set-rules session '("Edit(src/a.txt)") nil)
       (harmless-perm-test-run
-       session "apply_patch"
+       session "harmless-tool-apply-patch"
        (list :hunks
              (list (list :path "src/a.txt"
                          :old_string "old\n" :new_string "new\n")
@@ -590,7 +590,7 @@ DECISION is the answer to a question.  Nil denies."
       (should (equal (harmless-perm-test-read b) "old\n"))
       (harmless-perm-set-rules session '("Edit(src/**)") nil)
       (harmless-perm-test-run
-       session "apply_patch"
+       session "harmless-tool-apply-patch"
        (list :hunks
              (list (list :path "src/a.txt"
                          :old_string "old\n" :new_string "new\n")
@@ -603,12 +603,12 @@ DECISION is the answer to a question.  Nil denies."
       (harmless-perm-test-assert-file b repo "new\n")
       (harmless-perm-set-rules session nil '("Edit(note.txt)"))
       (harmless-perm-test-run
-       session "replace"
+       session "harmless-tool-replace"
        '(:path "note.txt" :old_string "old\n" :new_string "new\n"))
       (should (equal (harmless-perm-test-read note) "old\n"))
       (harmless-perm-set-rules session '("Edit(noted.txt)") nil)
       (harmless-perm-test-run
-       session "write_file"
+       session "harmless-tool-write-file"
        '(:path "noted.txt" :contents "hello\n"))
       (should-not harmless-perm-test-asked)
       (should (string-match
@@ -786,18 +786,18 @@ DECISION is the answer to a question.  Nil denies."
       (let ((harmless-permission-denies '("Bash(echo *)")))
         (setq session (harmless-perm-test-session :cwd repo :id "deny"))
         (should (harmless-perm-test-allows-p
-                 session "run_shell" '(:command "echo hi")))
+                 session "harmless-tool-run-shell" '(:command "echo hi")))
         (should (equal (harmless-perm-test-refusal
-                        session "run_shell" '(:command "echo hi"))
+                        session "harmless-tool-run-shell" '(:command "echo hi"))
                        "Error: Permission rule denied Bash(echo *)"))
         (harmless-perm-test-run
-         session "run_shell" '(:command "echo hi"))
+         session "harmless-tool-run-shell" '(:command "echo hi"))
         (should-not harmless-perm-test-asked)
         (should (equal (harmless-perm-test-last-tool session)
                        "Error: Permission rule denied Bash(echo *)")))
       (setq session (harmless-perm-test-session :cwd repo :id "write"))
       (harmless-perm-test-run
-       session "write_file"
+       session "harmless-tool-write-file"
        '(:path "noted2.txt" :contents "hello\n"))
       (should-not harmless-perm-test-asked)
       (harmless-perm-test-assert-file noted repo "hello\n")

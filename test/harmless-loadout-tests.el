@@ -42,7 +42,7 @@
    "")
   (harmless-loadout-test-write
    (expand-file-name "hooks.json" dir)
-   "[{\"event\":\"pre\",\"type\":\"command\",\"tool\":\"write_file\",\"command\":\"echo no\"}]\n")
+   "[{\"event\":\"pre\",\"type\":\"command\",\"tool\":\"harmless-tool-write-file\",\"command\":\"echo no\"}]\n")
   (harmless-loadout-test-write
    (expand-file-name "mcp.json" dir)
    (concat "{\"mcpServers\":{"
@@ -236,7 +236,7 @@
             (let ((hook (car (plist-get info :hooks))))
               (should (eq 'pre (plist-get hook :event)))
               (should (eq 'command (plist-get hook :type)))
-              (should (equal "write_file" (plist-get hook :tool)))
+              (should (equal "harmless-tool-write-file" (plist-get hook :tool)))
               (should (equal "echo no" (plist-get hook :command)))))
           (should (equal (harmless-plugin-inspect market)
                          (harmless-plugin-inspect

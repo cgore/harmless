@@ -1,11 +1,11 @@
-;;; harmless-ask-tests.el --- Tests for the ask_user tool -*- lexical-binding: t; -*-
+;;; harmless-ask-tests.el --- Tests for the harmless-tool-ask-user tool -*- lexical-binding: t; -*-
 
 (require 'ert)
 (require 'harmless)
 (require 'harmless-ui)
 
 (defun harmless-ask-test-refuse (args text)
-  "Call ask_user with ARGS and require error TEXT before any prompt."
+  "Call harmless-tool-ask-user with ARGS and require error TEXT before any prompt."
   (let ((called nil))
     (let ((harmless-ask-decide-function
            (lambda (&rest _) (setq called t) "yes")))
@@ -16,7 +16,7 @@
 (ert-deftest harmless-ask-returns-the-chosen-text ()
   (let ((seen nil)
         (default-directory "/")
-        (existed (file-exists-p "/ask_user")))
+        (existed (file-exists-p "/harmless-tool-ask-user")))
     (let ((harmless-ask-decide-function
            (lambda (_session question choices)
              (setq seen (list question choices))
@@ -34,7 +34,7 @@
                       nil
                       '(:question "Root?" :choices ["/"]))
                      "The user chose: /"))
-      (should (eq existed (file-exists-p "/ask_user"))))))
+      (should (eq existed (file-exists-p "/harmless-tool-ask-user"))))))
 
 (ert-deftest harmless-ask-accepts-json-arguments ()
   (let ((harmless-ask-decide-function
@@ -42,7 +42,7 @@
         (args (harmless-tool-parse-args
                "{\"question\":\"Ship it?\",\"choices\":[\"yes\",\"no\"]}")))
     (should (equal (harmless-ask--tool nil args) "The user chose: no"))
-    (should (equal (harmless-tool-call (harmless-tool-by-name "ask_user")
+    (should (equal (harmless-tool-call (harmless-tool-by-name "harmless-tool-ask-user")
                                       nil args)
                    "The user chose: no"))))
 
@@ -97,7 +97,7 @@
     (should (equal (harmless-ask--tool nil '(:question "Ship it?"
                                               :choices ("yes" "no")))
                    "The user cancelled the question."))
-    (should (equal (harmless-tool-call (harmless-tool-by-name "ask_user")
+    (should (equal (harmless-tool-call (harmless-tool-by-name "harmless-tool-ask-user")
                                       nil
                                       '(:question "Ship it?"
                                         :choices ("yes" "no")))
@@ -112,20 +112,20 @@
                      "Cannot ask a question in batch Emacs")))))
 
 (ert-deftest harmless-ask-tool-is-a-read-and-shows-the-question ()
-  (let ((tool (harmless-tool-by-name "ask_user")))
+  (let ((tool (harmless-tool-by-name "harmless-tool-ask-user")))
     (should tool)
     (should (eq (harmless-tool-class tool) 'read))
     (should (equal (plist-get (harmless-tool-schema tool) :required)
                    ["question" "choices"]))
     (should (eq (harmless-tool-fn tool) #'harmless-ask--tool)))
-  (should (equal (harmless-ui--tool-verb "ask_user") "ask"))
+  (should (equal (harmless-ui--tool-verb "harmless-tool-ask-user") "ask"))
   (should (equal (harmless-ui--tool-summary
-                  "ask_user"
+                  "harmless-tool-ask-user"
                   '(:question "Ship it?" :choices ("yes" "no")))
                  "Ship it?"))
-  (should-not (harmless-ui--tool-groupable-p "ask_user"))
+  (should-not (harmless-ui--tool-groupable-p "harmless-tool-ask-user"))
   (let* ((encoded (harmless-json-text (harmless-tool-schema
-                                       (harmless-tool-by-name "ask_user"))))
+                                       (harmless-tool-by-name "harmless-tool-ask-user"))))
          (schema (harmless-json-decode encoded)))
     (should (equal (plist-get schema :type) "object"))
     (should (equal (plist-get (plist-get (plist-get schema :properties) :choices)

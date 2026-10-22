@@ -49,7 +49,7 @@
     (unwind-protect
         (let ((default-directory (file-name-as-directory elsewhere)))
           (should (eq (harmless-tool-class
-                       (harmless-tool-by-name "generate_image"))
+                       (harmless-tool-by-name "harmless-tool-generate-image"))
                       'edit))
           (setq dest (harmless-image-generate
                       session '(:prompt "  a red dot  " :path "sub/dot.png")))
@@ -150,7 +150,7 @@
                                session (list :prompt "x" :path path)))))))
           (should (equal "Error: image prompt is empty"
                          (harmless-tool-call
-                          (harmless-tool-by-name "generate_image")
+                          (harmless-tool-by-name "harmless-tool-generate-image")
                           session '(:prompt "" :path "dot.png"))))
           (should (equal "image path is not a file"
                          (harmless-image-test-signal
@@ -190,7 +190,7 @@
           (should-not (file-directory-p (expand-file-name "missing" root)))
           (setf (harmless-session-plan-mode session) t)
           (should (equal
-                   "Plan mode is on. Only plan.md may be edited, with write_plan"
+                   "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
                    (harmless-image-test-signal
                     (lambda ()
                       (harmless-image-generate
@@ -233,14 +233,14 @@
                             (harmless-image-generate
                              session '(:prompt "x" :path "dot.png"))))))
           (should-not called)
-          (should (equal (harmless-ui--tool-verb "generate_image") "image"))
+          (should (equal (harmless-ui--tool-verb "harmless-tool-generate-image") "image"))
           (should (equal (harmless-ui--tool-summary
-                          "generate_image" '(:path "dot.png"))
+                          "harmless-tool-generate-image" '(:path "dot.png"))
                          "dot.png"))
           (should (equal (harmless-ui--tool-summary
-                          "generate_image" '(:path nil))
+                          "harmless-tool-generate-image" '(:path nil))
                          ""))
-          (should-not (member "generate_image"
+          (should-not (member "harmless-tool-generate-image"
                               (mapcar #'harmless-tool-name
                                       (harmless-tools-for-session
                                        (harmless-image-test-session

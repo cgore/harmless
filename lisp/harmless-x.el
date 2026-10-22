@@ -36,8 +36,8 @@
 
 ;;; Commentary:
 ;;
-;; `x_keyword_search' finds recent posts.  `x_thread_fetch' reads one
-;; post and its conversation.  `x_user_search' finds accounts.  The
+;; `harmless-tool-x-keyword-search' finds recent posts.  `harmless-tool-x-thread-fetch' reads one
+;; post and its conversation.  `harmless-tool-x-user-search' finds accounts.  The
 ;; class is `network', so accept-edits still asks.  Nothing is written
 ;; into the project.  A missing bearer token is refused before any
 ;; request.
@@ -440,7 +440,7 @@ around FOCAL.  A missing FOCAL keeps the newest posts."
   items)
 
 (defun harmless-x-keyword-search (session args)
-  "x_keyword_search implementation."
+  "harmless-tool-x-keyword-search implementation."
   (ignore session)
   (let* ((query (harmless-x--query args))
          (mode (harmless-x--mode args))
@@ -455,7 +455,7 @@ around FOCAL.  A missing FOCAL keeps the newest posts."
       limit))))
 
 (defun harmless-x-thread-fetch (session args)
-  "x_thread_fetch implementation."
+  "harmless-tool-x-thread-fetch implementation."
   (ignore session)
   (harmless-x--format-posts
    (harmless-x--take
@@ -464,7 +464,7 @@ around FOCAL.  A missing FOCAL keeps the newest posts."
     harmless-x-result-limit)))
 
 (defun harmless-x-user-search (session args)
-  "x_user_search implementation."
+  "harmless-tool-x-user-search implementation."
   (ignore session)
   (let ((query (harmless-x--query args))
         (limit (harmless-x--limit args)))
@@ -478,7 +478,7 @@ around FOCAL.  A missing FOCAL keeps the newest posts."
   "Register the X search tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "x_keyword_search"
+    :name "harmless-tool-x-keyword-search"
     :description "Search recent X posts. QUERY is the text, including search operators. MODE is Top or Latest. FROM_DATE and TO_DATE are YYYY-MM-DD, and TO_DATE is exclusive. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"
@@ -496,7 +496,7 @@ around FOCAL.  A missing FOCAL keeps the newest posts."
     :fn #'harmless-x-keyword-search))
   (harmless-register-tool
    (harmless-tool-create
-    :name "x_thread_fetch"
+    :name "harmless-tool-x-thread-fetch"
     :description "Fetch one X post and its conversation. POST_ID is the numeric id. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"
@@ -506,7 +506,7 @@ around FOCAL.  A missing FOCAL keeps the newest posts."
     :fn #'harmless-x-thread-fetch))
   (harmless-register-tool
    (harmless-tool-create
-    :name "x_user_search"
+    :name "harmless-tool-x-user-search"
     :description "Search X accounts. QUERY matches a name, a handle, or a bio. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"

@@ -23,9 +23,9 @@
   (should (string-match-p "When to verify" harmless-harness-prompt))
   (should (string-match-p "When to delegate" harmless-harness-prompt))
   (should (string-match-p "Do not invent file contents" harmless-harness-prompt))
-  (should (string-match-p "apply_patch applies several hunks"
+  (should (string-match-p "harmless-tool-apply-patch applies several hunks"
                           harmless-harness-prompt))
-  (should (string-match-p "notebook_edit replaces one notebook cell"
+  (should (string-match-p "harmless-tool-notebook-edit replaces one notebook cell"
                           harmless-harness-prompt))
   (should (string-match-p "does not start a server" harmless-harness-prompt))
   (should (string-match-p "does not apply them" harmless-harness-prompt))
@@ -33,11 +33,11 @@
            "Claim a test passed only when a tool result says so"
            harmless-harness-prompt))
   (should (string-match-p
-           "spawn_agent when a subtask needs its own transcript"
+           "harmless-tool-spawn-agent when a subtask needs its own transcript"
            harmless-harness-prompt))
   (should (string-match-p "A subagent cannot start another subagent"
                           harmless-harness-prompt))
-  (should (string-match-p "run_workflow" harmless-harness-prompt))
+  (should (string-match-p "harmless-tool-run-workflow" harmless-harness-prompt))
   (should (string-match-p "When they disagree with it, follow them"
                           harmless-harness-prompt))
   (let* ((prior '((:role :system :content "PROJECT-RULE" :extra "keep")
@@ -119,7 +119,7 @@
       (should (string-prefix-p harmless-harness-prompt text))
       (should (string-match-p "PROJECT-RULE" text))
       (should (string-match-p "Plan mode is active" text))
-      (should (string-match-p "write_plan" text))
+      (should (string-match-p "harmless-tool-write-plan" text))
       (should (< (string-match "PROJECT-RULE" text)
                  (string-match "Plan mode is active" text))))
     (let* ((detached (harmless-session--create

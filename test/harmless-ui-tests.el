@@ -37,11 +37,11 @@
 (ert-deftest harmless-ui-groups-reads-and-folds ()
   (let* ((session (harmless-ui-test-session))
          (calls (list
-                 (list :id "g" :name "grep"
+                 (list :id "g" :name "harmless-tool-grep"
                        :args "{\"pattern\":\"defpackage\",\"glob\":\"**/*.lisp\"}")
-                 (list :id "r1" :name "read_file"
+                 (list :id "r1" :name "harmless-tool-read-file"
                        :args "{\"path\":\"source/behave.lisp\",\"limit\":80}")
-                 (list :id "r2" :name "read_file"
+                 (list :id "r2" :name "harmless-tool-read-file"
                        :args "{\"path\":\"source/control.lisp\"}")))
          (grep-hit "source/a.lisp:1:(defpackage :sigma/a")
          (buf (harmless-ui-test-render
@@ -49,10 +49,10 @@
                (list
                 (list :role :user :content "find packages")
                 (list :role :assistant :content "Looking." :tool-calls calls)
-                (list :role :tool :id "g" :name "grep" :content grep-hit)
-                (list :role :tool :id "r1" :name "read_file"
+                (list :role :tool :id "g" :name "harmless-tool-grep" :content grep-hit)
+                (list :role :tool :id "r1" :name "harmless-tool-read-file"
                       :content "line1\nline2\n")
-                (list :role :tool :id "r2" :name "read_file"
+                (list :role :tool :id "r2" :name "harmless-tool-read-file"
                       :content "(defun foo ())\n")))))
     (with-current-buffer buf
       (should (eq (lookup-key harmless-session-mode-map (kbd "TAB"))
@@ -87,7 +87,7 @@
       (harmless-ui-fold-close)
       (should-not (string-match-p "line1" (harmless-ui-test-visible)))
       (harmless-ui-fold-close)
-      (should-not (string-match-p "grep" (harmless-ui-test-visible)))
+      (should-not (string-match-p "harmless-tool-grep" (harmless-ui-test-visible)))
       (goto-char (point-min))
       (search-forward "explored")
       (harmless-ui-toggle-all-folds)
@@ -99,19 +99,19 @@
 (ert-deftest harmless-ui-shell-and-edit-stay-separate ()
   (let* ((session (harmless-ui-test-session))
          (calls (list
-                 (list :id "r" :name "read_file"
+                 (list :id "r" :name "harmless-tool-read-file"
                        :args "{\"path\":\"source/behave.lisp\"}")
-                 (list :id "s" :name "run_shell"
+                 (list :id "s" :name "harmless-tool-run-shell"
                        :args "{\"command\":\"git status\"}")
-                 (list :id "w" :name "write_file"
+                 (list :id "w" :name "harmless-tool-write-file"
                        :args "{\"path\":\"source/behave.lisp\"}")))
          (buf (harmless-ui-test-render
                session
                (list
                 (list :role :assistant :content "" :tool-calls calls)
-                (list :role :tool :id "r" :name "read_file" :content "one\n")
-                (list :role :tool :id "s" :name "run_shell" :content "clean\n")
-                (list :role :tool :id "w" :name "write_file"
+                (list :role :tool :id "r" :name "harmless-tool-read-file" :content "one\n")
+                (list :role :tool :id "s" :name "harmless-tool-run-shell" :content "clean\n")
+                (list :role :tool :id "w" :name "harmless-tool-write-file"
                       :content "Wrote source/behave.lisp (3 bytes)")))))
     (with-current-buffer buf
       (let ((visible (harmless-ui-test-visible)))
@@ -128,14 +128,14 @@
 (ert-deftest harmless-ui-stream-collapses-a-run ()
   (let* ((session (harmless-ui-test-session))
          (calls (list
-                 (list :id "g" :name "grep"
+                 (list :id "g" :name "harmless-tool-grep"
                        :args "{\"pattern\":\"defpackage\",\"glob\":\"**/*.lisp\"}")
-                 (list :id "r" :name "read_file"
+                 (list :id "r" :name "harmless-tool-read-file"
                        :args "{\"path\":\"source/behave.lisp\"}"))))
     (harmless-ui--on-event session '(:text "Looking."))
-    (harmless-ui--on-event session '(:tool-call "g" "grep" "{\"pattern\":"))
-    (harmless-ui--on-event session '(:tool-call "g" "grep" "\"defpackage\"}"))
-    (harmless-ui--on-event session '(:tool-call "r" "read_file"
+    (harmless-ui--on-event session '(:tool-call "g" "harmless-tool-grep" "{\"pattern\":"))
+    (harmless-ui--on-event session '(:tool-call "g" "harmless-tool-grep" "\"defpackage\"}"))
+    (harmless-ui--on-event session '(:tool-call "r" "harmless-tool-read-file"
                                                 "{\"path\":\"source/behave.lisp\"}"))
     (with-current-buffer (harmless-session-buffer session)
       (should (= 2 (count-matches "▸" (point-min) (point-max)))))
@@ -151,7 +151,7 @@
         (should-not (string-match-p "behave" visible))))
     (harmless-ui--on-event
      session
-     '(:message (:role :tool :id "g" :name "grep"
+     '(:message (:role :tool :id "g" :name "harmless-tool-grep"
                  :content "source/a.lisp:35:(defpackage :sigma/a")))
     (with-current-buffer (harmless-session-buffer session)
       (should-not (string-match-p "source/a.lisp" (harmless-ui-test-visible)))

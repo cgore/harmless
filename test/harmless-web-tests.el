@@ -45,8 +45,8 @@
          args))
 
 (defun harmless-web-test-call (session query)
-  "Return the web_search tool result for QUERY on SESSION."
-  (harmless-tool-call (harmless-tool-by-name "web_search")
+  "Return the harmless-tool-web-search tool result for QUERY on SESSION."
+  (harmless-tool-call (harmless-tool-by-name "harmless-tool-web-search")
                       session
                       (list :query query)))
 
@@ -189,12 +189,12 @@
       (let ((harmless-web-search-function (lambda (_query) "nope")))
         (should (equal (harmless-web-test-call session "bad")
                        "Error: web search failed")))
-      (should (equal (harmless-ui--tool-verb "web_search") "search"))
-      (should (equal (harmless-ui--tool-summary "web_search" '(:query "emacs"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-web-search") "search"))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-web-search" '(:query "emacs"))
                      "emacs"))
       (harmless-web-test-not-root session)
       (let ((detached (harmless-web-test-session :detached t :id "chat")))
-        (should (member "web_search"
+        (should (member "harmless-tool-web-search"
                         (mapcar #'harmless-tool-name
                                 (harmless-tools-for-session detached))))
         (should (equal (harmless-web-test-call detached "emacs")
@@ -227,7 +227,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "web_search"
+                               '(:tool-call "1" "harmless-tool-web-search"
                                  "{\"query\":\"emacs\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -258,7 +258,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "web_search"
+                               '(:tool-call "1" "harmless-tool-web-search"
                                  "{\"query\":\"emacs\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -291,7 +291,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "web_search"
+                               '(:tool-call "1" "harmless-tool-web-search"
                                  "{\"query\":\"emacs\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -314,24 +314,24 @@
       (let ((names (mapcar #'harmless-tool-name
                            (harmless-agent-filter-tools
                             child (harmless-tools-enabled)))))
-        (should (member "web_search" names))
-        (should-not (member "write_file" names)))
+        (should (member "harmless-tool-web-search" names))
+        (should-not (member "harmless-tool-write-file" names)))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "web_search")
+                   child (harmless-tool-by-name "harmless-tool-web-search")
                    '(:query "emacs")))
       (should (equal (harmless-web-test-call child "emacs")
                      (concat "1. Emacs\nhttps://example.com/emacs\n"
                              "hit emacs")))
-      (setf (plist-get (harmless-session-agent child) :allow) '("read_file"))
+      (setf (plist-get (harmless-session-agent child) :allow) '("harmless-tool-read-file"))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "web_search")
+                      child (harmless-tool-by-name "harmless-tool-web-search")
                       '(:query "emacs"))
-                     "Error: this subagent cannot use web_search"))
+                     "Error: this subagent cannot use harmless-tool-web-search"))
       (harmless-web-test-not-root child))))
 
 (defun harmless-web-test-fetch (session url)
-  "Return the web_fetch tool result for URL on SESSION."
-  (harmless-tool-call (harmless-tool-by-name "web_fetch")
+  "Return the harmless-tool-web-fetch tool result for URL on SESSION."
+  (harmless-tool-call (harmless-tool-by-name "harmless-tool-web-fetch")
                       session
                       (list :url url)))
 
@@ -346,7 +346,7 @@
           "<p>Code &#x41; and &#39;ok&#39;</p>"
           "<p>one<br>two <a href=\"https://example.com\">docs</a></p>"
           "</body></html>")
-  "Sample HTML page for web_fetch.")
+  "Sample HTML page for harmless-tool-web-fetch.")
 
 (defconst harmless-web-test-html-text
   (concat "Hello & Emacs\n\n"
@@ -445,7 +445,7 @@
                       session "https://example.com/plain")
                      "hello\nworld"))
       (should (equal (harmless-tool-call
-                      (harmless-tool-by-name "web_fetch")
+                      (harmless-tool-by-name "harmless-tool-web-fetch")
                       session
                       (list "url" "https://example.com/json"))
                      "{\"ok\":true}"))
@@ -510,16 +510,16 @@
                             (harmless-session-directory session) t)
                            #'string<)
                      stored))
-      (should (eq (harmless-tool-class (harmless-tool-by-name "web_fetch"))
+      (should (eq (harmless-tool-class (harmless-tool-by-name "harmless-tool-web-fetch"))
                   'network))
-      (should-not (harmless-tool-async (harmless-tool-by-name "web_fetch")))
-      (should (equal (harmless-ui--tool-verb "web_fetch") "fetch"))
+      (should-not (harmless-tool-async (harmless-tool-by-name "harmless-tool-web-fetch")))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-web-fetch") "fetch"))
       (should (equal (harmless-ui--tool-summary
-                      "web_fetch" '(:url "https://example.com/a"))
+                      "harmless-tool-web-fetch" '(:url "https://example.com/a"))
                      "https://example.com/a"))
       (harmless-web-test-not-root session)
       (let ((detached (harmless-web-test-session :detached t :id "chat")))
-        (should (member "web_fetch"
+        (should (member "harmless-tool-web-fetch"
                         (mapcar #'harmless-tool-name
                                 (harmless-tools-for-session detached))))
         (should (equal (harmless-web-test-fetch
@@ -551,7 +551,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "web_fetch"
+                               '(:tool-call "1" "harmless-tool-web-fetch"
                                  "{\"url\":\"https://example.com/a\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -583,7 +583,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "web_fetch"
+                               '(:tool-call "1" "harmless-tool-web-fetch"
                                  "{\"url\":\"https://example.com/a\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -617,7 +617,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "web_fetch"
+                               '(:tool-call "1" "harmless-tool-web-fetch"
                                  "{\"url\":\"https://example.com/a\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -642,16 +642,16 @@
       (let ((names (mapcar #'harmless-tool-name
                            (harmless-agent-filter-tools
                             child (harmless-tools-enabled)))))
-        (should (member "web_fetch" names))
-        (should-not (member "write_file" names)))
+        (should (member "harmless-tool-web-fetch" names))
+        (should-not (member "harmless-tool-write-file" names)))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "web_fetch")
+                   child (harmless-tool-by-name "harmless-tool-web-fetch")
                    '(:url "https://example.com/a")))
       (should (equal (harmless-web-test-fetch child "https://example.com/a")
                      "Hi"))
-      (setf (plist-get (harmless-session-agent child) :allow) '("read_file"))
+      (setf (plist-get (harmless-session-agent child) :allow) '("harmless-tool-read-file"))
       (should (equal (harmless-agent-refuse-call
-                      child (harmless-tool-by-name "web_fetch")
+                      child (harmless-tool-by-name "harmless-tool-web-fetch")
                       '(:url "https://example.com/a"))
-                     "Error: this subagent cannot use web_fetch"))
+                     "Error: this subagent cannot use harmless-tool-web-fetch"))
       (harmless-web-test-not-root child))))

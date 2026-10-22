@@ -36,8 +36,8 @@
 
 ;;; Commentary:
 ;;
-;; `web_search' sends a query to DuckDuckGo over https and returns the
-;; title, URL, and snippet of each result.  `web_fetch' reads one http
+;; `harmless-tool-web-search' sends a query to DuckDuckGo over https and returns the
+;; title, URL, and snippet of each result.  `harmless-tool-web-fetch' reads one http
 ;; or https page and returns its text.  Both tools use the class
 ;; `network', so accept-edits still asks.  Nothing is written into the
 ;; project.
@@ -215,7 +215,7 @@ URL must be http or https.  The project is not written."
     query))
 
 (defun harmless-web-search (session args)
-  "web_search implementation."
+  "harmless-tool-web-search implementation."
   (ignore session)
   (let ((results (funcall harmless-web-search-function
                           (harmless-web--query args))))
@@ -324,16 +324,16 @@ result ends with \"[truncated]\".  An empty page is \"Empty page\"."
     (harmless-web--limit-text body)))
 
 (defun harmless-web-fetch (session args)
-  "web_fetch implementation."
+  "harmless-tool-web-fetch implementation."
   (ignore session)
   (harmless-web--page
    (harmless-web-get (harmless-tool-arg args :url))))
 
 (defun harmless-web-register ()
-  "Register the web_search and web_fetch tools."
+  "Register the harmless-tool-web-search and harmless-tool-web-fetch tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "web_search"
+    :name "harmless-tool-web-search"
     :description "Search the web. QUERY is the text to look up. The result lists a title, a URL, and a snippet for each hit. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"
@@ -343,7 +343,7 @@ result ends with \"[truncated]\".  An empty page is \"Empty page\"."
     :fn #'harmless-web-search))
   (harmless-register-tool
    (harmless-tool-create
-    :name "web_fetch"
+    :name "harmless-tool-web-fetch"
     :description "Fetch one http or https page and return its text. URL is the address. HTML is reduced to text. Nothing is written into the project."
     :class 'network
     :schema '(:type "object"

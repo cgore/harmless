@@ -417,7 +417,7 @@ names the buffer, the file, the major mode, the line and column at
 point, and whether the buffer is modified or narrowed.  The line is
 counted from the start of the buffer.  The column starts at 1.  An
 active region is included, cut at
-@code{harmless-read-file-max-bytes} the same way @code{read_file}
+@code{harmless-read-file-max-bytes} the same way @code{harmless-tool-read-file}
 cuts a file.  With no region, the attachment sends the line at
 point and the name @code{which-function} can find.  A prompt sent
 from the transcript or the prompt window attaches the other window
@@ -454,10 +454,10 @@ Each tool belongs to a class: @code{read}, @code{edit},
 @code{shell}, or @code{network}.  A read never asks.  An edit asks.
 A shell asks.  A network call asks.
 
-A @code{run_shell} command that Harmless can see is read-only is
+A @code{harmless-tool-run-shell} command that Harmless can see is read-only is
 treated as a read, so it does not ask.  A command Harmless does not
 recognize still asks.  A redirect that writes, a command
-substitution, and a subshell still ask.  @code{shell_kill} still
+substitution, and a subshell still ask.  @code{harmless-tool-shell-kill} still
 asks.  In plan mode a read-only shell command still runs, and a
 shell command that can write is refused before the question.
 @xref{Plan mode}.
@@ -510,7 +510,7 @@ sandbox must be off, read-only, or workspace-write}.  A saved
 value Harmless does not know is loaded as @code{off}.
 @code{off} is not written into the session summary.
 
-@code{run_shell} takes @code{network}.  It is a boolean.  Omit
+@code{harmless-tool-run-shell} takes @code{network}.  It is a boolean.  Omit
 it, or pass false, and a sandbox that is on denies new network
 connections.  Pass true and the call asks as a network tool
 before it runs.  A value that is not a boolean is refused when
@@ -754,16 +754,16 @@ transcript in the order the model requested them.  Abort cancels the
 calls that are still running.  A review reads the working tree, a
 base branch, or one commit and records findings.  It does not edit
 the project.  @xref{Review}.
-@code{lsp} asks a language server that is already running for a
+@code{harmless-tool-lsp} asks a language server that is already running for a
 definition, references, or diagnostics.  @xref{Language server}.
-@code{read_file} also reads an image, a PDF, and a notebook.
-@code{notebook_edit} replaces one notebook cell.  @kbd{I} attaches
+@code{harmless-tool-read-file} also reads an image, a PDF, and a notebook.
+@code{harmless-tool-notebook-edit} replaces one notebook cell.  @kbd{I} attaches
 an image to the next prompt.  @xref{File tools}.
-@code{skill} loads one skill into later turns.  @xref{Skills}.
-@code{generate_image} writes a generated image into the project.
+@code{harmless-tool-skill} loads one skill into later turns.  @xref{Skills}.
+@code{harmless-tool-generate-image} writes a generated image into the project.
 @xref{Image generation}.
-@code{team_boot}, @code{team_inspect}, @code{team_message},
-@code{team_snapshot}, and @code{team_restore} call the same team
+@code{harmless-tool-team-boot}, @code{harmless-tool-team-inspect}, @code{harmless-tool-team-message},
+@code{harmless-tool-team-snapshot}, and @code{harmless-tool-team-restore} call the same team
 commands a person runs.  @xref{Team}.
 
 Paths are relative to the project root unless you pass an absolute
@@ -777,9 +777,9 @@ refused, and Harmless will not store its own state there.
 @kbd{+}, or @kbd{M-x harmless-add-directory}, lets this session read
 and edit one directory outside the project.  The same command is
 @kbd{+} in the Harmless menu.  The directory is saved with the
-session.  A fork and a subagent keep the list.  @code{glob} searches
+session.  A fork and a subagent keep the list.  @code{harmless-tool-glob} searches
 the project and every added directory.  With no @code{path},
-@code{grep} does too.  The shell's remembered directory is still the
+@code{harmless-tool-grep} does too.  The shell's remembered directory is still the
 project only.
 
 Nil, @code{""}, and whitespace are refused: @samp{extra directory
@@ -797,9 +797,9 @@ chat is refused: @samp{This chat is not attached to a project}.
 A path outside the project and outside every added directory is
 still refused: @samp{Path escapes project: }, followed by the path.
 
-A detached chat is offered @code{memory_read},
-@code{memory_remember}, @code{memory_write_topic}, and
-@code{ask_user}.  @xref{Memory}.  @xref{Questions}.
+A detached chat is offered @code{harmless-tool-memory-read},
+@code{harmless-tool-memory-remember}, @code{harmless-tool-memory-write-topic}, and
+@code{harmless-tool-ask-user}.  @xref{Memory}.  @xref{Questions}.
 It can list live sessions and send one a finding.
 @xref{Messages}.
 It can search the web and fetch a page.  @xref{Web search}.
@@ -841,12 +841,12 @@ A project session can run an Emacs Lisp script that calls these tools.
 @node File tools
 @section File tools
 
-@code{read_file}, @code{list_dir}, @code{write_file}, @code{replace},
-and @code{apply_patch} also accept a path inside a directory added
+@code{harmless-tool-read-file}, @code{harmless-tool-list-dir}, @code{harmless-tool-write-file}, @code{harmless-tool-replace},
+and @code{harmless-tool-apply-patch} also accept a path inside a directory added
 with @kbd{M-x harmless-add-directory}.
 
 @table @code
-@item read_file
+@item harmless-tool-read-file
 Read a project file.  @code{offset} is the first line, counting from
 1.  @code{limit} is how many lines to return.  Those arguments apply
 only to a text file.  The result is cut at
@@ -868,7 +868,7 @@ lists each cell.  No cells is @samp{No cells}.  A file that is not a
 notebook is refused: @samp{notebook is not a notebook}.  A notebook
 larger than the cap is refused: @samp{notebook is too large}.
 
-@item notebook_edit
+@item harmless-tool-notebook-edit
 Replace the source of one cell in an existing @code{.ipynb} file.
 @code{path} is the notebook.  @code{cell} is a cell id or a 0-based
 index.  @code{source} is the new source.  An empty source clears the
@@ -890,7 +890,7 @@ empty}.  A value that is not text is refused: @samp{notebook source
 must be a string}.
 
 @findex harmless-attach-image
-@findex notebook_edit
+@findex harmless-tool-notebook-edit
 @kindex I @r{(Harmless menu)}
 @kbd{M-x harmless-attach-image} queues an image on the next prompt.
 The menu key is @kbd{I}.  The file must already exist.  Harmless
@@ -909,19 +909,19 @@ directory, a trailing slash, and bytes that are not an image are
 refused: @samp{image is not an image}.  A file larger than the cap
 is refused: @samp{image is too large}.
 
-@item list_dir
+@item harmless-tool-list-dir
 List the names in a directory.  A directory name ends with a slash.
 The default path is the project root.
 
-@item write_file
+@item harmless-tool-write-file
 Create or replace a file with the given contents.  This is an edit.
 
-@item replace
+@item harmless-tool-replace
 Replace one unique string in a file.  If the string occurs more than
 once, the call fails unless @code{replace_all} is true.  This is an
 edit.
 
-@item apply_patch
+@item harmless-tool-apply-patch
 Apply several hunks in one call.  Each hunk names a @code{path}, an
 @code{old_string}, and a @code{new_string}.  The old string must occur
 once in that file.  Later hunks on the same file see earlier
@@ -930,10 +930,10 @@ edit.  An accepted edit snapshots the directory that contains the
 file when checkpoints are on, after the edit is accepted and before
 the file changes.  @xref{Checkpoints}.
 
-When a buffer visits the file, @code{read_file} returns that
+When a buffer visits the file, @code{harmless-tool-read-file} returns that
 buffer's accessible text.  Unsaved text ends with @samp{[unsaved]}.
 Narrowed text ends with @samp{[narrowed]}.  The read records the
-buffer.  @code{write_file}, @code{replace}, and @code{apply_patch}
+buffer.  @code{harmless-tool-write-file}, @code{harmless-tool-replace}, and @code{harmless-tool-apply-patch}
 then change that buffer as one undo entry and save it.  The saved
 bytes use the buffer's coding system and newline convention.  A
 window that already shows the buffer moves to the first change, and
@@ -952,9 +952,9 @@ refused: @samp{buffer is not a file}.  A @code{before-save-hook} or
 @code{after-save-hook} that signals restores the buffer text and is
 refused: @samp{buffer save failed: }, followed by that message.
 
-In plan mode, @code{write_file}, @code{replace}, @code{apply_patch},
-and @code{notebook_edit} fail.  The model must write @file{plan.md}
-with @code{write_plan}.
+In plan mode, @code{harmless-tool-write-file}, @code{harmless-tool-replace}, @code{harmless-tool-apply-patch},
+and @code{harmless-tool-notebook-edit} fail.  The model must write @file{plan.md}
+with @code{harmless-tool-write-plan}.
 @xref{Plan mode}.
 @end table
 
@@ -962,12 +962,12 @@ with @code{write_plan}.
 @section Search
 
 @table @code
-@item glob
+@item harmless-tool-glob
 Find files whose names match a glob.  The pattern may be a basename
 or a relative path.  The search covers the project and every added
 directory.  A match outside the project is an absolute path.
 
-@item grep
+@item harmless-tool-grep
 Search file contents for a regular expression.  The optional
 arguments are @code{path}, @code{glob}, @code{engine}, @code{context},
 @code{type}, and @code{multiline}.
@@ -975,7 +975,7 @@ arguments are @code{path}, @code{glob}, @code{engine}, @code{context},
 
 @cindex ripgrep
 @cindex ag
-@cindex grep
+@cindex harmless-tool-grep
 @code{path} is a directory inside the project or an added directory.
 With no path, the search covers the project and every added
 directory.  A trailing slash is the same directory.  @code{glob}
@@ -1005,14 +1005,14 @@ that.  Ag refuses it.  The Emacs Lisp scan refuses it.
 
 The pattern is required, and it is case-sensitive.  An ag pattern
 cannot start with a hyphen.  A long result is cut at the same byte
-cap as @code{read_file}.
+cap as @code{harmless-tool-read-file}.
 
 @node Shell
 @section Shell
 
 @vindex harmless-shell-timeout-seconds
 @vindex harmless-shell-output-max-bytes
-@code{run_shell} runs one command in the project root through your
+@code{harmless-tool-run-shell} runs one command in the project root through your
 shell.  The next command starts in the same directory when a
 @code{cd} stayed inside the project.  Nil and @code{""} mean the
 project root.  A @code{cd} that leaves the project is not kept.
@@ -1032,16 +1032,16 @@ and returns a background id with the output captured so far.  It does
 not kill the process.  @code{background} true returns that id
 immediately.
 
-@code{shell_output} reads one background shell.  @code{id} is the id
-@code{run_shell} returned.  Without @code{timeout}, the tool returns
+@code{harmless-tool-shell-output} reads one background shell.  @code{id} is the id
+@code{harmless-tool-run-shell} returned.  Without @code{timeout}, the tool returns
 the output already available.  With @code{timeout}, it waits that many
 seconds for the command to exit, then returns whatever it has.  This
 tool does not ask for permission.  An empty id is refused:
 @samp{Error: shell id is empty}.  An unknown id is refused:
 @samp{Error: no background shell }, followed by that id.  A bad
-timeout uses the same refusal as @code{run_shell}.
+timeout uses the same refusal as @code{harmless-tool-run-shell}.
 
-@code{shell_kill} stops a background shell.  It asks for permission
+@code{harmless-tool-shell-kill} stops a background shell.  It asks for permission
 like any other shell command.  Killing a shell that is not running is
 refused: @samp{Error: shell }, the id, and @samp{ is not running}.
 
@@ -1066,7 +1066,7 @@ In plan mode, a shell command that can write is refused before any
 permission question:
 @samp{Error: Plan mode is on. A shell command that can write is refused}.
 Nil, @code{""}, and a blank command are not that refusal.  A
-read-only command still runs.  @code{shell_kill} still asks.
+read-only command still runs.  @code{harmless-tool-shell-kill} still asks.
 @xref{Plan mode}.
 
 @vindex harmless-shell-sandbox
@@ -1127,8 +1127,8 @@ could not run}, followed by the program when it has one.
 @node Checkpoints
 @section Checkpoints
 
-@cindex checkpoint_diff
-@cindex checkpoint_restore
+@cindex harmless-tool-checkpoint-diff
+@cindex harmless-tool-checkpoint-restore
 @vindex harmless-checkpoints
 Snapshots are off until @code{harmless-checkpoints} is non-nil.
 A snapshot is a commit in a git repository under the Harmless data
@@ -1137,7 +1137,7 @@ repository is not the project's @file{.git}.  The project's history
 stays where it is.  The snapshot is not an object in the project's
 repository.
 
-@code{write_file}, @code{replace}, and @code{apply_patch} snapshot
+@code{harmless-tool-write-file}, @code{harmless-tool-replace}, and @code{harmless-tool-apply-patch} snapshot
 the directory that contains the file, after the edit is accepted and
 before the file changes.  A patch snapshots only after every hunk is
 accepted.  A shell command that can write snapshots the project.  A
@@ -1154,14 +1154,14 @@ more than 5000 regular files is not snapshotted.  A directory named
 @file{.git} is not recorded.  A symlink that is a directory, or whose
 target leaves the tree, is not recorded.
 
-@code{checkpoint_diff} shows the difference from one snapshot to the
+@code{harmless-tool-checkpoint-diff} shows the difference from one snapshot to the
 current tree.  @code{id} is the snapshot name: @code{cp-1}, then
 @code{cp-2}, with no zero padding.  @code{path} limits the diff to
 one file.  Omit it, or pass nil, to compare the project.  An empty
 difference is empty text.  A difference longer than 100000 characters
 is cut and ends with @samp{[truncated]}.  This tool only reads.
 
-@code{checkpoint_restore} puts files back.  @code{path} restores that
+@code{harmless-tool-checkpoint-restore} puts files back.  @code{path} restores that
 one file and keeps later edits of other files.  Omit @code{path}, or
 pass nil, to restore every file the snapshot recorded and to remove
 files created after it.  The project's @file{.git} stays in place.
@@ -1187,7 +1187,7 @@ that leaves the project is refused:
 @samp{No Harmless session}.  A detached chat is refused:
 @samp{This chat is not attached to a project}.  In plan mode a
 restore is refused:
-@samp{Plan mode is on. Only plan.md may be edited, with write_plan}.
+@samp{Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan}.
 
 A nil data directory uses the Harmless data directory.  @code{""}
 and whitespace are refused: @samp{checkpoint path is empty}.
@@ -1206,11 +1206,11 @@ failure, and the edit still proceeds.
 @node Code execution
 @section Code execution
 
-@cindex execute_code
+@cindex harmless-tool-execute-code
 @vindex harmless-execute-timeout-seconds
 @vindex harmless-execute-max-calls
 @vindex harmless-execute-max-bytes
-@code{execute_code} evaluates Emacs Lisp in a separate Emacs process.
+@code{harmless-tool-execute-code} evaluates Emacs Lisp in a separate Emacs process.
 The script is not evaluated in the Emacs that is running Harmless.
 Only what the script prints is returned.  @code{princ}, @code{prin1},
 @code{print}, and @code{message} print that output.  A tool's return
@@ -1218,23 +1218,23 @@ value is data for the script.  It is printed only when the script
 prints it.  Calling a tool does not add a message to the transcript.
 
 The script calls a tool by name:
-@code{(read_file :path "a.txt")}, or
-@code{(tool "read_file" :path "a.txt")}.
+@code{(harmless-tool-read-file :path "a.txt")}, or
+@code{(tool "harmless-tool-read-file" :path "a.txt")}.
 @code{tool} accepts the name as text or as a symbol.  @code{tool} is
 defined again for each script.  A function the script defines with
 @code{defun}, and a variable it sets with @code{setq}, stay for the
 next script in that session.
 
-The script cannot call @code{execute_code}, @code{spawn_agent},
-@code{run_workflow}, or a tool whose name starts with @code{mcp_}.
+The script cannot call @code{harmless-tool-execute-code}, @code{harmless-tool-spawn-agent},
+@code{harmless-tool-run-workflow}, or a tool whose name starts with @code{harmless-tool-mcp-}.
 Those calls are refused:
-@samp{execute code cannot call execute_code},
-@samp{execute code cannot call spawn_agent},
-@samp{execute code cannot call run_workflow}, and
+@samp{execute code cannot call harmless-tool-execute-code},
+@samp{execute code cannot call harmless-tool-spawn-agent},
+@samp{execute code cannot call harmless-tool-run-workflow}, and
 @samp{execute code cannot call an MCP tool}.
 A name that is not a tool is refused:
 @samp{execute code cannot call }, followed by that name.
-Calling @code{execute_code} as a function is a script error, because
+Calling @code{harmless-tool-execute-code} as a function is a script error, because
 that function is not defined in the interpreter.
 
 One script may make 50 tool calls
@@ -1281,7 +1281,7 @@ timeout.
 @section Questions
 
 @cindex question
-@code{ask_user} asks one question.  @code{question} is the prompt.
+@code{harmless-tool-ask-user} asks one question.  @code{question} is the prompt.
 @code{choices} are the answers.  Emacs asks with completion, and the
 answer must be one of those choices.  The tool returns
 @samp{The user chose: } followed by that answer.
@@ -1299,9 +1299,9 @@ it.  Plan mode can use it.
 @section Subagents
 
 @cindex subagent
-@cindex spawn_agent
+@cindex harmless-tool-spawn-agent
 @vindex harmless-agent-max-turns
-@code{spawn_agent} starts a child session and waits for its last
+@code{harmless-tool-spawn-agent} starts a child session and waits for its last
 reply.  The child has its own transcript.  It does not see the
 parent's messages.  @code{prompt} is the task.  Nil, @code{""}, and
 whitespace are refused: @samp{prompt is empty}.  @code{description}
@@ -1347,7 +1347,7 @@ frontmatter:
 ---
 name: reviewer
 description: Reviews code
-tools: read_file, grep
+tools: harmless-tool-read-file, harmless-tool-grep
 model: grok-4.6
 sandbox: read-only
 ---
@@ -1355,7 +1355,7 @@ Report findings.  Do not edit files.
 @end example
 
 @code{tools} limits the child.  An unknown tool name is refused.
-@code{spawn_agent} cannot be one of them.  @code{model} replaces the
+@code{harmless-tool-spawn-agent} cannot be one of them.  @code{model} replaces the
 parent's model.  @code{inherit} keeps it.  @code{sandbox} is
 @code{workspace} or @code{read-only}.  Anything else is refused:
 @samp{sandbox must be workspace or read-only}.  The body is extra
@@ -1413,9 +1413,9 @@ directory.
 @section Workflows
 
 @cindex workflow
-@cindex run_workflow
+@cindex harmless-tool-run-workflow
 @vindex harmless-workflow-max-agents
-@code{run_workflow} runs one script.  The script starts child
+@code{harmless-tool-run-workflow} runs one script.  The script starts child
 sessions.  The tool returns one string, the value of
 @code{complete}.  The parent transcript does not gain a message for
 each child.  Pass @code{name} or @code{script}, not both.  Neither
@@ -1492,7 +1492,7 @@ whitespace are refused: @samp{prompt is empty}.  @code{:sandbox} is
 @code{read-only} or @code{workspace}.  The default is
 @code{workspace}.  Anything else is refused: @samp{sandbox must be
 workspace or read-only}.  @code{:agent} is an optional definition
-name, the same names as @code{spawn_agent}.  @code{:worktree} is an
+name, the same names as @code{harmless-tool-spawn-agent}.  @code{:worktree} is an
 optional checkout name.  It counts as a write even when the child is
 read-only.  @xref{Worktrees}.  @code{:label} and
 @code{:description} are optional one-line titles.  @code{(parallel
@@ -1519,7 +1519,7 @@ A script that does not parse is not that refusal.  A read-only
 workflow still runs.
 
 A subagent cannot run a workflow: @samp{a subagent cannot start a
-workflow}.  A definition that lists @code{run_workflow} is refused
+workflow}.  A definition that lists @code{harmless-tool-run-workflow} is refused
 the same way.  The child cannot start a workflow or another
 subagent.
 
@@ -1533,11 +1533,11 @@ searches.
 @section Worktrees
 
 @cindex worktree
-@cindex enter_worktree
-@cindex exit_worktree
+@cindex harmless-tool-enter-worktree
+@cindex harmless-tool-exit-worktree
 @findex harmless-worktree
 @findex harmless-worktree-exit
-@code{enter_worktree} points this session at an isolated checkout of
+@code{harmless-tool-enter-worktree} points this session at an isolated checkout of
 the same repository.  @code{name} is required.  Nil, @code{""}, and
 whitespace are refused: @samp{worktree name is empty}.  @code{sub/},
 @code{/}, and @code{c:/} are refused: @samp{worktree name is not a
@@ -1566,7 +1566,7 @@ refused: @samp{worktree path already exists}.
 Entering sets the session's project to that checkout and clears a
 remembered shell directory.  The session files stay in the directory
 they already used.  @kbd{M-x harmless-worktree} asks for the name.
-@code{exit_worktree}, or @kbd{M-x harmless-worktree-exit}, points the
+@code{harmless-tool-exit-worktree}, or @kbd{M-x harmless-worktree-exit}, points the
 session back at the project it left.  The checkout stays on disk.  A
 session that was not entered this way is refused:
 @samp{this session is not in a worktree}.  A stored return path that
@@ -1581,11 +1581,11 @@ checkout is refused before the question, including when the mode is
 @samp{Error: Plan mode is on. A worktree is refused}.  Leaving does
 not create a checkout, so plan mode allows it.
 
-@code{spawn_agent} takes the same @code{worktree} name.  The child
+@code{harmless-tool-spawn-agent} takes the same @code{worktree} name.  The child
 edits the new checkout.  The parent stays in its project.  A child
 born in a checkout has that checkout as its project; it was not
 moved there, so leaving says it is not in a worktree.  A read-only
-child still cannot write, and it is not offered @code{enter_worktree}.
+child still cannot write, and it is not offered @code{harmless-tool-enter-worktree}.
 Creating the checkout is a write, so plan mode refuses it even for
 that child.  A workflow agent accepts @code{:worktree}.  That script
 can write.  A fork keeps the checkout the session is in.  It does
@@ -1595,15 +1595,15 @@ delete a checkout.
 @node Messages
 @section Messages
 
-@cindex send_message
-@cindex list_sessions
-@code{list_sessions} lists the sessions that are live in this Emacs.
+@cindex harmless-tool-send-message
+@cindex harmless-tool-list-sessions
+@code{harmless-tool-list-sessions} lists the sessions that are live in this Emacs.
 Each line is the id, the status, and the title.  A session that is
 only on disk is not listed.  Nil and an empty registry still return
 the heading @samp{Live sessions:}.
 
-@cindex session_search
-@code{session_search} searches saved transcripts on this machine.
+@cindex harmless-tool-session-search
+@code{harmless-tool-session-search} searches saved transcripts on this machine.
 @code{query} matches without regard to case.  The recall names at
 most five sessions, newest first.  Each hit is the session id, the
 title when the summary has one, and a short excerpt.  A session
@@ -1622,7 +1622,7 @@ drive root, and a string of only backslashes are refused:
 data directory is refused and is not expanded: @samp{Harmless data
 directory must be absolute, not }, followed by the printed value.
 
-@code{send_message} sends @code{text} to the live session whose id is
+@code{harmless-tool-send-message} sends @code{text} to the live session whose id is
 @code{session}.  Nil, @code{""}, and whitespace are refused:
 @samp{session id is empty}.  A value that is not text is refused:
 @samp{session id is not an id}.  A missing or non-text finding is
@@ -1651,9 +1651,9 @@ detached chat may list sessions and send a finding.
 @node Web search
 @section Web search
 
-@cindex web_search
+@cindex harmless-tool-web-search
 @cindex network
-@code{web_search} looks up @code{query} on the web.  The query is
+@code{harmless-tool-web-search} looks up @code{query} on the web.  The query is
 sent to DuckDuckGo over https.  Nothing is written into the project.
 Nil is refused: @samp{query must be a string}.  @code{""} and
 whitespace are refused: @samp{query is empty}.  A value such as
@@ -1672,8 +1672,8 @@ detached chat may search.  A failed request is
 @node Fetch a page
 @section Fetch a page
 
-@cindex web_fetch
-@code{web_fetch} reads one page at @code{url}.  Only @code{http} and
+@cindex harmless-tool-web-fetch
+@code{harmless-tool-web-fetch} reads one page at @code{url}.  Only @code{http} and
 @code{https} are accepted.  Nothing is written into the project.
 
 Nil, @code{""}, and whitespace are refused: @samp{url is empty}.
@@ -1699,10 +1699,10 @@ detached chat may fetch a page.  A failed request is
 @node X search
 @section X search
 
-@cindex x_keyword_search
-@cindex x_thread_fetch
-@cindex x_user_search
-@code{x_keyword_search} finds recent posts on X.  The search covers
+@cindex harmless-tool-x-keyword-search
+@cindex harmless-tool-x-thread-fetch
+@cindex harmless-tool-x-user-search
+@code{harmless-tool-x-keyword-search} finds recent posts on X.  The search covers
 the last 7 days.  @code{query} is the text, including search
 operators.  @code{/} and @code{c:/} are text, not paths.
 @code{mode} is @code{Top} or @code{Latest}.  Latest is the default.
@@ -1723,7 +1723,7 @@ A limit outside 1 to 10 is refused:
 Each post is a handle, a name, a time, a URL, and the text.  No
 posts returns @samp{No posts}.
 
-@code{x_thread_fetch} reads @code{post_id} and the posts around it.
+@code{harmless-tool-x-thread-fetch} reads @code{post_id} and the posts around it.
 Nil, @code{""}, and whitespace are refused: @samp{post id is
 empty}.  A value that is not text is refused: @samp{post id must
 be a string}.  Anything that is not a decimal id, including
@@ -1731,7 +1731,7 @@ be a string}.  Anything that is not a decimal id, including
 The result is at most 8 posts, oldest first, and it includes the
 requested post.  No posts returns @samp{No posts}.
 
-@code{x_user_search} finds accounts by name, handle, or bio.  The
+@code{harmless-tool-x-user-search} finds accounts by name, handle, or bio.  The
 query and limit refusals match post search.  Each account is a
 name, a handle, a URL, and a bio.  No accounts returns
 @samp{No users}.
@@ -1752,8 +1752,8 @@ X.  A detached chat may search X.  A response that is not JSON is
 @section MCP
 
 @cindex MCP
-@cindex mcp_list_resources
-@cindex mcp_read_resource
+@cindex harmless-tool-mcp-list-resources
+@cindex harmless-tool-mcp-read-resource
 Harmless calls tools on a local MCP server and reads that server's
 resources.  Servers are named in @file{mcp.json}.  The project file
 is @file{.harmless/mcp.json} in the session directory.  The global
@@ -1773,16 +1773,16 @@ be a string}.  A file that is not JSON is refused: @samp{mcp.json
 is not valid}.  A file with no @code{mcpServers} object is refused:
 @samp{mcp.json has no servers}.  A missing file means no servers.
 
-Each server tool is offered as @code{mcp__}, the server name,
-@code{__}, and the tool name.  The offered schema is an empty
+Each server tool is offered as @code{harmless-tool-mcp-}, the server name,
+@code{--}, and the tool name.  The offered schema is an empty
 object.  Harmless loads the server's schema when the tool is about
 to be called.  A missing required argument is refused:
 @samp{MCP argument }, the name, and @samp{ is required}.  The class
 is @code{network}.  A tool from the server is not offered to a
 read-only subagent, because that tool can write.
 
-@code{mcp_list_resources} lists resources for @code{server}.
-@code{mcp_read_resource} reads @code{uri} from that server.  Nil,
+@code{harmless-tool-mcp-list-resources} lists resources for @code{server}.
+@code{harmless-tool-mcp-read-resource} reads @code{uri} from that server.  Nil,
 @code{""}, and whitespace are refused: @samp{server name is empty}
 or @samp{resource uri is empty}.  A value that is not text is
 refused: @samp{server name must be a string} or @samp{resource uri
@@ -1805,38 +1805,38 @@ into the project.
 @section Computer use
 
 @cindex computer use
-@cindex computer_screenshot
-@cindex computer_click
-@cindex computer_type
-@cindex computer_key
-@cindex browser_open
+@cindex harmless-tool-computer-screenshot
+@cindex harmless-tool-computer-click
+@cindex harmless-tool-computer-type
+@cindex harmless-tool-computer-key
+@cindex harmless-tool-browser-open
 Harmless can see the screen, click, type, and open a browser the
 user can watch.
 
-@code{computer_screenshot} returns the width, the height, and a PNG
+@code{harmless-tool-computer-screenshot} returns the width, the height, and a PNG
 path under the Harmless data directory, in @file{computer/}.  The
 file is not in the project.
 
-@code{computer_click} clicks at @code{x} and @code{y}.  A missing
+@code{harmless-tool-computer-click} clicks at @code{x} and @code{y}.  A missing
 @code{button} is left.  Nil and a value that is not an integer are
 refused: @samp{x must be an integer} or @samp{y must be an
 integer}.  A negative integer is refused: @samp{x must be a
 non-negative integer}.  A button other than left, right, or middle
 is refused: @samp{button must be left, right, or middle}.
 
-@code{computer_type} types @code{text} into the focused window.
+@code{harmless-tool-computer-type} types @code{text} into the focused window.
 Nil and a value that is not text are refused: @samp{text must be a
 string}.  @code{""} and whitespace are refused: @samp{text is
 empty}.  @code{/} and @code{c:/} are characters to type.
 
-@code{computer_key} presses one key, such as enter, tab, escape, a
+@code{harmless-tool-computer-key} presses one key, such as enter, tab, escape, a
 function key from f1 to f12, or one character.  Nil, @code{""}, and
 whitespace are refused: @samp{key is empty}.  A value that is not
 text is refused: @samp{key must be a string}.  Anything else,
 including @code{c:/}, is refused: @samp{key is not a key}.
 @code{/} is a key.
 
-@code{browser_open} opens @code{url} in the desktop browser.  Nil,
+@code{harmless-tool-browser-open} opens @code{url} in the desktop browser.  Nil,
 @code{""}, and whitespace are refused: @samp{url is empty}.  A
 value that is not text is refused: @samp{url must be a string}.
 @code{/} and @code{c:/} are refused: @samp{url must be http or
@@ -1854,9 +1854,9 @@ into the project.
 @node Monitors
 @section Monitors
 
-@cindex monitor
-@cindex monitor_stop
-@code{monitor} watches one source until a line matches
+@cindex harmless-tool-monitor
+@cindex harmless-tool-monitor-stop
+@code{harmless-tool-monitor} watches one source until a line matches
 @code{pattern}.  The source is a @code{path} inside the project or
 an added directory, a @code{command}, or the id of a background
 @code{shell}.  Pass one of those.  None is refused: @samp{monitor
@@ -1893,12 +1893,13 @@ paths.
 A match sends @samp{Monitor }, the id, @samp{ matched:}, and the
 line.  The session is idle, so that starts a turn.  A session
 that is already in a turn queues the line and keeps going.
-@code{monitor_stop} stops the watch.  A command this monitor
+@code{harmless-tool-monitor-stop} stops the watch.  A command this monitor
 started is killed.  A background shell that was only watched
 keeps running.  Nil, @code{""}, and whitespace are refused:
-@samp{monitor id is empty}.  A value that is not text is refused:
-@samp{monitor id must be a string}.  A negative number is refused:
-@samp{monitor id is not an id}.  An unknown id is refused:
+@samp{harmless-tool-monitor id is empty}.  A value that is not text
+is refused: @samp{harmless-tool-monitor id must be a string}.  A
+negative number is refused: @samp{harmless-tool-monitor id is not an
+id}.  An unknown id is refused:
 @samp{no monitor }, followed by the id.  Stopping a monitor that
 has already stopped is refused: @samp{monitor }, the id, and
 @samp{ is not running}.
@@ -1916,9 +1917,9 @@ Emacs exits.
 @node Schedules
 @section Schedules
 
-@cindex schedule
-@cindex schedule_cancel
-@code{schedule} sends @code{prompt} once, at a later time.  Pass
+@cindex harmless-tool-schedule
+@cindex harmless-tool-schedule-cancel
+@code{harmless-tool-schedule} sends @code{prompt} once, at a later time.  Pass
 @code{delay} in seconds, or @code{at} as a UTC time such as
 @code{2099-01-01T00:00:00Z}.  Pass one of those.  None is refused:
 @samp{schedule time is missing}.  More than one is refused:
@@ -1947,7 +1948,7 @@ and it does not watch a queue or a context wall.
 
 When the time arrives, the prompt is sent.  The session is idle,
 so that starts a turn.  A session that is already in a turn
-queues the prompt and keeps going.  @code{schedule_cancel}
+queues the prompt and keeps going.  @code{harmless-tool-schedule-cancel}
 removes a waiting prompt.  The prompt is not sent.  Nil,
 @code{""}, and whitespace are refused: @samp{schedule id is
 empty}.  A value that is not text is refused: @samp{schedule id
@@ -1967,8 +1968,8 @@ session does not copy its schedules.
 @node Todos
 @section Todos
 
-@cindex todo_write
-@code{todo_write} keeps a list of work on the session.  Each item
+@cindex harmless-tool-todo-write
+@code{harmless-tool-todo-write} keeps a list of work on the session.  Each item
 has an id, content, a status, and the ids it depends on.  Status
 is @code{pending}, @code{in_progress}, @code{completed}, or
 @code{cancelled}.  A missing status on a new item is
@@ -2020,14 +2021,14 @@ how many items are pending or in progress.
 @section Review
 
 @findex harmless-review
-@findex review
+@findex harmless-tool-review
 @vindex harmless-review-function
 @vindex harmless-review-max-bytes
 @kindex R @r{(Harmless menu)}
-@cindex review
+@cindex harmless-tool-review
 @kbd{M-x harmless-review} reads the working tree, a base branch, or
 one commit.  The menu key is @kbd{R}.  The model uses the same
-choice through @code{review}.  Omit @code{base} and @code{commit}
+choice through @code{harmless-tool-review}.  Omit @code{base} and @code{commit}
 to read the working tree.  @code{base} is a branch name, and the
 diff is that branch compared with @code{HEAD}.  @code{commit} is
 one commit, such as @code{HEAD} or a hash.  Passing both is
@@ -2094,12 +2095,12 @@ The session header shows how many findings are recorded.
 @section Language server
 
 @findex harmless-lsp
-@findex lsp
+@findex harmless-tool-lsp
 @vindex harmless-lsp-query-function
 @kindex L @r{(Harmless menu)}
-@cindex lsp
+@cindex harmless-tool-lsp
 @cindex language server
-@code{lsp} asks a language server that is already running in Emacs.
+@code{harmless-tool-lsp} asks a language server that is already running in Emacs.
 The operation is @code{definition}, @code{references}, or
 @code{diagnostics}.  @kbd{M-x harmless-lsp} asks the same way.  The
 menu key is @kbd{L}.
@@ -2121,8 +2122,8 @@ diagnostics}.  Text that spans lines is folded onto one line.
 The class is @code{read}, so the tool does not ask.  Plan mode does
 not refuse it.  A read-only subagent may call it.  A detached chat
 is not offered the tool.  Nothing is written into the project.
-@code{write_file} still reports only the path and the byte count.
-Diagnostics are a later @code{lsp} call.
+@code{harmless-tool-write-file} still reports only the path and the byte count.
+Diagnostics are a later @code{harmless-tool-lsp} call.
 
 Nil, @code{""}, and whitespace for the operation are refused:
 @samp{lsp operation is empty}.  A value that is not text is refused:
@@ -2286,9 +2287,9 @@ is missing, it uses the first paragraph of the body.
 
 Each turn receives a catalog: the name, the description, and the path.
 The body stays out of that catalog.  The model can still open the file
-with @code{read_file}.
+with @code{harmless-tool-read-file}.
 
-Load one skill with the @code{skill} tool, with
+Load one skill with the @code{harmless-tool-skill} tool, with
 @kbd{M-x harmless-load-skill}, or by starting a prompt with
 @code{/name}.  The name is a skill id, not a path.  Later turns
 include the body.  The prompt that loaded it stays in the transcript.
@@ -2473,8 +2474,8 @@ disagree.
 @chapter Image generation
 
 @cindex image generation
-@findex generate_image
-@code{generate_image} writes an image into the project.  The model
+@findex harmless-tool-generate-image
+@code{harmless-tool-generate-image} writes an image into the project.  The model
 passes @code{prompt} and @code{path}.  A relative path is resolved
 against the session directory.  It is not resolved against the
 buffer's default directory.  @code{~} is not expanded.
@@ -2483,7 +2484,7 @@ The bytes come from @code{harmless-image-generate-function}.  When
 that variable is nil, the tool is refused: @samp{image generation
 is not configured}.  The function is not called until the prompt
 and the path are accepted.  Plan mode does not call it:
-@samp{Plan mode is on. Only plan.md may be edited, with write_plan}.
+@samp{Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan}.
 
 Nil, @code{""}, and whitespace are refused: @samp{image prompt is
 empty}.  A value that is not text is refused: @samp{image prompt
@@ -3061,20 +3062,20 @@ valid}.  That file is left unchanged.
 A team file is refused at the filesystem root: @samp{Refusing to
 store a team at }, followed by that directory.
 
-@code{team_boot} calls @kbd{M-x harmless-team-boot}.
-@code{team_inspect} reads the seats, the edges, the launch
-order, and the rows.  It writes nothing.  @code{team_message}
+@code{harmless-tool-team-boot} calls @kbd{M-x harmless-team-boot}.
+@code{harmless-tool-team-inspect} reads the seats, the edges, the launch
+order, and the rows.  It writes nothing.  @code{harmless-tool-team-message}
 calls @kbd{M-x harmless-team-send}.  The seat must already be
-occupied.  @code{team_snapshot} calls
+occupied.  @code{harmless-tool-team-snapshot} calls
 @kbd{M-x harmless-team-snapshot}.  The live rig is not changed.
-@code{team_restore} calls @kbd{M-x harmless-team-snapshot-restore}.
+@code{harmless-tool-team-restore} calls @kbd{M-x harmless-team-snapshot-restore}.
 A seat that cannot return writes nothing.
 
 A detached chat is not offered these tools.  Calling one there
 is refused: @samp{This chat is not attached to a project}.  A
 missing session is refused: @samp{No Harmless session}.  Plan
 mode refuses the tools that write: @samp{Plan mode is on. Only
-plan.md may be edited, with write_plan}.  Inspect still reads.
+plan.md may be edited, with harmless-tool-write-plan}.  Inspect still reads.
 The command errors are unchanged, including @samp{team spec is
 empty}, @samp{team rig is missing}, @samp{team send is empty},
 @samp{team seat is not occupied}, @samp{team snapshot is
@@ -3531,10 +3532,10 @@ this profile.  A turn receives the profile with the memory index,
 under @samp{User profile:}.  A missing or blank file is left out.
 Writing the profile does not rewrite @file{MEMORY.md}.
 
-The model writes it with @code{memory_write_topic} when @code{topic}
+The model writes it with @code{harmless-tool-memory-write-topic} when @code{topic}
 is @code{USER.md}.  @code{scope} and the project directory are
 ignored for that write.  The file is @file{memory/global/USER.md}.
-@code{memory_read} of @code{USER.md} in the global scope reads it
+@code{harmless-tool-memory-read} of @code{USER.md} in the global scope reads it
 back.
 
 Nil uses the Harmless data directory.  @code{""} and whitespace are
@@ -3558,15 +3559,15 @@ The inbox files move to @file{archive}.
 The model uses three tools.
 
 @table @code
-@item memory_read
+@item harmless-tool-memory-read
 Read one memory file.  @code{scope} is @code{workspace} or
 @code{global}.
 
-@item memory_remember
+@item harmless-tool-memory-remember
 Append a fact to the inbox.  @code{topic} is an optional slug, such as
 @code{emacs}.
 
-@item memory_write_topic
+@item harmless-tool-memory-write-topic
 Replace one topic file with the full Markdown you supply.
 @code{topic} @code{USER.md} writes the global profile instead.
 @end table
@@ -3600,23 +3601,23 @@ refused: @samp{No Harmless session}.
 @chapter Plan mode
 
 @findex harmless-plan
-@findex enter_plan_mode
-@findex write_plan
-@findex exit_plan_mode
+@findex harmless-tool-enter-plan-mode
+@findex harmless-tool-write-plan
+@findex harmless-tool-exit-plan-mode
 @cindex plan mode
 @kbd{M-x harmless-plan} turns plan mode on for the current session.  A
 prefix argument turns it off.  The menu key is @kbd{P}.  The model may
-also call @code{enter_plan_mode}, which asks you before it switches.
+also call @code{harmless-tool-enter-plan-mode}, which asks you before it switches.
 
 While plan mode is on, the model is told to explore with read-only
-tools, to write the plan only with @code{write_plan}, and to call
-@code{exit_plan_mode} when the plan is ready.  @code{write_file},
-@code{replace}, @code{apply_patch}, @code{notebook_edit}, and
-@code{generate_image} fail.  A
+tools, to write the plan only with @code{harmless-tool-write-plan}, and to call
+@code{harmless-tool-exit-plan-mode} when the plan is ready.  @code{harmless-tool-write-file},
+@code{harmless-tool-replace}, @code{harmless-tool-apply-patch}, @code{harmless-tool-notebook-edit}, and
+@code{harmless-tool-generate-image} fail.  A
 shell command that can write is refused before any permission
 question:
 @samp{Error: Plan mode is on. A shell command that can write is refused}.
-A read-only shell command still runs.  @code{shell_kill} still asks.
+A read-only shell command still runs.  @code{harmless-tool-shell-kill} still asks.
 A click, typed text, a key, and a browser are refused:
 @samp{Error: Plan mode is on. Computer control is refused}.
 A screenshot still runs.  @xref{Computer use}.
@@ -3629,12 +3630,12 @@ A review still runs, and it does not edit the project.
 A language server query still runs, and it does not edit the
 project.  @xref{Language server}.
 The header line shows @samp{plan}.
-@code{ask_user} can still ask a question.  @xref{Questions}.
+@code{harmless-tool-ask-user} can still ask a question.  @xref{Questions}.
 
-@code{write_plan} writes @file{plan.md} in the session directory.  The
+@code{harmless-tool-write-plan} writes @file{plan.md} in the session directory.  The
 contents replace the whole file.  An empty plan is refused.
 
-@code{exit_plan_mode} shows the plan and asks:
+@code{harmless-tool-exit-plan-mode} shows the plan and asks:
 
 @example
 Plan: a approve and build, c comment, s request changes, q quit
@@ -3800,7 +3801,7 @@ Notes.  @file{memory/global/USER.md} is the person's profile.
 @xref{Memory}.
 
 @item computer/
-Screenshots from @code{computer_screenshot}.  @xref{Computer use}.
+Screenshots from @code{harmless-tool-computer-screenshot}.  @xref{Computer use}.
 @end table
 
 @var{project} in a session path is the project directory encoded as one

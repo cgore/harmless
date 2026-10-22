@@ -36,11 +36,13 @@
 
 ;;; Commentary:
 ;;
-;; read_file, write_file, replace, apply_patch, list_dir, grep, glob.
+;; harmless-tool-read-file, harmless-tool-write-file, harmless-tool-replace,
+;; harmless-tool-apply-patch, harmless-tool-list-dir, harmless-tool-grep,
+;; harmless-tool-glob.
 ;; Paths must stay inside the session cwd or a directory added with
 ;; `harmless-add-directory'.  A buffer visiting the file is read and
-;; edited in place, then saved.  apply_patch writes nothing when any
-;; hunk fails.  grep uses ripgrep, then ag, then an Elisp scan.
+;; edited in place, then saved.  harmless-tool-apply-patch writes nothing when any
+;; hunk fails.  harmless-tool-grep uses ripgrep, then ag, then an Elisp scan.
 
 ;;; Code:
 
@@ -55,7 +57,7 @@
 (declare-function harmless--context-session "harmless")
 
 (defcustom harmless-read-file-max-bytes 100000
-  "Maximum number of bytes `read_file' returns to the model."
+  "Maximum number of bytes `harmless-tool-read-file' returns to the model."
   :type 'integer
   :group 'harmless)
 
@@ -246,7 +248,7 @@ PATH may stay inside the project or an extra directory."
       (revert-buffer t t t))))
 
 (defvar-local harmless-tools-fs--read-tick nil
-  "Character tick of this buffer at the last `read_file'.
+  "Character tick of this buffer at the last `harmless-tool-read-file'.
 Nil means the tools have not read the buffer.  A later edit refuses
 when the tick has moved.")
 
@@ -495,7 +497,7 @@ or narrowed."
            modified narrowed))))))
 
 (defun harmless-tools-fs--read (session args)
-  "read_file implementation.
+  "harmless-tool-read-file implementation.
 An image, a PDF, or a notebook is read by `harmless-media-read'
 when that feature is loaded.  Other files stay text."
   (let ((path (harmless-tools-fs-resolve
@@ -509,10 +511,10 @@ when that feature is loaded.  Other files stay text."
 (defun harmless-tools-fs--reject-plan-edit (session)
   "Signal when SESSION is in plan mode and this edit is not allowed."
   (when (harmless-session-plan-mode session)
-    (error "Plan mode is on. Only plan.md may be edited, with write_plan")))
+    (error "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan")))
 
 (defun harmless-tools-fs--write (session args)
-  "write_file implementation."
+  "harmless-tool-write-file implementation."
   (harmless-tools-fs--reject-plan-edit session)
   (let* ((path (harmless-tools-fs-resolve session (harmless-tool-arg args :path)))
          (contents (or (harmless-tool-arg args :contents)
@@ -579,7 +581,7 @@ that changed after it was read.  Otherwise the file is read."
         (cons buf (harmless-tools-fs--buffer-text buf))))))
 
 (defun harmless-tools-fs--replace (session args)
-  "replace implementation (unique old_string -> new_string)."
+  "harmless-tool-replace implementation (unique old_string -> new_string)."
   (harmless-tools-fs--reject-plan-edit session)
   (let* ((path (harmless-tools-fs-resolve session (harmless-tool-arg args :path)))
          (old (harmless-tool-arg args :old_string))
@@ -783,7 +785,7 @@ Each hunk is (OLD . NEW).  Return (POS . NARROWED)."
        (or first (point-min))))))
 
 (defun harmless-tools-fs--apply-patch (session args)
-  "apply_patch implementation.
+  "harmless-tool-apply-patch implementation.
 Each hunk replaces one unique string.  Later hunks on the same file
 see earlier replacements.  Nothing is written if any hunk fails.
 A visiting buffer is edited as one undo entry and saved.  A save
@@ -865,7 +867,7 @@ that fails restores every file this patch already wrote."
               (harmless-tools-fs--note narrowed)))))
 
 (defun harmless-tools-fs--list (session args)
-  "list_dir implementation."
+  "harmless-tool-list-dir implementation."
   (let* ((path (harmless-tools-fs-resolve
                 session
                 (or (harmless-tool-arg args :path) "."))))
@@ -901,7 +903,7 @@ A name inside CWD is relative to CWD.  Any other name is absolute."
     (nreverse out)))
 
 (defun harmless-tools-fs--glob (session args)
-  "glob implementation.
+  "harmless-tool-glob implementation.
 The project and each extra directory are searched."
   (let* ((cwd (harmless-session-require-project session))
          (pattern (or (harmless-tool-arg args :pattern)
@@ -1238,7 +1240,7 @@ absolute."
     (mapconcat #'identity parts "\n")))
 
 (defun harmless-tools-fs--grep (session args)
-  "grep implementation.
+  "harmless-tool-grep implementation.
 ENGINE selects ripgrep, ag, or the Elisp scan.  With no engine, use
 the first installed program, and otherwise scan in Elisp.  Ripgrep
 and ag skip ignored files and .git, and they read hidden files.
@@ -1303,7 +1305,7 @@ extra directory are searched."
   "Register filesystem tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "read_file"
+    :name "harmless-tool-read-file"
     :description "Read a file in the project or an added directory. Path is relative to the project root, or absolute inside an added directory. Optional 1-based offset and limit select lines of a text file. An image returns its media type and bytes. A PDF returns extracted text. A notebook returns its cells."
     :class 'read
     :schema '(:type "object"
@@ -1314,7 +1316,7 @@ extra directory are searched."
     :fn #'harmless-tools-fs--read))
   (harmless-register-tool
    (harmless-tool-create
-    :name "write_file"
+    :name "harmless-tool-write-file"
     :description "Write CONTENTS to PATH, creating or replacing the file."
     :class 'edit
     :schema '(:type "object"
@@ -1324,7 +1326,7 @@ extra directory are searched."
     :fn #'harmless-tools-fs--write))
   (harmless-register-tool
    (harmless-tool-create
-    :name "replace"
+    :name "harmless-tool-replace"
     :description "Replace a unique OLD_STRING with NEW_STRING in PATH. Set replace_all to replace every match."
     :class 'edit
     :schema '(:type "object"
@@ -1336,7 +1338,7 @@ extra directory are searched."
     :fn #'harmless-tools-fs--replace))
   (harmless-register-tool
    (harmless-tool-create
-    :name "apply_patch"
+    :name "harmless-tool-apply-patch"
     :description "Apply HUNKS in one call. Each hunk replaces one unique OLD_STRING with NEW_STRING in PATH. Later hunks on the same file see earlier replacements. If any hunk fails, no file is changed."
     :class 'edit
     :schema '(:type "object"
@@ -1352,7 +1354,7 @@ extra directory are searched."
     :fn #'harmless-tools-fs--apply-patch))
   (harmless-register-tool
    (harmless-tool-create
-    :name "list_dir"
+    :name "harmless-tool-list-dir"
     :description "List files and subdirectories in PATH. PATH is relative to the project root, or an added directory."
     :class 'read
     :schema '(:type "object"
@@ -1361,7 +1363,7 @@ extra directory are searched."
     :fn #'harmless-tools-fs--list))
   (harmless-register-tool
    (harmless-tool-create
-    :name "glob"
+    :name "harmless-tool-glob"
     :description "Find files under the project root or an added directory matching a glob PATTERN (basename or relative path)."
     :class 'read
     :schema '(:type "object"
@@ -1370,7 +1372,7 @@ extra directory are searched."
     :fn #'harmless-tools-fs--glob))
   (harmless-register-tool
    (harmless-tool-create
-    :name "grep"
+    :name "harmless-tool-grep"
     :description "Search files for a regular expression PATTERN. ENGINE is rg, ag, or elisp. With no engine, use ripgrep, then ag, then an Elisp scan. rg and ag skip ignored files and .git, and they search hidden files. The Elisp scan reads every file. CONTEXT is the number of context lines. TYPE is a file type name from that engine. MULTILINE matches across lines and requires ripgrep. GLOB limits basenames. PATH is a directory inside the project or an added directory. With no PATH, the project and each added directory are searched."
     :class 'read
     :schema '(:type "object"

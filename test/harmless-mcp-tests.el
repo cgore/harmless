@@ -283,18 +283,18 @@
                                         seen))
                        '(("bad" "tools/list")
                          ("demo" "tools/list"))))
-        (should (equal (harmless-tool-name tool) "mcp__demo__echo"))
+        (should (equal (harmless-tool-name tool) "harmless-tool-mcp-demo--echo"))
         (should (equal (harmless-tool-description tool) "Echo"))
         (should (eq (harmless-tool-class tool) 'network))
         (should-not (harmless-tool-async tool))
         (should-not (harmless-tool-classify tool))
         (should (equal (harmless-tool-schema tool) '(:type "object")))
-        (should-not (harmless-tool-by-name "mcp__demo__echo"))
+        (should-not (harmless-tool-by-name "harmless-tool-mcp-demo--echo"))
         (should (equal (mapcar #'harmless-tool-name
                                (harmless-tools-for-session session))
                        (append (mapcar #'harmless-tool-name
                                        (harmless-tools-enabled))
-                               '("mcp__demo__echo"))))
+                               '("harmless-tool-mcp-demo--echo"))))
         (setq seen nil)
         (should (equal (harmless-tool-call tool session nil)
                        "Error: MCP argument text is required"))
@@ -375,25 +375,25 @@
                         (:server "\n")
                         ("server" "   ")))
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_list_resources")
+                          (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                           session args)
                          "Error: server name is empty")))
         (dolist (args '((:server :false) (:server 42) ("server" :false)))
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_list_resources")
+                          (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                           session args)
                          "Error: server name must be a string")))
         (dolist (name '("feat/" "/" "c:/" "a/b" "a\\b" "." ".."))
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_list_resources")
+                          (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                           session (list :server name))
                          "Error: server name is not a name")))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "mcp_list_resources")
+                        (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                         session '(:server "missing"))
                        "Error: no MCP server missing"))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "mcp_list_resources")
+                        (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                         session '(:server "  demo  "))
                        (concat "file:///a\nNotes\n\n"
                                "file:///b\n\n"
@@ -403,36 +403,36 @@
         (dolist (args '(nil (:uri nil) (:uri "") (:uri "  ")
                            ("uri" "")))
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_read_resource")
+                          (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                           session (append '(:server "demo") args))
                          "Error: resource uri is empty")))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "mcp_read_resource")
+                        (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                         session '(:server "demo" :uri :false))
                        "Error: resource uri must be a string"))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "mcp_read_resource")
+                        (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                         session '(:server "demo" :uri 42))
                        "Error: resource uri must be a string"))
         (should-not seen)
         (dolist (uri '("/" "c:/" "  file:///a  "))
           (setq seen nil)
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_read_resource")
+                          (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                           session (list :server "demo" :uri uri))
                          "one\ntwo"))
           (should (equal (car seen)
                          (list "resources/read"
                                (list :uri (string-trim uri))))))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "mcp_read_resource")
+                        (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                         session '("server" "demo" "uri" "/"))
                        "one\ntwo"))
         (let ((harmless-mcp-call-function
                (lambda (_server _method _params)
                  '(:resources nil))))
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_list_resources")
+                          (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                           session '(:server "demo"))
                          "No resources")))
         (let ((harmless-mcp-call-function
@@ -440,22 +440,22 @@
                  (should (equal (plist-get params :uri) "blob"))
                  '(:contents ((:blob "qq"))))))
           (should (equal (harmless-tool-call
-                          (harmless-tool-by-name "mcp_read_resource")
+                          (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                           session '(:server "demo" :uri "blob"))
                          "Error: resource has no text")))
-        (should (equal (harmless-ui--tool-verb "mcp_list_resources")
+        (should (equal (harmless-ui--tool-verb "harmless-tool-mcp-list-resources")
                        "resources"))
-        (should (equal (harmless-ui--tool-verb "mcp_read_resource")
+        (should (equal (harmless-ui--tool-verb "harmless-tool-mcp-read-resource")
                        "resource"))
-        (should (equal (harmless-ui--tool-verb "mcp__demo__echo") "mcp"))
+        (should (equal (harmless-ui--tool-verb "harmless-tool-mcp-demo--echo") "mcp"))
         (should (equal (harmless-ui--tool-summary
-                        "mcp_list_resources" '(:server "demo"))
+                        "harmless-tool-mcp-list-resources" '(:server "demo"))
                        "demo"))
         (should (equal (harmless-ui--tool-summary
-                        "mcp_read_resource" '(:server "demo" :uri "/"))
+                        "harmless-tool-mcp-read-resource" '(:server "demo" :uri "/"))
                        "/"))
         (should (equal (harmless-ui--tool-summary
-                        "mcp__demo__echo" '(:server "demo" :uri "c:/"))
+                        "harmless-tool-mcp-demo--echo" '(:server "demo" :uri "c:/"))
                        "c:/"))
         (should (eq (harmless-session-status session) 'idle))
         (should (equal (harmless-session-title session) "Keep"))
@@ -570,7 +570,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "mcp_list_resources"
+                               '(:tool-call "1" "harmless-tool-mcp-list-resources"
                                  "{\"server\":\"demo\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -606,7 +606,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "mcp_read_resource"
+                               '(:tool-call "1" "harmless-tool-mcp-read-resource"
                                  "{\"server\":\"demo\",\"uri\":\"/\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -645,7 +645,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "mcp__demo__echo"
+                               '(:tool-call "1" "harmless-tool-mcp-demo--echo"
                                  "{\"text\":\"hi\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -675,7 +675,7 @@
                 (if (= calls 1)
                     (progn
                       (funcall callback
-                               '(:tool-call "1" "mcp__demo__echo"
+                               '(:tool-call "1" "harmless-tool-mcp-demo--echo"
                                  "{\"text\":\"hi\"}"))
                       (funcall callback '(:stop "tool_calls")))
                   (funcall callback '(:text "done"))
@@ -685,7 +685,7 @@
               (push (list class item) asked)
               (funcall callback 'deny)))
       (harmless-turn-run session "go")
-      (should (equal asked '((network "mcp__demo__echo"))))
+      (should (equal asked '((network "harmless-tool-mcp-demo--echo"))))
       (should (member "tools/list" (mapcar #'car seen)))
       (should-not (member "tools/call" (mapcar #'car seen)))
       (harmless-mcp-test-not-root session))))
@@ -717,29 +717,29 @@
                   :turns 0 :max 8 :error nil :prompt nil :task nil))
       (let ((names (mapcar #'harmless-tool-name
                            (harmless-tools-for-session child))))
-        (should (member "mcp_list_resources" names))
-        (should (member "mcp_read_resource" names))
-        (should-not (member "mcp__demo__echo" names))
-        (should-not (member "mcp__bad__echo" names))
-        (should-not (member "write_file" names)))
+        (should (member "harmless-tool-mcp-list-resources" names))
+        (should (member "harmless-tool-mcp-read-resource" names))
+        (should-not (member "harmless-tool-mcp-demo--echo" names))
+        (should-not (member "harmless-tool-mcp-bad--echo" names))
+        (should-not (member "harmless-tool-write-file" names)))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "mcp_list_resources")
+                   child (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                    '(:server "demo")))
       (should-not (harmless-agent-refuse-call
-                   child (harmless-tool-by-name "mcp_read_resource")
+                   child (harmless-tool-by-name "harmless-tool-mcp-read-resource")
                    '(:server "demo" :uri "/")))
-      (let ((dynamic (harmless-mcp-tool-by-name child "mcp__demo__echo")))
+      (let ((dynamic (harmless-mcp-tool-by-name child "harmless-tool-mcp-demo--echo")))
         (should dynamic)
         (should (equal (harmless-agent-refuse-call
                         child dynamic '(:text "hi"))
                        harmless-agent-read-only-refusal)))
       (should (equal (harmless-tool-call
-                      (harmless-tool-by-name "mcp_list_resources")
+                      (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                       child '(:server "demo"))
                      "file:///a\nA"))
       (setf (plist-get (harmless-session-agent child) :allow)
-            '("read_file"))
-      (dolist (name '("mcp_list_resources" "mcp_read_resource"))
+            '("harmless-tool-read-file"))
+      (dolist (name '("harmless-tool-mcp-list-resources" "harmless-tool-mcp-read-resource"))
         (should (equal (harmless-agent-refuse-call
                         child (harmless-tool-by-name name)
                         '(:server "demo" :uri "/"))
@@ -749,12 +749,12 @@
         (let ((default-directory (file-name-as-directory repo)))
           (let ((names (mapcar #'harmless-tool-name
                                (harmless-tools-for-session detached))))
-            (should (member "mcp_list_resources" names))
-            (should (member "mcp_read_resource" names))
-            (should-not (member "mcp__demo__echo" names))
-            (should-not (member "read_file" names))))
+            (should (member "harmless-tool-mcp-list-resources" names))
+            (should (member "harmless-tool-mcp-read-resource" names))
+            (should-not (member "harmless-tool-mcp-demo--echo" names))
+            (should-not (member "harmless-tool-read-file" names))))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "mcp_list_resources")
+                        (harmless-tool-by-name "harmless-tool-mcp-list-resources")
                         detached '(:server "demo"))
                        "Error: no MCP server demo"))
         (harmless-mcp-test-not-root detached))

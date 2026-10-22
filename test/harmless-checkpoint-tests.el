@@ -18,7 +18,7 @@
 
 (defun harmless-checkpoint-test-logical (file)
   "Return FILE as UTF-8 text with carriage returns removed.
-`write_file' follows the platform newline convention."
+`harmless-tool-write-file' follows the platform newline convention."
   (replace-regexp-in-string "\r" "" (harmless-checkpoint-test-text file)))
 
 (defun harmless-checkpoint-test-write (file text)
@@ -149,17 +149,17 @@ Return (STATUS . OUTPUT)."
            "checkpoint file is missing"
            (lambda () (harmless-checkpoint-restore session "cp-1" "extra.txt")))
           (should (eq 'read (harmless-tool-class
-                             (harmless-tool-by-name "checkpoint_diff"))))
+                             (harmless-tool-by-name "harmless-tool-checkpoint-diff"))))
           (should (eq 'edit (harmless-tool-class
-                             (harmless-tool-by-name "checkpoint_restore"))))
-          (should (equal "diff" (harmless-ui--tool-verb "checkpoint_diff")))
-          (should (equal "restore" (harmless-ui--tool-verb "checkpoint_restore")))
+                             (harmless-tool-by-name "harmless-tool-checkpoint-restore"))))
+          (should (equal "diff" (harmless-ui--tool-verb "harmless-tool-checkpoint-diff")))
+          (should (equal "restore" (harmless-ui--tool-verb "harmless-tool-checkpoint-restore")))
           (should (equal "cp-1"
                          (harmless-ui--tool-summary
-                          "checkpoint_restore" '(:id "cp-1"))))
+                          "harmless-tool-checkpoint-restore" '(:id "cp-1"))))
           (should (equal "Error: checkpoint id must be a string"
                          (harmless-tool-call
-                          (harmless-tool-by-name "checkpoint_diff")
+                          (harmless-tool-by-name "harmless-tool-checkpoint-diff")
                           session '(:id 42)))))
       (delete-directory data t)
       (delete-directory project t))))
@@ -316,7 +316,7 @@ Return (STATUS . OUTPUT)."
           (let ((harmless-directory data))
             (setf (harmless-session-plan-mode session) t)
             (harmless-checkpoint-test-error
-             "Plan mode is on. Only plan.md may be edited, with write_plan"
+             "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
              (lambda () (harmless-checkpoint-restore session "cp-1")))
             (setf (harmless-session-plan-mode session) nil))
           (let* ((provider (harmless-make-openai-compat

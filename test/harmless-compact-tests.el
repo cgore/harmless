@@ -169,11 +169,11 @@ the process name for that call."
 (ert-deftest harmless-compact-split-keeps-a-tool-result-with-its-turn ()
   (let* ((old (list :role "user" :content "OLD"))
          (call (list :role :assistant :content "looking"
-                     :tool-calls (list (list :id "1" :name "read_file"
+                     :tool-calls (list (list :id "1" :name "harmless-tool-read-file"
                                              :args '(:path "old.txt")))))
-         (tool (list :role :tool :id "1" :name "read_file" :content "old body"))
+         (tool (list :role :tool :id "1" :name "harmless-tool-read-file" :content "old body"))
          (new (list :role 'user :content "NEW"))
-         (result (list :role 'tool :id "2" :name "read_file" :content "new body"))
+         (result (list :role 'tool :id "2" :name "harmless-tool-read-file" :content "new body"))
          (parts (harmless-compact-split (list old call tool new result) 1)))
     (should (eq old (nth 0 (car parts))))
     (should (eq call (nth 1 (car parts))))
@@ -239,22 +239,22 @@ the process name for that call."
            (old-asst (list :role :assistant :content "looking"
                            :reasoning "because old"
                            :tool-calls
-                           (list (list :id "c1" :name "read_file"
+                           (list (list :id "c1" :name "harmless-tool-read-file"
                                        :args '(:path "old.txt"))
                                  (list :id "c2" :name "echo"
                                        :args "STRING-ARGS")
                                  (list :id "c3" :name "bare_tool"
                                        :args nil))))
-           (old-tool (list :role :tool :id "c1" :name "read_file"
+           (old-tool (list :role :tool :id "c1" :name "harmless-tool-read-file"
                            :content "old body"))
            (mid-user (list :role :user :content "MID"))
            (mid-asst (list :role :assistant :content "mid reply"))
            (late-user (list :role :user :content "LATEST"))
            (late-asst (list :role :assistant :content "late reply"
                             :tool-calls
-                            (list (list :id "k1" :name "read_file"
+                            (list (list :id "k1" :name "harmless-tool-read-file"
                                         :args '(:path "kept.txt")))))
-           (late-tool (list :role :tool :id "k1" :name "read_file"
+           (late-tool (list :role :tool :id "k1" :name "harmless-tool-read-file"
                             :content "kept body"))
            (notes nil)
            (result nil)
@@ -410,7 +410,7 @@ the process name for that call."
                               (cons (list :role :summary :content "S")
                                     (harmless-compact-test-turns '("A" "B")))
                               (list (list :role :summary :content "ONLY"))
-                              (list (list :role :tool :id "1" :name "read_file"
+                              (list (list :role :tool :id "1" :name "harmless-tool-read-file"
                                           :content "x")
                                     (list :role :user :content "ONLY"))))
         (setf (harmless-session-messages session) messages)

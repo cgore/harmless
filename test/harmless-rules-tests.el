@@ -22,7 +22,7 @@
               :content ""
               :tool-calls
               (list (list :id "1"
-                          :name (or name "read_file")
+                          :name (or name "harmless-tool-read-file")
                           :args args)))))
 
 (defun harmless-rules-test-text (dir messages)
@@ -163,7 +163,7 @@
                    root
                    (harmless-rules-test-call
                     (list :path (expand-file-name "lisp/foo.el" root))
-                    "lsp"))))
+                    "harmless-tool-lsp"))))
       (should (string-match-p "SCOPE-EL" inside)))
     (let ((outside (harmless-rules-test-text
                     root
@@ -211,7 +211,7 @@
                   '(:hunks ((:path "lisp/bar.el"
                              :old_string "doc/a.texi"
                              :new_string "y")))
-                  "apply_patch"))))
+                  "harmless-tool-apply-patch"))))
       (should (string-match-p "SCOPE-EL" hunk))
       (should-not (string-match-p "SCOPE-DOC" hunk)))
     (should (string-match-p

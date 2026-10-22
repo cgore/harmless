@@ -37,7 +37,7 @@
 ;;; Commentary:
 ;;
 ;; Plan mode lets the model explore the project and write `plan.md' in
-;; the session directory.  `write_file' and `replace' fail until the
+;; the session directory.  `harmless-tool-write-file' and `harmless-tool-replace' fail until the
 ;; user approves the plan.
 
 ;;; Code:
@@ -75,7 +75,7 @@ Return `approve', `quit', or a string of revision notes.")
 
 (defun harmless-plan-instructions ()
   "System-prompt text used while plan mode is on."
-  "Plan mode is active. Explore the project with read-only tools. Write the plan only with write_plan. Include why the change is needed, the approach, the files to modify, existing code to reuse, and how to verify. When the plan is ready, call exit_plan_mode. Do not call write_file, replace, or apply_patch. A shell command that can write is refused.")
+  "Plan mode is active. Explore the project with read-only tools. Write the plan only with harmless-tool-write-plan. Include why the change is needed, the approach, the files to modify, existing code to reuse, and how to verify. When the plan is ready, call harmless-tool-exit-plan-mode. Do not call harmless-tool-write-file, harmless-tool-replace, or harmless-tool-apply-patch. A shell command that can write is refused.")
 
 (defun harmless-plan-enter (session)
   "Turn plan mode on for SESSION and save it."
@@ -238,7 +238,7 @@ notes.  A comment does not change the plan."
         (harmless-plan-review plan)))))
 
 (defun harmless-plan--tool-write (session args)
-  "write_plan implementation."
+  "harmless-tool-write-plan implementation."
   (unless (harmless-session-plan-mode session)
     (error "Plan mode is off"))
   (let ((contents (or (harmless-tool-arg args :contents)
@@ -251,17 +251,17 @@ notes.  A comment does not change the plan."
       (format "Wrote plan.md (%d bytes)" (string-bytes contents)))))
 
 (defun harmless-plan--tool-enter (session _args)
-  "enter_plan_mode implementation."
+  "harmless-tool-enter-plan-mode implementation."
   (if (harmless-session-plan-mode session)
       "Plan mode is already on."
     (if (funcall harmless-plan-enter-function session)
         (progn
           (harmless-plan-enter session)
-          "Plan mode is on. Explore the project and write the plan with write_plan.")
+          "Plan mode is on. Explore the project and write the plan with harmless-tool-write-plan.")
       "The user declined plan mode. Continue in normal mode.")))
 
 (defun harmless-plan--tool-exit (session _args)
-  "exit_plan_mode implementation."
+  "harmless-tool-exit-plan-mode implementation."
   (let ((decision (funcall harmless-plan-decide-function
                            session
                            (harmless-plan--read session))))
@@ -279,7 +279,7 @@ notes.  A comment does not change the plan."
   "Register plan-mode tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "write_plan"
+    :name "harmless-tool-write-plan"
     :description "Write the session plan. CONTENTS is the full Markdown plan. Only available in plan mode."
     :class 'read
     :schema '(:type "object"
@@ -288,15 +288,15 @@ notes.  A comment does not change the plan."
     :fn #'harmless-plan--tool-write))
   (harmless-register-tool
    (harmless-tool-create
-    :name "enter_plan_mode"
+    :name "harmless-tool-enter-plan-mode"
     :description "Ask to enter plan mode before implementing an ambiguous change. Do not use this for a task whose implementation is already clear."
     :class 'read
     :schema '(:type "object")
     :fn #'harmless-plan--tool-enter))
   (harmless-register-tool
    (harmless-tool-create
-    :name "exit_plan_mode"
-    :description "Present the written plan for approval. Call this after write_plan."
+    :name "harmless-tool-exit-plan-mode"
+    :description "Present the written plan for approval. Call this after harmless-tool-write-plan."
     :class 'read
     :schema '(:type "object")
     :fn #'harmless-plan--tool-exit)))

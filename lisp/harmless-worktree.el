@@ -36,8 +36,8 @@
 
 ;;; Commentary:
 ;;
-;; `enter_worktree' points a session at a new git checkout of the same
-;; repository.  `spawn_agent' and a workflow agent can start a child
+;; `harmless-tool-enter-worktree' points a session at a new git checkout of the same
+;; repository.  `harmless-tool-spawn-agent' and a workflow agent can start a child
 ;; there.  The checkout lives under the Harmless data directory, not
 ;; inside the project and not at the filesystem root.  The same name
 ;; is the same checkout.  Leaving a session's worktree does not delete
@@ -341,18 +341,18 @@ The worktree directory stays on disk."
 
 (defun harmless-worktree-plan-refuses-p (session tool _args)
   "Return a refusal when plan mode blocks TOOL, or nil."
-  (when (and (string= (harmless-tool-name tool) "enter_worktree")
+  (when (and (string= (harmless-tool-name tool) "harmless-tool-enter-worktree")
              (harmless-session-plan-mode session))
     harmless-worktree-plan-refusal))
 
 (defun harmless-worktree--tool-enter (session args)
-  "enter_worktree implementation."
+  "harmless-tool-enter-worktree implementation."
   (harmless-worktree-enter
    session
    (harmless-worktree-name-required (harmless-tool-arg args :name))))
 
 (defun harmless-worktree--tool-exit (session _args)
-  "exit_worktree implementation."
+  "harmless-tool-exit-worktree implementation."
   (harmless-worktree--exit session))
 
 (defun harmless-worktree--current ()
@@ -397,7 +397,7 @@ A running turn is refused.  The worktree stays on disk."
   "Register the worktree tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "enter_worktree"
+    :name "harmless-tool-enter-worktree"
     :description
     (concat
      "Point this session at an isolated git checkout named NAME. "
@@ -413,7 +413,7 @@ A running turn is refused.  The worktree stays on disk."
     :fn #'harmless-worktree--tool-enter))
   (harmless-register-tool
    (harmless-tool-create
-    :name "exit_worktree"
+    :name "harmless-tool-exit-worktree"
     :description
     (concat
      "Point this session back at the checkout it left. "

@@ -36,11 +36,11 @@
 
 ;;; Commentary:
 ;;
-;; One read-only tool, `lsp'.  It asks Eglot for a definition, for
+;; One read-only tool, `harmless-tool-lsp'.  It asks Eglot for a definition, for
 ;; references, or for diagnostics.  Harmless does not start a server
 ;; and does not open a file to find one.  Line and column arguments
 ;; start at 1.  Xref columns start at 0 and are shown starting at 1.
-;; Nothing is written.  `write_file' is unchanged.
+;; Nothing is written.  `harmless-tool-write-file' is unchanged.
 
 ;;; Code:
 
@@ -60,10 +60,10 @@
 
 (defconst harmless-lsp-operations
   '(definition references diagnostics)
-  "Operations the lsp tool accepts.")
+  "Operations `harmless-tool-lsp' accepts.")
 
 (defvar harmless-lsp-query-function nil
-  "Function that answers `lsp' instead of Eglot, or nil.
+  "Function that answers `harmless-tool-lsp' instead of Eglot, or nil.
 Called as (SESSION OP PATH LINE COLUMN).  OP is `definition',
 `references', or `diagnostics'.  PATH is absolute.  LINE and
 COLUMN are 1-based, or nil for diagnostics.  Return a string.
@@ -388,7 +388,7 @@ ARGS is a plist :operation, :path, and, except for diagnostics,
         session op full (nth 0 pos) (nth 1 pos))))))
 
 (defun harmless-lsp-tool (session args)
-  "lsp implementation."
+  "harmless-tool-lsp implementation."
   (harmless-lsp-run session args))
 
 (defun harmless-lsp-read-args ()
@@ -427,10 +427,10 @@ Harmless does not start a server.  Nothing is written."
     result))
 
 (defun harmless-lsp-register ()
-  "Register the lsp tool."
+  "Register harmless-tool-lsp."
   (harmless-register-tool
    (harmless-tool-create
-    :name "lsp"
+    :name "harmless-tool-lsp"
     :description "Ask a language server that is already running. operation is definition, references, or diagnostics. path is a project file. line and column start at 1 and are required for definition and references. diagnostics reads the whole file and takes no position. Harmless does not start a server and does not edit the file."
     :class 'read
     :schema '(:type "object"

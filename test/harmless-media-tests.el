@@ -451,19 +451,19 @@
          (harmless-media-edit chat '(:path "/" :cell 0 :source "z")))
        "notebook path is the filesystem root")
       (should (equal (harmless-tool-call
-                      (harmless-tool-by-name "notebook_edit")
+                      (harmless-tool-by-name "harmless-tool-notebook-edit")
                       session '(:path "notes" :cell 0 :source "z"))
                      "Error: notebook is missing"))
       (should-not (file-exists-p (expand-file-name "notes" dir)))
       (setf (harmless-session-plan-mode session) t)
       (let ((before (harmless-media-test-text book)))
         (harmless-media-test-error
-         "Plan mode is on. Only plan.md may be edited, with write_plan"
+         "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
          (lambda ()
            (harmless-media-edit
             session '(:path "/" :cell 0 :source "z"))))
         (harmless-media-test-error
-         "Plan mode is on. Only plan.md may be edited, with write_plan"
+         "Plan mode is on. Only plan.md may be edited, with harmless-tool-write-plan"
          (lambda ()
            (harmless-media-edit
             session '(:path "book.ipynb" :cell 0 :source "nope"))))
@@ -471,31 +471,31 @@
         (should-not (file-exists-p (expand-file-name "plan.md" dir)))
         (should (harmless-session-plan-mode session)))
       (should (eq (harmless-tool-class
-                   (harmless-tool-by-name "notebook_edit"))
+                   (harmless-tool-by-name "harmless-tool-notebook-edit"))
                   'edit))
       (should (eq (harmless-session-permission-mode session) 'ask))
       (should (harmless-perm-needed-p session 'edit))
-      (should-not (member "notebook_edit"
+      (should-not (member "harmless-tool-notebook-edit"
                           (mapcar #'harmless-tool-name
                                   (harmless-tools-for-session chat))))
-      (should-not (member "notebook_edit"
+      (should-not (member "harmless-tool-notebook-edit"
                           (mapcar #'harmless-tool-name
                                   (harmless-tools-for-session agent))))
-      (should (member "read_file"
+      (should (member "harmless-tool-read-file"
                       (mapcar #'harmless-tool-name
                               (harmless-tools-for-session agent))))
       (should (equal (harmless-agent-refuse-call
-                      agent (harmless-tool-by-name "notebook_edit") nil)
+                      agent (harmless-tool-by-name "harmless-tool-notebook-edit") nil)
                      (concat "Error: This subagent is read-only. "
                              "A tool that can write is refused")))
-      (should (equal (harmless-ui--tool-verb "notebook_edit") "notebook"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-notebook-edit") "notebook"))
       (should (equal (harmless-ui--tool-summary
-                      "notebook_edit" '(:path "n.ipynb" :cell 0))
+                      "harmless-tool-notebook-edit" '(:path "n.ipynb" :cell 0))
                      "n.ipynb 0"))
       (should (equal (harmless-ui--tool-summary
-                      "notebook_edit" '(:path "n.ipynb" :cell "a"))
+                      "harmless-tool-notebook-edit" '(:path "n.ipynb" :cell "a"))
                      "n.ipynb a"))
-      (should (equal (harmless-ui--tool-summary "notebook_edit" nil) ""))
+      (should (equal (harmless-ui--tool-summary "harmless-tool-notebook-edit" nil) ""))
       (should (file-name-absolute-p (harmless-session-directory session)))
       (should-not (harmless-filesystem-root-p
                    (harmless-session-directory session)))
@@ -640,11 +640,11 @@
           (should (= calls (1+ before)))))
       (let* ((text (harmless-media-image-text
                     png "image/png" harmless-media-test-png))
-             (msg (list :role :tool :name "read_file" :id "1"
+             (msg (list :role :tool :name "harmless-tool-read-file" :id "1"
                         :content text))
              (openai (harmless-media-openai-tool msg))
              (anthropic (harmless-media-anthropic-tool msg))
-             (plain (list :role :tool :name "read_file" :id "2"
+             (plain (list :role :tool :name "harmless-tool-read-file" :id "2"
                           :content "hello")))
         (should (equal (plist-get (car openai) :text)
                        (format "Image image/png\n%s" png)))

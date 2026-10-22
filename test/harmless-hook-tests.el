@@ -157,7 +157,7 @@
 (ert-deftest harmless-hook-parses-and-refuses-bad-config ()
   (let ((slash (file-exists-p "/.harmless"))
         (cdrive (file-exists-p "c:/.harmless"))
-        (tool (harmless-tool-by-name "run_shell")))
+        (tool (harmless-tool-by-name "harmless-tool-run-shell")))
     (should (null (eval (car (get 'harmless-hooks 'standard-value)))))
     (should (null (harmless-hook-validate nil)))
     (should (equal (harmless-hook-test-error
@@ -299,7 +299,7 @@
                    (harmless-hook-payload
                     'pre tool '(:command "/" :path "c:/") nil))))
       (should (string-search "Event: pre" prompt))
-      (should (string-search "Tool: run_shell" prompt))
+      (should (string-search "Tool: harmless-tool-run-shell" prompt))
       (should (string-search "command=\"/\"" prompt))
       (should (string-search "path=\"c:/\"" prompt))
       (should-not (file-exists-p "/echo"))
@@ -356,9 +356,9 @@
         (fetched 0)
         (ran 0)
         (found 0)
-        (tool (harmless-tool-by-name "write_file"))
+        (tool (harmless-tool-by-name "harmless-tool-write-file"))
         (payload (harmless-hook-payload
-                  'pre "write_file" '(:path "/" :contents "no\n") nil)))
+                  'pre "harmless-tool-write-file" '(:path "/" :contents "no\n") nil)))
     (cl-letf (((symbol-function 'call-process-region)
                (lambda (&rest _args)
                  (setq ran (1+ ran))
@@ -412,7 +412,7 @@
   (harmless-hook-test-with data repo
     (let* ((session (harmless-hook-test-session repo))
            (provider (harmless-session-provider session))
-           (tool (harmless-tool-by-name "run_shell"))
+           (tool (harmless-tool-by-name "harmless-tool-run-shell"))
            (payload (harmless-hook-payload
                      'pre tool '(:command "/" :path "c:/") nil))
            (hook (list :event 'pre :type 'prompt :prompt "Look"))
@@ -506,20 +506,20 @@
       (should-not (plist-member (harmless-hook-test-summary session) :hooks))
       (setq harmless-hook-test-decision 'deny)
       (harmless-hook-test-run
-       session "write_file" '(:path "note.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
       (should (equal harmless-hook-test-asked '((edit "note.txt"))))
       (should (equal (harmless-hook-test-last session)
                      "Error: user denied this tool call"))
       (should-not (file-exists-p path))
       (setq harmless-hooks '())
       (harmless-hook-test-run
-       session "write_file" '(:path "note.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
       (should (equal harmless-hook-test-asked '((edit "note.txt"))))
       (should-not (file-exists-p path))
       (setq harmless-hooks "")
       (setq harmless-hook-test-decision 'allow)
       (harmless-hook-test-run
-       session "write_file" '(:path "note.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
       (should-not harmless-hook-test-asked)
       (should (equal (harmless-hook-test-last session)
                      (concat "Error: hook blocked this tool call: "
@@ -528,7 +528,7 @@
       (setq harmless-hooks
             '((:event pre :type command :command "/")))
       (harmless-hook-test-run
-       session "write_file" '(:path "note.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
       (should (equal (harmless-hook-test-last session)
                      (concat "Error: hook blocked this tool call: "
                              "hook command is not a command")))
@@ -537,7 +537,7 @@
       (setq harmless-hooks
             '((:event pre :type http :url "c:/")))
       (harmless-hook-test-run
-       session "write_file" '(:path "/" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "/" :contents "yes\n"))
       (should (equal (harmless-hook-test-last session)
                      (concat "Error: hook blocked this tool call: "
                              "hook url is not a url")))
@@ -558,7 +558,7 @@
                    :function
                    (lambda (&rest _args) (error "post ran")))))
       (harmless-hook-test-run
-       session "write_file" '(:path "../note.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "../note.txt" :contents "yes\n"))
       (should (equal harmless-hook-test-seen '("../note.txt")))
       (should-not harmless-hook-test-asked)
       (should (equal (harmless-hook-test-last session)
@@ -568,12 +568,12 @@
       (setq harmless-hook-test-decision 'deny)
       (setq harmless-hooks
             (list
-             (list :event 'pre :tool "write_file/" :type 'function
+             (list :event 'pre :tool "harmless-tool-write-file/" :type 'function
                    :function (lambda (&rest _) 'block))
-             (list :event 'pre :tool "read_file" :type 'function
+             (list :event 'pre :tool "harmless-tool-read-file" :type 'function
                    :function (lambda (&rest _) 'block))))
       (harmless-hook-test-run
-       session "write_file" '(:path "note.txt/" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "note.txt/" :contents "yes\n"))
       (should (equal harmless-hook-test-asked '((edit "note.txt/"))))
       (should (equal (harmless-hook-test-last session)
                      "Error: user denied this tool call"))
@@ -581,12 +581,12 @@
       (setq harmless-hook-test-decision 'allow)
       (setq harmless-hooks
             (list
-             (list :event 'pre :tool "write_file" :type 'function
+             (list :event 'pre :tool "harmless-tool-write-file" :type 'function
                    :function
                    (lambda (_session _tool _args _text)
                      '(:decision block :reason "no")))))
       (harmless-hook-test-run
-       session "write_file" '(:path "note.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
       (should-not harmless-hook-test-asked)
       (should (equal (harmless-hook-test-last session)
                      "Error: hook blocked this tool call: no"))
@@ -603,7 +603,7 @@
                      nil))))
       (setq harmless-hook-test-seen nil)
       (harmless-hook-test-run
-       session "write_file" '(:path "ask.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "ask.txt" :contents "yes\n"))
       (should (equal harmless-hook-test-asked '((edit "ask.txt"))))
       (should (equal (harmless-hook-test-last session)
                      "Error: user denied this tool call"))
@@ -618,7 +618,7 @@
                             (push 'ran harmless-hook-test-seen)
                             'allow))))
         (harmless-hook-test-run
-         session "run_shell"
+         session "harmless-tool-run-shell"
          '(:command "echo allowed>harmless-hook-danger.txt"))
         (should-not harmless-hook-test-seen)
         (should-not harmless-hook-test-asked)
@@ -630,7 +630,7 @@
       (setf (harmless-session-plan-mode session) t)
       (setq harmless-hook-test-seen nil)
       (harmless-hook-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo allowed>harmless-hook-plan.txt"))
       (should-not harmless-hook-test-seen)
       (should-not harmless-hook-test-asked)
@@ -643,7 +643,7 @@
       (harmless-perm-set-rules session nil '("Bash(echo allowed*)"))
       (setq harmless-hook-test-seen nil)
       (harmless-hook-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo allowed>harmless-hook-denied.txt"))
       (should-not harmless-hook-test-seen)
       (should-not harmless-hook-test-asked)
@@ -663,7 +663,7 @@
                           (push 'ran harmless-hook-test-seen)
                           nil))))
       (harmless-hook-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo allowed>harmless-hook-rule.txt"))
       (should (equal harmless-hook-test-seen '(ran)))
       (should-not harmless-hook-test-asked)
@@ -682,7 +682,7 @@
               (list (list :event 'pre :type 'function
                           :function (lambda (&rest _) 'block))))
         (harmless-hook-test-run
-         auto "write_file" '(:path "auto.txt" :contents "yes\n"))
+         auto "harmless-tool-write-file" '(:path "auto.txt" :contents "yes\n"))
         (should-not reviews)
         (should-not harmless-hook-test-asked)
         (should (equal (harmless-hook-test-last auto)
@@ -703,7 +703,7 @@
                 (push 'reviewed reviews)
                 'escalate))
         (harmless-hook-test-run
-         auto "write_file" '(:path "auto.txt" :contents "yes\n"))
+         auto "harmless-tool-write-file" '(:path "auto.txt" :contents "yes\n"))
         (should (equal reviews '(reviewed)))
         (should (equal harmless-hook-test-asked '((edit "auto.txt"))))
         (should (equal (harmless-hook-test-last auto)
@@ -717,7 +717,7 @@
                           (lambda (&rest _)
                             '(:decision block :reason "/")))))
         (harmless-hook-test-run
-         always "write_file" '(:path "note.txt" :contents "yes\n"))
+         always "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
         (should-not harmless-hook-test-asked)
         (should (equal (harmless-hook-test-last always)
                        "Error: hook blocked this tool call: /"))
@@ -734,9 +734,9 @@
         (setq harmless-hooks
               '((:event pre :type http :url "https://example.com/hook/")))
         (harmless-hook-test-run
-         session "write_file" '(:path "note.txt" :contents "yes\n"))
+         session "harmless-tool-write-file" '(:path "note.txt" :contents "yes\n"))
         (should (equal url "https://example.com/hook/"))
-        (should (equal (plist-get payload :tool) "write_file"))
+        (should (equal (plist-get payload :tool) "harmless-tool-write-file"))
         (should (equal (plist-get (plist-get payload :arguments) :path)
                        "note.txt"))
         (should (equal (harmless-hook-test-last session)
@@ -752,7 +752,7 @@
       (setq harmless-hooks
             '((:event pre :type http :url "https://example.com/hook")))
       (harmless-hook-test-run
-       session "write_file" '(:path "async.txt" :contents "no\n"))
+       session "harmless-tool-write-file" '(:path "async.txt" :contents "no\n"))
       (should (eq 'idle (harmless-session-status session)))
       (should (equal (harmless-hook-test-last session)
                      "Error: hook blocked this tool call: async"))
@@ -760,10 +760,10 @@
       (with-temp-file (expand-file-name "secret.txt" repo)
         (insert "SECRET-BYTES"))
       (setq harmless-hooks
-            (list (list :event 'pre :tool "read_file" :type 'function
+            (list (list :event 'pre :tool "harmless-tool-read-file" :type 'function
                         :function (lambda (&rest _) 'block))))
       (harmless-hook-test-run
-       session "read_file" '(:path "secret.txt"))
+       session "harmless-tool-read-file" '(:path "secret.txt"))
       (should-not harmless-hook-test-asked)
       (should (equal (harmless-hook-test-last session)
                      "Error: hook blocked this tool call"))
@@ -792,7 +792,7 @@
                      (push text harmless-hook-test-seen)
                      "two"))))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (equal (car harmless-hook-test-seen) "one"))
       (should (string-prefix-p "Wrote " (cadr harmless-hook-test-seen)))
       (should (string-search "kept.txt" (cadr harmless-hook-test-seen)))
@@ -804,7 +804,7 @@
             (list (list :event 'post :type 'function
                         :function (lambda (&rest _) (error "boom")))))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (string-prefix-p "Wrote " (harmless-hook-test-last session)))
       (should (equal "yes\n" (harmless-hook-test-read path)))
       (setq harmless-hook-test-seen nil)
@@ -816,14 +816,14 @@
                           (push 'post harmless-hook-test-seen)
                           "hidden"))))
       (harmless-hook-test-run
-       session "write_file" '(:path "hidden.txt" :contents "no\n"))
+       session "harmless-tool-write-file" '(:path "hidden.txt" :contents "no\n"))
       (should-not harmless-hook-test-seen)
       (should (equal (harmless-hook-test-last session)
                      "Error: user denied this tool call"))
       (should-not (file-exists-p (expand-file-name "hidden.txt" repo)))
       (setf (harmless-session-plan-mode session) t)
       (harmless-hook-test-run
-       session "run_shell"
+       session "harmless-tool-run-shell"
        '(:command "echo allowed>harmless-hook-post-plan.txt"))
       (should-not harmless-hook-test-seen)
       (should (equal (harmless-hook-test-last session)
@@ -832,13 +832,13 @@
       (setq harmless-hook-test-decision 'allow)
       (setq harmless-hook-command-function
             (lambda (_hook payload callback)
-              (should (equal (plist-get payload :tool) "write_file"))
+              (should (equal (plist-get payload :tool) "harmless-tool-write-file"))
               (funcall callback
                        '(:status 0 :stdout "replace: SECRET" :stderr ""))))
       (setq harmless-hooks
             '((:event post :type command :command "../note.txt/")))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (equal (harmless-hook-test-last session) "SECRET"))
       (should (equal "yes\n" (harmless-hook-test-read path)))
       (should-not (file-exists-p (expand-file-name "../note.txt/" repo)))
@@ -847,7 +847,7 @@
               (funcall callback
                        '(:status 1 :stdout "replace: NO" :stderr "fail"))))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (string-prefix-p "Wrote " (harmless-hook-test-last session)))
       (setq harmless-hook-http-function
             (lambda (hook _payload callback)
@@ -858,7 +858,7 @@
       (setq harmless-hooks
             '((:event post :type http :url "https://example.com/hook")))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (string-prefix-p "Wrote " (harmless-hook-test-last session)))
       (should (equal "yes\n" (harmless-hook-test-read path)))
       (setq harmless-hook-mcp-function
@@ -872,7 +872,7 @@
       (setq harmless-hooks
             '((:event post :type mcp :server "demo" :method "check")))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (equal (harmless-hook-test-last session) "from-mcp"))
       (should (equal "yes\n" (harmless-hook-test-read path)))
       (setq harmless-hook-test-seen nil)
@@ -884,16 +884,16 @@
       (setq harmless-hooks
             '((:event post :type prompt :prompt "c:/")))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (equal (car (car harmless-hook-test-seen)) "c:/"))
       (should (equal (plist-get (cadr (car harmless-hook-test-seen)) :tool)
-                     "write_file"))
+                     "harmless-tool-write-file"))
       (should (string-prefix-p "Wrote " (harmless-hook-test-last session)))
       (setq harmless-hook-prompt-function
             (lambda (_session _hook _payload callback)
               (funcall callback "replace: from-prompt")))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (equal (harmless-hook-test-last session) "from-prompt"))
       (setq harmless-hook-agent-function
             (lambda (_session _hook _payload callback)
@@ -901,7 +901,7 @@
                        "please block: not a line\nreplace: from-agent")))
       (setq harmless-hooks '((:event post :type agent)))
       (harmless-hook-test-run
-       session "write_file" '(:path "kept.txt" :contents "yes\n"))
+       session "harmless-tool-write-file" '(:path "kept.txt" :contents "yes\n"))
       (should (equal (harmless-hook-test-last session) "from-agent"))
       (should (equal "yes\n" (harmless-hook-test-read path)))
       (setq harmless-hook-test-decision 'allow)
@@ -913,7 +913,7 @@
       (setq harmless-hook-prompt-function
             (lambda (_session _hook _payload callback)
               (funcall callback "I would block this")))
-      (harmless-hook-test-run session "run_shell" '(:command ""))
+      (harmless-hook-test-run session "harmless-tool-run-shell" '(:command ""))
       (should (equal (harmless-hook-test-last session) "kept-out"))
       (harmless-hook-test-assert-session session)
       (should-not (plist-member (harmless-hook-test-summary session)

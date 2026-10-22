@@ -40,7 +40,7 @@
     (let ((text (harmless-context-messages child nil root)))
       (should (eq :system (plist-get (car text) :role)))
       (should (string-match-p "from codex" (plist-get (car text) :content)))
-      (should (string-match-p "read_file" (plist-get (car text) :content)))
+      (should (string-match-p "harmless-tool-read-file" (plist-get (car text) :content)))
       (should-not (string-match-p "CODEX-BODY" (plist-get (car text) :content)))
       (should-not (string-match-p "ABOVE-BODY" (plist-get (car text) :content))))))
 

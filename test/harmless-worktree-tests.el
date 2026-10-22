@@ -160,9 +160,9 @@
       (should (commandp #'harmless-worktree))
       (should (commandp #'harmless-worktree-exit))
       (should (eq 'edit (harmless-tool-class
-                         (harmless-tool-by-name "enter_worktree"))))
+                         (harmless-tool-by-name "harmless-tool-enter-worktree"))))
       (should-not (harmless-tool-async
-                   (harmless-tool-by-name "enter_worktree"))))))
+                   (harmless-tool-by-name "harmless-tool-enter-worktree"))))))
 
 (ert-deftest harmless-worktree-isolates-a-checkout ()
   (harmless-worktree-test-with repo data
@@ -210,7 +210,7 @@
                         (expand-file-name "README" repo))
                        "hello\n"))
         (should (equal (harmless-tool-call
-                        (harmless-tool-by-name "write_file")
+                        (harmless-tool-by-name "harmless-tool-write-file")
                         session
                         (list :path (expand-file-name "README" repo)
                               :contents "nope"))
@@ -240,10 +240,10 @@
                                     :original)
                          original))
           (setq session loaded)))
-      (should (equal (harmless-ui--tool-verb "enter_worktree") "worktree"))
-      (should (equal (harmless-ui--tool-verb "exit_worktree") "leave"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-enter-worktree") "worktree"))
+      (should (equal (harmless-ui--tool-verb "harmless-tool-exit-worktree") "leave"))
       (should (equal (harmless-ui--tool-summary
-                      "enter_worktree" '(:name "feat"))
+                      "harmless-tool-enter-worktree" '(:name "feat"))
                      "feat"))
       (let ((harmless-directory (expand-file-name "state" repo)))
         (let ((expected
@@ -334,7 +334,7 @@
           "Plan mode is on. A worktree is refused"
         (harmless-worktree-enter session "feat"))
       (should (equal (harmless-worktree-plan-refuses-p
-                      session (harmless-tool-by-name "enter_worktree")
+                      session (harmless-tool-by-name "harmless-tool-enter-worktree")
                       '(:name "feat"))
                      harmless-worktree-plan-refusal))
       (should-not (file-directory-p
@@ -354,7 +354,7 @@
                (if (= calls 1)
                    (progn
                      (funcall callback
-                              '(:tool-call "1" "enter_worktree"
+                              '(:tool-call "1" "harmless-tool-enter-worktree"
                                 "{\"name\":\"feat\"}"))
                      (funcall callback '(:stop "tool_calls")))
                  (funcall callback '(:text "done"))
@@ -364,7 +364,7 @@
               (push (list class item) asked)
               (funcall callback 'deny)))
       (harmless-turn-run session "go")
-      (should (equal asked '((edit "enter_worktree"))))
+      (should (equal asked '((edit "harmless-tool-enter-worktree"))))
       (should (equal (harmless-worktree-test-tool-text session)
                      '("Error: user denied this tool call")))
       (should-not (file-directory-p
@@ -381,7 +381,7 @@
                (if (= calls 1)
                    (progn
                      (funcall callback
-                              '(:tool-call "1" "enter_worktree"
+                              '(:tool-call "1" "harmless-tool-enter-worktree"
                                 "{\"name\":\"feat\"}"))
                      (funcall callback '(:stop "tool_calls")))
                  (funcall callback '(:text "done"))
@@ -449,7 +449,7 @@
           (insert "---\nsandbox: read-only\n---\nLook.\n")))
       (setf (harmless-session-plan-mode session) t)
       (should (equal (harmless-agent-plan-refuses-p
-                      session (harmless-tool-by-name "spawn_agent")
+                      session (harmless-tool-by-name "harmless-tool-spawn-agent")
                       '(:prompt "x" :agent "reviewer" :worktree "feat"))
                      "Error: Plan mode is on. A worktree is refused"))
       (should-not (file-directory-p
@@ -464,11 +464,11 @@
                     (plist-get (harmless-session-agent reader) :sandbox)))
         (should (harmless-same-directory-p
                  (harmless-session-cwd session) parent))
-        (should-not (member "enter_worktree"
+        (should-not (member "harmless-tool-enter-worktree"
                             (mapcar #'harmless-tool-name
                                     (harmless-tools-for-session reader))))
         (should (equal (harmless-agent-refuse-call
-                        reader (harmless-tool-by-name "enter_worktree")
+                        reader (harmless-tool-by-name "harmless-tool-enter-worktree")
                         '(:name "next"))
                        harmless-agent-read-only-refusal))))))
 
@@ -514,7 +514,7 @@
                      "(complete (agent \"look\" :sandbox read-only))"))))
       (setf (harmless-session-plan-mode session) t)
       (should (equal (harmless-workflow-plan-refuses-p
-                      session (harmless-tool-by-name "run_workflow")
+                      session (harmless-tool-by-name "harmless-tool-run-workflow")
                       '(:script
                         "(complete (agent \"look\" :sandbox read-only :worktree feat))"))
                      "Error: Plan mode is on. A workflow that can write is refused"))

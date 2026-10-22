@@ -36,7 +36,7 @@
 
 ;;; Commentary:
 ;;
-;; `generate_image' asks `harmless-image-generate-function' for bytes
+;; `harmless-tool-generate-image' asks `harmless-image-generate-function' for bytes
 ;; and writes them inside the project.  A relative path is resolved
 ;; against the session directory, not `default-directory'.
 
@@ -166,7 +166,7 @@ the path, or the bytes are refused.  Plan mode does not generate."
   "Register the image generation tool."
   (harmless-register-tool
    (harmless-tool-create
-    :name "generate_image"
+    :name "harmless-tool-generate-image"
     :description "Generate an image from a prompt and write it to path. path stays inside the project. A relative path is resolved against the session directory."
     :class 'edit
     :schema '(:type "object"

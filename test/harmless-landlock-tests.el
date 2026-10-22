@@ -289,7 +289,7 @@ The data directory stays inside that project for BODY."
     (setf (harmless-session-shell-sandbox session) 'workspace-write)
     (setf (harmless-session-source session) 'agent)
     (setf (harmless-session-agent session) '(:allow all :sandbox read-only))
-    (let ((tool (harmless-tool-by-name "run_shell")))
+    (let ((tool (harmless-tool-by-name "harmless-tool-run-shell")))
       (should (eq 'network
                   (harmless-turn--class
                    tool session '(:command "echo hi" :network t))))
@@ -303,10 +303,10 @@ The data directory stays inside that project for BODY."
     (setf (harmless-session-shell-sandbox session) 'off)
     (should (eq 'read
                 (harmless-turn--class
-                 (harmless-tool-by-name "run_shell")
+                 (harmless-tool-by-name "harmless-tool-run-shell")
                  session '(:command "echo hi" :network t))))
     (should-not (harmless-agent-refuse-call
-                 session (harmless-tool-by-name "run_shell")
+                 session (harmless-tool-by-name "harmless-tool-run-shell")
                  '(:command "echo hi" :network t)))))
 
 (ert-deftest harmless-landlock-refuses-without-linux ()

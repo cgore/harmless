@@ -135,7 +135,7 @@ Return the same report as `harmless-team-snapshot-restore'."
   "Register the team tools."
   (harmless-register-tool
    (harmless-tool-create
-    :name "team_boot"
+    :name "harmless-tool-team-boot"
     :description "Boot a team from spec. spec is starter, an absolute JSON file, or a directory with rig.json. The guards match M-x harmless-team-boot."
     :class 'edit
     :schema '(:type "object"
@@ -145,7 +145,7 @@ Return the same report as `harmless-team-snapshot-restore'."
     :fn #'harmless-team-tools-boot))
   (harmless-register-tool
    (harmless-tool-create
-    :name "team_inspect"
+    :name "harmless-tool-team-inspect"
     :description "Read one team. Return its seats, edges, launch order, and queue rows. This writes nothing."
     :class 'read
     :schema '(:type "object"
@@ -155,7 +155,7 @@ Return the same report as `harmless-team-snapshot-restore'."
     :fn #'harmless-team-tools-inspect))
   (harmless-register-tool
    (harmless-tool-create
-    :name "team_message"
+    :name "harmless-tool-team-message"
     :description "Send text to target in rig. target is one seat, a pod, the rig name, or *. The seat must already be occupied. The guards match M-x harmless-team-send."
     :class 'edit
     :schema '(:type "object"
@@ -166,7 +166,7 @@ Return the same report as `harmless-team-snapshot-restore'."
     :fn #'harmless-team-tools-message))
   (harmless-register-tool
    (harmless-tool-create
-    :name "team_snapshot"
+    :name "harmless-tool-team-snapshot"
     :description "Store a named snapshot of rig. The live rig is not changed. The guards match M-x harmless-team-snapshot."
     :class 'edit
     :schema '(:type "object"
@@ -176,7 +176,7 @@ Return the same report as `harmless-team-snapshot-restore'."
     :fn #'harmless-team-tools-snapshot))
   (harmless-register-tool
    (harmless-tool-create
-    :name "team_restore"
+    :name "harmless-tool-team-restore"
     :description "Restore snapshot name of rig when every seat can return. fresh is one seat, or a list of seats, that start over. The guards match M-x harmless-team-snapshot-restore."
     :class 'edit
     :schema '(:type "object"

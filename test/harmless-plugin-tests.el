@@ -35,7 +35,7 @@ SKILL-BODY defaults to HPL-SKILL-BODY.  Return the plugin directory."
      "---\nname: reviewer\ndescription: Reviews.\n---\nHPL-AGENT-BODY\n")
     (harmless-plugin-test-write
      (expand-file-name "hooks.json" plug)
-     "[{\"event\":\"pre\",\"type\":\"command\",\"tool\":\"write_file\",\"command\":\"echo no\"}]\n")
+     "[{\"event\":\"pre\",\"type\":\"command\",\"tool\":\"harmless-tool-write-file\",\"command\":\"echo no\"}]\n")
     (harmless-plugin-test-write
      (expand-file-name "mcp.json" plug)
      "{\"mcpServers\":{\"kit\":{\"command\":\"echo\",\"args\":[\"hi\"]}}}\n")
@@ -125,7 +125,7 @@ SKILL-BODY defaults to HPL-SKILL-BODY.  Return the plugin directory."
             (should (equal "echo" (plist-get server :command)))
             (should (equal '("hi") (plist-get server :args))))
           (let ((hooks (harmless-plugin-hooks session)))
-            (should (equal "write_file" (plist-get (car hooks) :tool)))
+            (should (equal "harmless-tool-write-file" (plist-get (car hooks) :tool)))
             (should (eq 'command (plist-get (car hooks) :type)))
             (should (null (cdr hooks))))
           (let ((result 'unset)
@@ -136,7 +136,7 @@ SKILL-BODY defaults to HPL-SKILL-BODY.  Return the plugin directory."
                               :stdout "{\"decision\":\"block\",\"reason\":\"nope\"}"
                               :stderr "")))))
             (harmless-hook-pre
-             session (harmless-tool-by-name "write_file") nil
+             session (harmless-tool-by-name "harmless-tool-write-file") nil
              (lambda (value) (setq result value)))
             (should (equal "Error: hook blocked this tool call: nope" result)))
           (let ((before (harmless-plugin-test-read
