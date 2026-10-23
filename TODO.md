@@ -157,7 +157,7 @@ Harmless already has a transcript buffer, a prompt buffer, a dashboard, the menu
 
 - [x] Attach Dired marks or the Org subtree at point. From Dired, the attachment is the marked file names, at most 200, the same cap as `@folder:`. No mark uses the file at point. A mark outside the project is refused and nothing is attached: `Path escapes project: `, followed by the path. From an Org buffer, the current subtree is the attachment, cut at `harmless-read-file-max-bytes`. An empty subtree is refused: `region is empty`. The filesystem root, nil, and `""` are refused and contribute no attachment.
 
-- [ ] Complete at point with an overlay, off until `harmless-complete` is enabled. Tab accepts the overlay and another key dismisses it. The request sends the text around point, cut at `harmless-read-file-max-bytes`, and does not send the session transcript or call a tool. A read-only buffer, the minibuffer, and a buffer whose name starts with a space show no overlay. Nil and `""` from the model insert nothing.
+- [x] Complete at point with an overlay, off until `harmless-complete` is enabled. Tab accepts the overlay and another key dismisses it. The request sends the text around point, cut at `harmless-read-file-max-bytes`, and does not send the session transcript or call a tool. A read-only buffer, the minibuffer, and a buffer whose name starts with a space show no overlay. Nil and `""` from the model insert nothing.
 
 ## Not planned
 

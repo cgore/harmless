@@ -411,6 +411,17 @@ empty’.  A read-only buffer is refused: ‘buffer is read-only’.  The
 transcript, the prompt, and the minibuffer are refused: ‘buffer is not a
 file’.
 
+   ‘harmless-complete’ is off until you enable it.  While it is on,
+typing a character requests a completion at point, and so does ‘M-x
+harmless-complete-at-point’.  The request sends the text around point,
+cut at ‘harmless-read-file-max-bytes’.  It does not send the session
+transcript or call a tool.  The reply is an overlay.  ‘TAB’ accepts that
+overlay and inserts it at point.  It does not save the buffer.  Another
+key dismisses the overlay.  Nil and ‘""’ from the model insert nothing.
+A read-only buffer, the minibuffer, and a buffer whose name starts with
+a space show no overlay.  Accepting in a buffer that became read-only is
+refused: ‘buffer is read-only’.
+
    ‘M-x harmless-steer’ reads a follow-up from the minibuffer and queues
 it without aborting the turn.  That includes while a permission question
 is showing.  The same empty-prompt refusal applies.  A value such as
@@ -3538,6 +3549,9 @@ Command Index
 * harmless-attach-image:                 File tools.           (line 68)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
+* harmless-complete:                     Prompt.               (line 76)
+* harmless-complete-accept:              Prompt.               (line 76)
+* harmless-complete-at-point:            Prompt.               (line 76)
 * harmless-context-get:                  Context.              (line  6)
 * harmless-context-list:                 Context.              (line  6)
 * harmless-context-profile:              Context.              (line  6)
@@ -3726,54 +3740,54 @@ Node: Starting5238
 Node: Sessions5777
 Node: Transcript8958
 Node: Prompt13845
-Node: Permissions18539
-Node: Accounts27284
-Node: Models29642
-Node: Tools30738
-Node: File tools35673
-Node: Search42894
-Node: Shell44832
-Node: Checkpoints50650
-Node: Code execution54724
-Node: Questions58314
-Node: Subagents59106
-Node: Workflows63546
-Node: Worktrees68589
-Node: Messages71773
-Node: Web search74692
-Node: Fetch a page75562
-Node: X search76809
-Node: MCP79248
-Node: Computer use81992
-Node: Monitors84076
-Node: Schedules87151
-Node: Todos89647
-Node: Review92316
-Node: Language server95914
-Node: Instructions99141
-Node: Skills103663
-Node: Plugins107851
-Node: Output styles110703
-Node: Image generation112756
-Node: Headless114627
-Node: Pages117315
-Node: Team120152
-Node: Machines141314
-Node: People144181
-Node: Profiles146468
-Node: Health149124
-Node: Fleet151136
-Node: Scope151902
-Node: Context155910
-Node: Memory159045
-Node: Plan mode162853
-Node: Usage166006
-Node: Files167025
-Node: Keys171178
-Node: Trouble172889
-Node: Manual174143
-Node: Command Index174848
-Node: Key Index185791
+Node: Permissions19234
+Node: Accounts27979
+Node: Models30337
+Node: Tools31433
+Node: File tools36368
+Node: Search43589
+Node: Shell45527
+Node: Checkpoints51345
+Node: Code execution55419
+Node: Questions59009
+Node: Subagents59801
+Node: Workflows64241
+Node: Worktrees69284
+Node: Messages72468
+Node: Web search75387
+Node: Fetch a page76257
+Node: X search77504
+Node: MCP79943
+Node: Computer use82687
+Node: Monitors84771
+Node: Schedules87846
+Node: Todos90342
+Node: Review93011
+Node: Language server96609
+Node: Instructions99836
+Node: Skills104358
+Node: Plugins108546
+Node: Output styles111398
+Node: Image generation113451
+Node: Headless115322
+Node: Pages118010
+Node: Team120847
+Node: Machines142009
+Node: People144876
+Node: Profiles147163
+Node: Health149819
+Node: Fleet151831
+Node: Scope152597
+Node: Context156605
+Node: Memory159740
+Node: Plan mode163548
+Node: Usage166701
+Node: Files167720
+Node: Keys171873
+Node: Trouble173584
+Node: Manual174838
+Node: Command Index175543
+Node: Key Index186705
 
 End Tag Table
 

@@ -193,6 +193,7 @@
 (require 'harmless-usage)
 (require 'harmless-ui)
 (require 'harmless-ask-region)
+(require 'harmless-complete)
 (require 'harmless-compact)
 (require 'harmless-rewind)
 (require 'harmless-edit)

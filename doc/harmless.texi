@@ -480,6 +480,21 @@ empty region and a point with no defun are refused:
 @samp{buffer is read-only}.  The transcript, the prompt, and the
 minibuffer are refused: @samp{buffer is not a file}.
 
+@findex harmless-complete
+@findex harmless-complete-at-point
+@findex harmless-complete-accept
+@code{harmless-complete} is off until you enable it.  While it is
+on, typing a character requests a completion at point, and so does
+@kbd{M-x harmless-complete-at-point}.  The request sends the text
+around point, cut at @code{harmless-read-file-max-bytes}.  It does
+not send the session transcript or call a tool.  The reply is an
+overlay.  @kbd{TAB} accepts that overlay and inserts it at point.
+It does not save the buffer.  Another key dismisses the overlay.
+Nil and @code{""} from the model insert nothing.  A read-only
+buffer, the minibuffer, and a buffer whose name starts with a
+space show no overlay.  Accepting in a buffer that became
+read-only is refused: @samp{buffer is read-only}.
+
 @kbd{M-x harmless-steer} reads a follow-up from the minibuffer and
 queues it without aborting the turn.  That includes while a permission
 question is showing.  The same empty-prompt refusal applies.  A value
