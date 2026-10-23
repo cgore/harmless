@@ -444,8 +444,18 @@ point and the name @code{which-function} can find.  A prompt sent
 from the transcript or the prompt window attaches the other window
 in the selected frame when that window shows a file buffer, and
 attaches no file when it does not.  A non-file buffer is named,
-with its major mode, and contributes no file text.  The minibuffer
-and a buffer whose name starts with a space are not attached.
+with its major mode, and contributes no file text.  From Dired, the
+attachment is the marked file names, at most 200, the same cap as
+@code{@@folder:}.  No mark uses the file at point.  Every mark is
+checked.  A mark outside the project is refused and nothing is
+attached: @samp{Path escapes project: }, followed by the path.  Nil,
+@code{""}, and whitespace are refused: @samp{Path is empty}.  The
+filesystem root is refused: @samp{path is the filesystem root}.
+From an Org buffer, the current subtree is the attachment, cut at
+@code{harmless-read-file-max-bytes}.  An empty subtree is refused:
+@samp{region is empty}.  A refusal does not send the prompt.  The
+minibuffer and a buffer whose name starts with a space are not
+attached.
 @kbd{M-x harmless-steer} from a file buffer attaches that buffer.
 The typed text stays, and this attachment follows under
 @samp{--- Attached Context ---}, after any @code{@@} references.

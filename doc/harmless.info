@@ -382,7 +382,15 @@ attachment sends the line at point and the name ‘which-function’ can
 find.  A prompt sent from the transcript or the prompt window attaches
 the other window in the selected frame when that window shows a file
 buffer, and attaches no file when it does not.  A non-file buffer is
-named, with its major mode, and contributes no file text.  The
+named, with its major mode, and contributes no file text.  From Dired,
+the attachment is the marked file names, at most 200, the same cap as
+‘@folder:’.  No mark uses the file at point.  Every mark is checked.  A
+mark outside the project is refused and nothing is attached: ‘Path
+escapes project: ’, followed by the path.  Nil, ‘""’, and whitespace are
+refused: ‘Path is empty’.  The filesystem root is refused: ‘path is the
+filesystem root’.  From an Org buffer, the current subtree is the
+attachment, cut at ‘harmless-read-file-max-bytes’.  An empty subtree is
+refused: ‘region is empty’.  A refusal does not send the prompt.  The
 minibuffer and a buffer whose name starts with a space are not attached.
 ‘M-x harmless-steer’ from a file buffer attaches that buffer.  The typed
 text stays, and this attachment follows under ‘--- Attached Context
@@ -3525,8 +3533,8 @@ Command Index
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
 * harmless-add-directory:                Tools.                (line 34)
-* harmless-ask-mode:                     Prompt.               (line 54)
-* harmless-ask-region:                   Prompt.               (line 54)
+* harmless-ask-mode:                     Prompt.               (line 62)
+* harmless-ask-region:                   Prompt.               (line 62)
 * harmless-attach-image:                 File tools.           (line 68)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
@@ -3682,7 +3690,7 @@ Key Index
 
 * ! (permission):                        Permissions.          (line  6)
 * + (transcript):                        Tools.                (line 34)
-* C-c . a:                               Prompt.               (line 54)
+* C-c . a:                               Prompt.               (line 62)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 79)
@@ -3718,54 +3726,54 @@ Node: Starting5238
 Node: Sessions5777
 Node: Transcript8958
 Node: Prompt13845
-Node: Permissions17941
-Node: Accounts26686
-Node: Models29044
-Node: Tools30140
-Node: File tools35075
-Node: Search42296
-Node: Shell44234
-Node: Checkpoints50052
-Node: Code execution54126
-Node: Questions57716
-Node: Subagents58508
-Node: Workflows62948
-Node: Worktrees67991
-Node: Messages71175
-Node: Web search74094
-Node: Fetch a page74964
-Node: X search76211
-Node: MCP78650
-Node: Computer use81394
-Node: Monitors83478
-Node: Schedules86553
-Node: Todos89049
-Node: Review91718
-Node: Language server95316
-Node: Instructions98543
-Node: Skills103065
-Node: Plugins107253
-Node: Output styles110105
-Node: Image generation112158
-Node: Headless114029
-Node: Pages116717
-Node: Team119554
-Node: Machines140716
-Node: People143583
-Node: Profiles145870
-Node: Health148526
-Node: Fleet150538
-Node: Scope151304
-Node: Context155312
-Node: Memory158447
-Node: Plan mode162255
-Node: Usage165408
-Node: Files166427
-Node: Keys170580
-Node: Trouble172291
-Node: Manual173545
-Node: Command Index174250
-Node: Key Index185193
+Node: Permissions18539
+Node: Accounts27284
+Node: Models29642
+Node: Tools30738
+Node: File tools35673
+Node: Search42894
+Node: Shell44832
+Node: Checkpoints50650
+Node: Code execution54724
+Node: Questions58314
+Node: Subagents59106
+Node: Workflows63546
+Node: Worktrees68589
+Node: Messages71773
+Node: Web search74692
+Node: Fetch a page75562
+Node: X search76809
+Node: MCP79248
+Node: Computer use81992
+Node: Monitors84076
+Node: Schedules87151
+Node: Todos89647
+Node: Review92316
+Node: Language server95914
+Node: Instructions99141
+Node: Skills103663
+Node: Plugins107851
+Node: Output styles110703
+Node: Image generation112756
+Node: Headless114627
+Node: Pages117315
+Node: Team120152
+Node: Machines141314
+Node: People144181
+Node: Profiles146468
+Node: Health149124
+Node: Fleet151136
+Node: Scope151902
+Node: Context155910
+Node: Memory159045
+Node: Plan mode162853
+Node: Usage166006
+Node: Files167025
+Node: Keys171178
+Node: Trouble172889
+Node: Manual174143
+Node: Command Index174848
+Node: Key Index185791
 
 End Tag Table
 

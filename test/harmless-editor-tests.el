@@ -799,15 +799,16 @@ BODY may push onto `bufs'.  Nothing is written at the filesystem root."
            (should (equal "buffer: root-notes\nmode: fundamental-mode" note))
            (should-not (string-search "NOFILE" note))
            (should-not (string-search "file:" note)))))
-      (let ((dbuf (dired-noselect slash)))
+      (let ((session (harmless-editor-test-chat dir))
+            (dbuf (dired-noselect slash)))
         (push dbuf bufs)
         (with-current-buffer dbuf
+          (setq harmless--session session)
+          (dired-goto-file (expand-file-name "SECRET.txt" dir))
           (harmless-editor-test-no-write
            (let ((note (harmless-editor-note)))
-             (should (equal (format "buffer: %s\nmode: %s"
-                                    (buffer-name) major-mode)
-                            note))
-             (should-not (string-search "file:" note))
+             (should (string-search "files:\n" note))
+             (should (string-search "SECRET.txt" note))
              (should-not (string-search "SECRET-BODY" note))
              (should-not (string-search "line-text:" note)))))))))
 
@@ -989,5 +990,197 @@ BODY may push onto `bufs'.  Nothing is written at the filesystem root."
         (should (equal "FIRST\nLAST\n" (harmless-editor-test-text buf)))
         (should (string-empty-p (with-current-buffer prompt (buffer-string)))))
       (should (equal "FIRST\nLAST\n" (harmless-editor-test-bytes path))))))
+
+(ert-deftest harmless-editor-attaches-dired-marks ()
+  (harmless-editor-test-bind dir
+    (let* ((project-find-functions nil)
+           (a (harmless-editor-test-file dir "aaa.txt" "AAA-BODY"))
+           (b (harmless-editor-test-file dir "bbb.txt" "BBB-BODY"))
+           (sub (expand-file-name "sub" dir))
+           (session (harmless-editor-test-chat dir))
+           (extra (make-temp-file "harmless-extra-" t))
+           (dbuf nil))
+      (unwind-protect
+          (progn
+            (make-directory sub)
+            (setq dbuf (dired-noselect dir))
+            (push dbuf bufs)
+            (with-current-buffer dbuf
+              (setq harmless--session session)
+              (dired-unmark-all-marks)
+              (goto-char (point-min))
+              (should (equal "Path is empty"
+                             (harmless-editor-test-signal
+                              (harmless-editor-note))))
+              (dired-goto-file a)
+              (let ((note (harmless-editor-note)))
+                (should (string-search "aaa.txt" note))
+                (should-not (string-search "bbb.txt" note))
+                (should-not (string-search "AAA-BODY" note)))
+              (dired-mark 1)
+              (dired-goto-file b)
+              (dired-mark 1)
+              (let ((files (dired-get-marked-files))
+                    (note (harmless-editor-note)))
+                (should (= 2 (length files)))
+                (should (string-search (car files) note))
+                (should (string-search (cadr files) note))
+                (should-not (string-search "AAA-BODY" note))
+                (should-not (string-search "BBB-BODY" note)))
+              (let ((harmless-refs-folder-max 1)
+                    (files (dired-get-marked-files)))
+                (let ((note (harmless-editor-note)))
+                  (should (string-search (car files) note))
+                  (should-not (string-search (cadr files) note))))
+              (cl-letf (((symbol-function 'dired-get-marked-files)
+                         (lambda (&rest _)
+                           (list (file-name-as-directory sub)))))
+                (should (string-search "sub" (harmless-editor-note))))
+              (cl-letf (((symbol-function 'dired-get-marked-files)
+                         (lambda (&rest _) (list "sub"))))
+                (should (string-search "sub" (harmless-editor-note)))))
+            (let ((efile (harmless-editor-test-file extra "note.txt" "NOTE-BODY"))
+                  (ebuf nil))
+              (harmless-extra-add session extra)
+              (setq ebuf (dired-noselect extra))
+              (push ebuf bufs)
+              (with-current-buffer ebuf
+                (setq harmless--session session)
+                (dired-goto-file efile)
+                (let ((note (harmless-editor-note)))
+                  (should (string-search "note.txt" note))
+                  (should-not (string-search "NOTE-BODY" note)))))
+            (should (equal "AAA-BODY" (harmless-editor-test-bytes a)))
+            (should (equal "BBB-BODY" (harmless-editor-test-bytes b))))
+        (when (file-directory-p extra)
+          (ignore-errors (delete-directory extra t)))))))
+
+(ert-deftest harmless-editor-refuses-dired-marks ()
+  (harmless-editor-test-bind dir
+    (let* ((project-find-functions nil)
+           (a (harmless-editor-test-file dir "aaa.txt" "AAA-BODY"))
+           (session (harmless-editor-test-chat dir))
+           (outside (expand-file-name
+                     "outside.txt"
+                     (file-name-directory (directory-file-name dir))))
+           (dbuf (dired-noselect dir))
+           (plain (make-temp-file "harmless-nosess-" t)))
+      (push dbuf bufs)
+      (unwind-protect
+          (progn
+            (let ((coding-system-for-write 'utf-8-unix))
+              (write-region "OUT" nil outside nil 'silent))
+            (with-current-buffer dbuf
+              (setq harmless--session session)
+              (dired-goto-file a)
+              (dolist (path (list nil "" "   " "\n"))
+                (cl-letf (((symbol-function 'dired-get-marked-files)
+                           (lambda (&rest _)
+                             (if path (list path) nil))))
+                  (should (equal "Path is empty"
+                                 (harmless-editor-test-signal
+                                  (harmless-editor-note))))))
+              (cl-letf (((symbol-function 'dired-get-marked-files)
+                         (lambda (&rest _) (list 12))))
+                (should (equal "path must be a string"
+                               (harmless-editor-test-signal
+                                (harmless-editor-note)))))
+              (dolist (path (list "/" "c:/" "c:\\" "\\\\" " / "))
+                (cl-letf (((symbol-function 'dired-get-marked-files)
+                           (lambda (&rest _) (list path))))
+                  (should (equal "path is the filesystem root"
+                                 (harmless-editor-test-signal
+                                  (harmless-editor-note))))))
+              (cl-letf (((symbol-function 'dired-get-marked-files)
+                         (lambda (&rest _) (list ".."))))
+                (should (equal "Path escapes project: .."
+                               (harmless-editor-test-signal
+                                (harmless-editor-note)))))
+              (let ((harmless-refs-folder-max 1)
+                    (before (buffer-string)))
+                (cl-letf (((symbol-function 'dired-get-marked-files)
+                           (lambda (&rest _) (list a outside))))
+                  (should (equal (format "Path escapes project: %s" outside)
+                                 (harmless-editor-test-signal
+                                  (harmless-editor-note))))
+                  (should (equal (format "Path escapes project: %s" outside)
+                                 (harmless-editor-test-signal
+                                  (harmless-prompt-send)))))
+                (should (equal before (buffer-string)))
+                (should-not (harmless-session-messages session)))
+              (should (equal "AAA-BODY" (harmless-editor-test-bytes a))))
+            (let ((pbuf (dired-noselect plain)))
+              (unwind-protect
+                  (with-current-buffer pbuf
+                    (setq harmless--session nil)
+                    (should (equal "No Harmless session"
+                                   (harmless-editor-test-signal
+                                    (harmless-editor-note)))))
+                (when (buffer-live-p pbuf)
+                  (kill-buffer pbuf)))))
+        (when (file-exists-p outside)
+          (delete-file outside))
+        (when (file-directory-p plain)
+          (ignore-errors (delete-directory plain t)))))))
+
+(ert-deftest harmless-editor-attaches-the-org-subtree ()
+  (require 'org)
+  (harmless-editor-test-bind dir
+    (let* ((project-find-functions nil)
+           (text "* One\nalpha\n* Two\nbeta\n")
+           (path (harmless-editor-test-file dir "a.org" text))
+           (buf (harmless-editor-test-visit path 'utf-8-unix))
+           (session (harmless-editor-test-chat dir))
+           (plain (get-buffer-create "*harmless-org-plain*")))
+      (push buf bufs)
+      (unwind-protect
+          (progn
+            (with-current-buffer buf
+              (org-mode)
+              (setq harmless--session session)
+              (search-forward "beta")
+              (let ((pt (point))
+                    (note (harmless-editor-note)))
+                (should (= pt (point)))
+                (should (string-search "* Two\nbeta" note))
+                (should-not (string-search "alpha" note))
+                (should (string-search "subtree:" note)))
+              (erase-buffer)
+              (insert "* Head\n")
+              (insert (make-string 40 ?x))
+              (goto-char (point-min))
+              (let* ((harmless-read-file-max-bytes 8)
+                     (body (buffer-substring-no-properties
+                            (point-min) (point-max)))
+                     (cut (harmless-tools-fs--text-window body nil nil))
+                     (note (harmless-editor-note)))
+                (should (equal cut (concat (substring body 0 8) "\n[truncated]")))
+                (should (string-suffix-p cut note))
+                (should-not (string-search (make-string 40 ?x) note))
+                (should (string-search (make-string 40 ?x) (buffer-string))))
+              (erase-buffer)
+              (insert "hello\n")
+              (goto-char (point-min))
+              (let ((pt (point)))
+                (should (equal "region is empty"
+                               (harmless-editor-test-signal
+                                (harmless-editor-note))))
+                (should (equal "region is empty"
+                               (harmless-editor-test-signal
+                                (harmless-prompt-send))))
+                (should (= pt (point)))
+                (should (equal "hello\n" (buffer-string))))
+              (should-not (harmless-session-messages session)))
+            (should (equal text (harmless-editor-test-bytes path)))
+            (with-current-buffer plain
+              (org-mode)
+              (erase-buffer)
+              (insert "hello")
+              (setq harmless--session session)
+              (should (equal "region is empty"
+                             (harmless-editor-test-signal
+                              (harmless-editor-note))))))
+        (when (buffer-live-p plain)
+          (kill-buffer plain))))))
 
 (provide 'harmless-editor-tests)

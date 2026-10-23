@@ -39,7 +39,9 @@
 ;; A prompt sent from a file buffer names that buffer.  A prompt sent
 ;; from the transcript or the prompt window names the other window in
 ;; the selected frame when that window shows a file.  A non-file
-;; buffer is named and contributes no file text.  The attachment is
+;; buffer is named and contributes no file text.  Dired attaches the
+;; marked file names, and Org attaches the subtree at point.  The
+;; attachment is
 ;; rendered when the user sends, then appended after @ references
 ;; expand.  `harmless-turn-run' alone does not look at a buffer.
 ;; `harmless-visit-location' opens FILE:LINE from a transcript button
@@ -49,6 +51,12 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+
+(declare-function org-before-first-heading-p "org" ())
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
+(declare-function dired-get-marked-files "dired"
+                  (&optional localp arg filter distinguish-one-marked error))
 (require 'which-func)
 (require 'harmless-session)
 (require 'harmless-tools-fs)
@@ -136,13 +144,82 @@ named, with its major mode, and contributes no file text."
                                  "function:"))))))
         (concat (mapconcat #'identity lines "\n") "\n" body)))))
 
+(defun harmless-editor--session ()
+  "Return the session for this buffer, or nil."
+  (or (and (boundp 'harmless--session)
+           (harmless-session-p harmless--session)
+           harmless--session)
+      (ignore-errors
+        (car (harmless-session-for-cwd (harmless-current-cwd))))))
+
+(defun harmless-editor--check-mark (session path)
+  "Return PATH when SESSION may attach it.
+Nil and \"\" signal \"Path is empty\".  Whitespace is empty.
+A non-string signals \"path must be a string\".  The filesystem
+root signals \"path is the filesystem root\".  A path outside
+the project signals \"Path escapes project: PATH\".  A refusal
+attaches nothing."
+  (cond
+   ((null path) (error "Path is empty"))
+   ((not (stringp path)) (error "path must be a string"))
+   (t (setq path (string-trim path))))
+  (cond
+   ((string-empty-p path) (error "Path is empty"))
+   ((or (harmless-filesystem-root-p path)
+        (harmless-extra-root-text-p path))
+    (error "path is the filesystem root"))
+   (t
+    (let ((full (harmless-tools-fs-resolve session path)))
+      (when (or (harmless-filesystem-root-p full)
+                (harmless-extra-root-text-p full))
+        (error "path is the filesystem root"))
+      path))))
+
+(defun harmless-editor--dired-note ()
+  "Return the marked-file attachment for this Dired buffer.
+No mark uses the file at point.  Every mark is checked.  The
+list is capped at `harmless-refs-folder-max'.  A refusal
+attaches nothing."
+  (let* ((session (or (harmless-editor--session)
+                      (error "No Harmless session")))
+         (files (dired-get-marked-files))
+         (checked nil))
+    (unless files
+      (error "Path is empty"))
+    (dolist (path files)
+      (push (harmless-editor--check-mark session path) checked))
+    (setq checked (nreverse checked))
+    (when (> (length checked) harmless-refs-folder-max)
+      (setq checked (cl-subseq checked 0 harmless-refs-folder-max)))
+    (concat (format "buffer: %s\nmode: %s\nfiles:\n" (buffer-name) major-mode)
+            (mapconcat #'identity checked "\n"))))
+
+(defun harmless-editor--org-note ()
+  "Return the current Org subtree, cut like a file read.
+An empty subtree signals \"region is empty\" and attaches
+nothing.  Point stays where it was."
+  (save-excursion
+    (when (org-before-first-heading-p)
+      (error "region is empty"))
+    (org-back-to-heading t)
+    (let ((beg (point)))
+      (org-end-of-subtree t t)
+      (when (<= (point) beg)
+        (error "region is empty"))
+      (concat (format "buffer: %s\nmode: %s\nsubtree:\n"
+                      (buffer-name) major-mode)
+              (harmless-editor--excerpt
+               (buffer-substring-no-properties beg (point)))))))
+
 (defun harmless-editor-note ()
   "Return the editor attachment for the current prompt, or nil.
 A file buffer describes itself.  The transcript and the prompt
 describe the other window in the selected frame when that window
-shows a file buffer, using that window's point.  A non-file buffer
-is named.  The minibuffer and a buffer whose name starts with a
-space contribute nothing.  This function does not write a file."
+shows a file buffer, using that window's point.  Dired attaches
+marked file names.  Org attaches the subtree at point.  A
+non-file buffer is named.  The minibuffer and a buffer whose
+name starts with a space contribute nothing.  This function
+does not write a file."
   (let ((buf (current-buffer)))
     (cond
      ((harmless-editor--internal-p buf) nil)
@@ -155,6 +232,10 @@ space contribute nothing.  This function does not write a file."
                        (harmless-editor--file-p obuf))
               (with-selected-window other
                 (harmless-editor--describe (current-buffer))))))))
+     ((derived-mode-p 'dired-mode)
+      (harmless-editor--dired-note))
+     ((derived-mode-p 'org-mode)
+      (harmless-editor--org-note))
      ((harmless-editor--file-p buf)
       (harmless-editor--describe buf))
      (t (harmless-editor--describe buf)))))
