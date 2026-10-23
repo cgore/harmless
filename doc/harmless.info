@@ -389,6 +389,20 @@ text stays, and this attachment follows under ‘--- Attached Context
 ---’, after any ‘@’ references.  A file buffer and the transcript keep
 their text.  The prompt buffer is what gets cleared.
 
+   ‘M-x harmless-ask-region’ sends the active region, or the defun at
+point when the region is inactive, to the live session for this project.
+‘harmless-ask-mode’ is off until you enable it.  The mode binds ‘C-c .
+a’ to that command and does not bind ‘C-c C-c’.  The command is also
+‘M-x harmless-ask-region’ while the mode is off.  An existing session is
+reused.  None starts a second session.  With no session, the command
+opens one the way ‘M-x harmless-current’ does.  A prefix argument
+replaces that region with the reply, as one undo entry, and does not
+save the buffer.  An empty reply inserts nothing and leaves the region.
+An empty region and a point with no defun are refused: ‘region is
+empty’.  A read-only buffer is refused: ‘buffer is read-only’.  The
+transcript, the prompt, and the minibuffer are refused: ‘buffer is not a
+file’.
+
    ‘M-x harmless-steer’ reads a follow-up from the minibuffer and queues
 it without aborting the turn.  That includes while a permission question
 is showing.  The same empty-prompt refusal applies.  A value such as
@@ -3495,6 +3509,8 @@ Command Index
 * harmless:                              Starting.             (line  6)
 * harmless-abort:                        Trouble.              (line  6)
 * harmless-add-directory:                Tools.                (line 34)
+* harmless-ask-mode:                     Prompt.               (line 54)
+* harmless-ask-region:                   Prompt.               (line 54)
 * harmless-attach-image:                 File tools.           (line 52)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
@@ -3649,6 +3665,7 @@ Key Index
 
 * ! (permission):                        Permissions.          (line  6)
 * + (transcript):                        Tools.                (line 34)
+* C-c . a:                               Prompt.               (line 54)
 * C-c C-c:                               Prompt.               (line  6)
 * C-c RET:                               Prompt.               (line  6)
 * E (transcript):                        Transcript.           (line 79)
@@ -3684,54 +3701,54 @@ Node: Starting5238
 Node: Sessions5777
 Node: Transcript8958
 Node: Prompt13845
-Node: Permissions17058
-Node: Accounts25803
-Node: Models28161
-Node: Tools29257
-Node: File tools34192
-Node: Search40524
-Node: Shell42462
-Node: Checkpoints48280
-Node: Code execution52354
-Node: Questions55944
-Node: Subagents56736
-Node: Workflows61176
-Node: Worktrees66219
-Node: Messages69403
-Node: Web search72322
-Node: Fetch a page73192
-Node: X search74439
-Node: MCP76878
-Node: Computer use79622
-Node: Monitors81706
-Node: Schedules84781
-Node: Todos87277
-Node: Review89946
-Node: Language server93544
-Node: Instructions96771
-Node: Skills101293
-Node: Plugins105481
-Node: Output styles108333
-Node: Image generation110386
-Node: Headless112257
-Node: Pages114945
-Node: Team117782
-Node: Machines138944
-Node: People141811
-Node: Profiles144098
-Node: Health146754
-Node: Fleet148766
-Node: Scope149532
-Node: Context153540
-Node: Memory156675
-Node: Plan mode160483
-Node: Usage163636
-Node: Files164655
-Node: Keys168808
-Node: Trouble170519
-Node: Manual171773
-Node: Command Index172478
-Node: Key Index183202
+Node: Permissions17941
+Node: Accounts26686
+Node: Models29044
+Node: Tools30140
+Node: File tools35075
+Node: Search41407
+Node: Shell43345
+Node: Checkpoints49163
+Node: Code execution53237
+Node: Questions56827
+Node: Subagents57619
+Node: Workflows62059
+Node: Worktrees67102
+Node: Messages70286
+Node: Web search73205
+Node: Fetch a page74075
+Node: X search75322
+Node: MCP77761
+Node: Computer use80505
+Node: Monitors82589
+Node: Schedules85664
+Node: Todos88160
+Node: Review90829
+Node: Language server94427
+Node: Instructions97654
+Node: Skills102176
+Node: Plugins106364
+Node: Output styles109216
+Node: Image generation111269
+Node: Headless113140
+Node: Pages115828
+Node: Team118665
+Node: Machines139827
+Node: People142694
+Node: Profiles144981
+Node: Health147637
+Node: Fleet149649
+Node: Scope150415
+Node: Context154423
+Node: Memory157558
+Node: Plan mode161366
+Node: Usage164519
+Node: Files165538
+Node: Keys169691
+Node: Trouble171402
+Node: Manual172656
+Node: Command Index173361
+Node: Key Index184231
 
 End Tag Table
 

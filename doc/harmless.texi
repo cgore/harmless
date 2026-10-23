@@ -452,6 +452,24 @@ The typed text stays, and this attachment follows under
 A file buffer and the transcript keep their text.  The prompt
 buffer is what gets cleared.
 
+@findex harmless-ask-region
+@findex harmless-ask-mode
+@kindex C-c . a
+@kbd{M-x harmless-ask-region} sends the active region, or the defun
+at point when the region is inactive, to the live session for this
+project.  @code{harmless-ask-mode} is off until you enable it.  The
+mode binds @kbd{C-c . a} to that command and does not bind
+@kbd{C-c C-c}.  The command is also @kbd{M-x harmless-ask-region}
+while the mode is off.  An existing session is reused.  None starts
+a second session.  With no session, the command opens one the way
+@kbd{M-x harmless-current} does.  A prefix argument replaces that
+region with the reply, as one undo entry, and does not save the
+buffer.  An empty reply inserts nothing and leaves the region.  An
+empty region and a point with no defun are refused:
+@samp{region is empty}.  A read-only buffer is refused:
+@samp{buffer is read-only}.  The transcript, the prompt, and the
+minibuffer are refused: @samp{buffer is not a file}.
+
 @kbd{M-x harmless-steer} reads a follow-up from the minibuffer and
 queues it without aborting the turn.  That includes while a permission
 question is showing.  The same empty-prompt refusal applies.  A value

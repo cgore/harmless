@@ -42,7 +42,9 @@
 ;; at a time, and an allowed call starts before the next question.
 ;; In auto mode a reviewer decides whether that question is asked.
 ;; A pre hook can block the call before that question.  A post hook
-;; can replace the result the model sees.
+;; can replace the result the model sees.  A pending ask replacement
+;; is applied when the turn goes idle, and dropped when the turn
+;; errors or another turn starts.
 
 ;;; Code:
 
@@ -225,6 +227,12 @@ reference does not load the skill.  `harmless-editor-note', when
 set by the send command, is appended after that expansion.  When
 the last prompt fills the context window, older turns are
 summarized before the provider sees TEXT."
+  ;; A later prompt must not apply an ask replacement.  The ask
+  ;; command binds `harmless-ask--keep' so this turn keeps its job.
+  (unless (and (boundp 'harmless-ask--keep)
+               (symbol-value 'harmless-ask--keep))
+    (when (fboundp 'harmless-ask-finish)
+      (harmless-ask-finish session "")))
   (when (memq (harmless-session-status session) '(streaming waiting-permission))
     (harmless-turn-abort session))
   (when (fboundp 'harmless-compact--validate-threshold)
@@ -369,6 +377,8 @@ Events that arrive after an abort are ignored."
      (when (fboundp 'harmless-agent-note-error)
        (harmless-agent-note-error session (format "%s" (or err ""))))
      (harmless-session-set-status session 'error)
+     (when (fboundp 'harmless-ask-finish)
+       (harmless-ask-finish session ""))
      (harmless-log "turn error: %s" err))
     (`(:stop ,reason)
      (setf (harmless-turn-acc-stop-reason acc) reason
@@ -402,6 +412,8 @@ Events that arrive after an abort are ignored."
           (harmless-agent-note-error
            session "The model returned an empty reply."))
         (harmless-session-set-status session 'error)
+        (when (fboundp 'harmless-ask-finish)
+          (harmless-ask-finish session ""))
         (harmless-emit session '(:error "The model returned an empty reply."))))
      (t
       (harmless-session-append
@@ -424,7 +436,9 @@ Events that arrive after an abort are ignored."
             (error
              (harmless-log "memory observation: %s"
                            (error-message-string err))))
-          (harmless-session-set-status session 'idle)))))))
+          (harmless-session-set-status session 'idle)
+          (when (fboundp 'harmless-ask-finish)
+            (harmless-ask-finish session (or text "")))))))))
 
 (defun harmless-turn--run-tools (session calls k)
   "Start CALLS together on SESSION, then call K when every one has finished.
