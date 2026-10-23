@@ -907,6 +907,24 @@ lists each cell.  No cells is @samp{No cells}.  A file that is not a
 notebook is refused: @samp{notebook is not a notebook}.  A notebook
 larger than the cap is refused: @samp{notebook is too large}.
 
+@item harmless-tool-read-buffer
+@findex harmless-tool-read-buffer
+Read one buffer the user can see.  @code{name} is the buffer name.
+The result is that buffer's accessible text, cut at
+@code{harmless-read-file-max-bytes} the same way
+@code{harmless-tool-read-file} cuts a file.  A cut result ends with
+@samp{[truncated]}.  This does not widen the buffer and does not
+change it.
+
+Nil, @code{""}, and whitespace are refused: @samp{buffer name is
+empty}.  A value that is not text is refused: @samp{buffer name
+must be a string}.  A missing buffer is refused: @samp{buffer is
+not live}.  The minibuffer, a buffer whose name starts with a
+space, and a Harmless process buffer are refused: @samp{buffer is
+not readable}.  The transcript or the prompt of another session is
+refused: @samp{buffer is another session}.  The transcript of this
+session is its accessible text.
+
 @item harmless-tool-notebook-edit
 Replace the source of one cell in an existing @code{.ipynb} file.
 @code{path} is the notebook.  @code{cell} is a cell id or a 0-based

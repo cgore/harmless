@@ -165,6 +165,7 @@
 (require 'harmless-skills)
 (require 'harmless-tools)
 (require 'harmless-tools-fs)
+(require 'harmless-read-buffer)
 (require 'harmless-output-style)
 (require 'harmless-media)
 (require 'harmless-image)

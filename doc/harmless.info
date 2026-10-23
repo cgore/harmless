@@ -790,6 +790,22 @@ with ‘M-x harmless-add-directory’.
      is refused: ‘notebook is not a notebook’.  A notebook larger than
      the cap is refused: ‘notebook is too large’.
 
+‘harmless-tool-read-buffer’
+     Read one buffer the user can see.  ‘name’ is the buffer name.  The
+     result is that buffer's accessible text, cut at
+     ‘harmless-read-file-max-bytes’ the same way
+     ‘harmless-tool-read-file’ cuts a file.  A cut result ends with
+     ‘[truncated]’.  This does not widen the buffer and does not change
+     it.
+
+     Nil, ‘""’, and whitespace are refused: ‘buffer name is empty’.  A
+     value that is not text is refused: ‘buffer name must be a string’.
+     A missing buffer is refused: ‘buffer is not live’.  The minibuffer,
+     a buffer whose name starts with a space, and a Harmless process
+     buffer are refused: ‘buffer is not readable’.  The transcript or
+     the prompt of another session is refused: ‘buffer is another
+     session’.  The transcript of this session is its accessible text.
+
 ‘harmless-tool-notebook-edit’
      Replace the source of one cell in an existing ‘.ipynb’ file.
      ‘path’ is the notebook.  ‘cell’ is a cell id or a 0-based index.
@@ -3511,7 +3527,7 @@ Command Index
 * harmless-add-directory:                Tools.                (line 34)
 * harmless-ask-mode:                     Prompt.               (line 54)
 * harmless-ask-region:                   Prompt.               (line 54)
-* harmless-attach-image:                 File tools.           (line 52)
+* harmless-attach-image:                 File tools.           (line 68)
 * harmless-chat:                         Sessions.             (line  6)
 * harmless-compact:                      Transcript.           (line 52)
 * harmless-context-get:                  Context.              (line  6)
@@ -3646,7 +3662,8 @@ Command Index
 * harmless-tool-exit-plan-mode:          Plan mode.            (line  6)
 * harmless-tool-generate-image:          Image generation.     (line  6)
 * harmless-tool-lsp:                     Language server.      (line  6)
-* harmless-tool-notebook-edit:           File tools.           (line 52)
+* harmless-tool-notebook-edit:           File tools.           (line 68)
+* harmless-tool-read-buffer:             File tools.           (line 34)
 * harmless-tool-review:                  Review.               (line  6)
 * harmless-tool-write-plan:              Plan mode.            (line  6)
 * harmless-usage:                        Usage.                (line  6)
@@ -3672,7 +3689,7 @@ Key Index
 * f (transcript):                        Transcript.           (line 88)
 * g (usage):                             Usage.                (line  6)
 * h (Harmless buffers):                  Keys.                 (line  6)
-* I (Harmless menu):                     File tools.           (line 52)
+* I (Harmless menu):                     File tools.           (line 68)
 * k (transcript):                        Transcript.           (line 52)
 * L (Harmless menu):                     Language server.      (line  6)
 * LEFT (transcript):                     Transcript.           (line  6)
@@ -3706,49 +3723,49 @@ Node: Accounts26686
 Node: Models29044
 Node: Tools30140
 Node: File tools35075
-Node: Search41407
-Node: Shell43345
-Node: Checkpoints49163
-Node: Code execution53237
-Node: Questions56827
-Node: Subagents57619
-Node: Workflows62059
-Node: Worktrees67102
-Node: Messages70286
-Node: Web search73205
-Node: Fetch a page74075
-Node: X search75322
-Node: MCP77761
-Node: Computer use80505
-Node: Monitors82589
-Node: Schedules85664
-Node: Todos88160
-Node: Review90829
-Node: Language server94427
-Node: Instructions97654
-Node: Skills102176
-Node: Plugins106364
-Node: Output styles109216
-Node: Image generation111269
-Node: Headless113140
-Node: Pages115828
-Node: Team118665
-Node: Machines139827
-Node: People142694
-Node: Profiles144981
-Node: Health147637
-Node: Fleet149649
-Node: Scope150415
-Node: Context154423
-Node: Memory157558
-Node: Plan mode161366
-Node: Usage164519
-Node: Files165538
-Node: Keys169691
-Node: Trouble171402
-Node: Manual172656
-Node: Command Index173361
-Node: Key Index184231
+Node: Search42296
+Node: Shell44234
+Node: Checkpoints50052
+Node: Code execution54126
+Node: Questions57716
+Node: Subagents58508
+Node: Workflows62948
+Node: Worktrees67991
+Node: Messages71175
+Node: Web search74094
+Node: Fetch a page74964
+Node: X search76211
+Node: MCP78650
+Node: Computer use81394
+Node: Monitors83478
+Node: Schedules86553
+Node: Todos89049
+Node: Review91718
+Node: Language server95316
+Node: Instructions98543
+Node: Skills103065
+Node: Plugins107253
+Node: Output styles110105
+Node: Image generation112158
+Node: Headless114029
+Node: Pages116717
+Node: Team119554
+Node: Machines140716
+Node: People143583
+Node: Profiles145870
+Node: Health148526
+Node: Fleet150538
+Node: Scope151304
+Node: Context155312
+Node: Memory158447
+Node: Plan mode162255
+Node: Usage165408
+Node: Files166427
+Node: Keys170580
+Node: Trouble172291
+Node: Manual173545
+Node: Command Index174250
+Node: Key Index185193
 
 End Tag Table
 
