@@ -42,6 +42,8 @@
 ;; buffer is named and contributes no file text.  The attachment is
 ;; rendered when the user sends, then appended after @ references
 ;; expand.  `harmless-turn-run' alone does not look at a buffer.
+;; `harmless-visit-location' opens FILE:LINE from a transcript button
+;; in the other window.  It does not set `next-error-function'.
 
 ;;; Code:
 
@@ -170,6 +172,102 @@ when it is live."
           (harmless-editor--file-p (current-buffer)))
       (when (buffer-live-p prompt) prompt))
      (t (current-buffer)))))
+
+(defconst harmless-visit-location-regexp
+  (concat "\\(?:[A-Za-z]:\\)?"
+          "[^[:space:]\n:]+"
+          "[./\\\\]"
+          "[^[:space:]\n:]*"
+          ":[0-9]+"
+          "\\(?::[0-9]+\\)?")
+  "Regexp matching one FILE:LINE or FILE:LINE:COLUMN token.
+A drive colon is part of the path.  The match stops before any
+character that is not part of that token.")
+
+(defun harmless-visit-parse (text)
+  "Return (PATH LINE COLUMN) parsed from TEXT, or nil.
+TEXT is one FILE:LINE or FILE:LINE:COLUMN token.  COLUMN is nil
+when TEXT names no column.  LINE and COLUMN are integers."
+  (when (and (stringp text)
+             (string-match
+              (concat "\\`\\(\\(?:[A-Za-z]:\\)?[^[:space:]\n:]+"
+                      "[./\\\\][^[:space:]\n:]*\\)"
+                      ":\\([0-9]+\\)\\(?::\\([0-9]+\\)\\)?\\'")
+              text))
+    (list (match-string 1 text)
+          (string-to-number (match-string 2 text))
+          (and (match-string 3 text)
+               (string-to-number (match-string 3 text))))))
+
+(defun harmless-visit--show (buf line column)
+  "Show BUF at LINE and COLUMN.
+COLUMN nil is column 1.  The window is not the selected window
+at the start of this call.  A narrowing that hides the position
+is widened."
+  (let ((win (display-buffer
+              buf
+              '((display-buffer-reuse-window
+                 display-buffer-use-some-window
+                 display-buffer-pop-up-window)
+                (inhibit-same-window . t)))))
+    (when (window-live-p win)
+      (select-window win)))
+  (with-current-buffer buf
+    (let ((pos (save-excursion
+                 (save-restriction
+                   (widen)
+                   (goto-char (point-min))
+                   (forward-line (1- line))
+                   (move-to-column (if column (1- column) 0))
+                   (point)))))
+      (unless (<= (point-min) pos (point-max))
+        (widen))
+      (goto-char pos))))
+
+(defun harmless-visit-location (session path line &optional column)
+  "Visit PATH at LINE and COLUMN in the other window.
+COLUMN starts at 1.  Nil COLUMN opens the line at column 1.
+PATH must stay inside SESSION's project or an extra directory.
+A path outside both signals \"Path escapes project: PATH\".
+Nil and \"\" signal \"Path is empty\".  Whitespace is empty.
+A non-string signals \"path must be a string\".  The filesystem
+root signals \"path is the filesystem root\" and visits nothing.
+A missing file signals \"Cannot read PATH\".  A directory and a
+trailing slash signal \"path is not a file\".  Line 0, a negative
+line, and a line that is not a positive integer signal
+\"line is not a line\".  A column that is not a positive integer
+signals \"column is not a column\".  This does not set
+`next-error-function'."
+  (cond
+   ((null path) (error "Path is empty"))
+   ((not (stringp path)) (error "path must be a string"))
+   (t (setq path (string-trim path))))
+  (cond
+   ((string-empty-p path) (error "Path is empty"))
+   ((or (harmless-filesystem-root-p path)
+        (harmless-extra-root-text-p path))
+    (error "path is the filesystem root"))
+   ((not (and (integerp line) (> line 0)))
+    (error "line is not a line"))
+   ((not (or (null column) (and (integerp column) (> column 0))))
+    (error "column is not a column"))
+   ((or (string-suffix-p "/" path) (string-suffix-p "\\" path))
+    (error "path is not a file"))
+   ((not (harmless-session-p session))
+    (error "No Harmless session")))
+  (let ((full (harmless-tools-fs-resolve session path)))
+    (cond
+     ((or (harmless-filesystem-root-p full)
+          (harmless-extra-root-text-p full))
+      (error "path is the filesystem root"))
+     ((or (string-suffix-p "/" full)
+          (string-suffix-p "\\" full)
+          (file-directory-p full))
+      (error "path is not a file"))
+     ((not (and (file-regular-p full) (file-readable-p full)))
+      (error "Cannot read %s" path)))
+    (harmless-visit--show (find-file-noselect full) line column)
+    full))
 
 (defun harmless-editor-join (text note)
   "Return TEXT with NOTE appended, or TEXT when NOTE is empty.

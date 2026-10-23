@@ -39,6 +39,9 @@
 ;; Read-only session transcript plus a separate prompt window.
 ;; Tool runs are collapsed folds.  TAB toggles the entry at point,
 ;; Left closes it, Right opens it, and S-TAB toggles every entry.
+;; FILE:LINE and FILE:LINE:COLUMN in a reply or in tool output are
+;; buttons.  They open that position in the other window and do not
+;; take `next-error' from another buffer.
 
 ;;; Code:
 
@@ -51,6 +54,7 @@
 (require 'harmless-editor)
 (require 'harmless-perm)
 (require 'harmless-md)
+(require 'button)
 
 (declare-function harmless-dashboard "harmless-dashboard")
 (declare-function harmless-menu "harmless-transient")
@@ -626,7 +630,8 @@ PARENT is the enclosing group id, or nil."
                              invisible harmless
                              rear-nonsticky t))
       (when parent
-        (put-text-property body-beg (point) 'harmless-group-body parent)))))
+        (put-text-property body-beg (point) 'harmless-group-body parent))
+      (harmless-ui--buttonize-locations body-beg (point)))))
 
 (defun harmless-ui--partition-calls (calls)
   "Split CALLS into (group . CALLS) runs and (single . CALL) items."
@@ -807,7 +812,8 @@ RESULTS is an alist of call id to result text."
              rear-nonsticky t
              ,@(when parent `(harmless-group-body ,parent))))
           (when (or child-collapsed parent-collapsed)
-            (put-text-property (car region) (point) 'invisible 'harmless)))
+            (put-text-property (car region) (point) 'invisible 'harmless))
+          (harmless-ui--buttonize-locations (car region) (point)))
         (harmless-ui--refresh-detail id content)))))
 
 (defun harmless-ui--all-fold-ids ()
@@ -870,6 +876,74 @@ If that fold is already collapsed, collapse its parent group."
     (dolist (id ids)
       (harmless-ui--set-collapsed id (not any-collapsed)))))
 
+(defun harmless-ui--location-word-p (char)
+  "Return non-nil if CHAR can sit inside a path token."
+  (and char
+       (or (and (>= char ?a) (<= char ?z))
+           (and (>= char ?A) (<= char ?Z))
+           (and (>= char ?0) (<= char ?9))
+           (memq char '(?/ ?\\ ?. ?_ ?- ?+ ?~)))))
+
+(defun harmless-ui--location-start-p (pos)
+  "Return non-nil if POS can start a FILE:LINE button."
+  (or (<= pos (point-min))
+      (not (harmless-ui--location-word-p (char-before pos)))))
+
+(defun harmless-ui--location-end-p (pos)
+  "Return non-nil if a location token may end at POS."
+  (or (>= pos (point-max))
+      (let ((char (char-after pos)))
+        (not (or (and (>= char ?a) (<= char ?z))
+                 (and (>= char ?A) (<= char ?Z))
+                 (and (>= char ?0) (<= char ?9))
+                 (memq char '(?_ ?- ?+)))))))
+
+(defun harmless-ui--location-url-p (beg)
+  "Return non-nil if the text at BEG is part of a URL."
+  (or (and (>= (- beg (point-min)) 3)
+           (string= (buffer-substring-no-properties (- beg 3) beg) "://"))
+      (and (< (1+ beg) (point-max))
+           (eq (char-after beg) ?/)
+           (eq (char-after (1+ beg)) ?/))))
+
+(defun harmless-ui-visit-button (button)
+  "Visit the FILE:LINE location stored on BUTTON.
+The session is the transcript's `harmless--session'."
+  (let ((spec (button-get button 'harmless-visit)))
+    (unless (consp spec)
+      (error "Path is empty"))
+    (harmless-visit-location harmless--session
+                             (nth 0 spec)
+                             (nth 1 spec)
+                             (nth 2 spec))))
+
+(defun harmless-ui--buttonize-locations (start end)
+  "Turn FILE:LINE text between START and END into visit buttons.
+The buttons stay in this buffer.  They do not set
+`next-error-function' and do not change `next-error-last-buffer'."
+  (when (and (integerp start) (integerp end) (< start end))
+    (save-excursion
+      (goto-char start)
+      (while (and (< (point) end)
+                  (re-search-forward harmless-visit-location-regexp end t))
+        (let ((beg (match-beginning 0))
+              (match-end (match-end 0)))
+          (if (not (and (harmless-ui--location-start-p beg)
+                        (harmless-ui--location-end-p match-end)
+                        (not (harmless-ui--location-url-p beg))))
+              (goto-char (min (1+ beg) end))
+            (let ((parsed (harmless-visit-parse
+                           (buffer-substring-no-properties beg match-end))))
+              (when parsed
+                (make-text-button
+                 beg match-end
+                 'action #'harmless-ui-visit-button
+                 'harmless-visit parsed
+                 'follow-link t
+                 'help-echo "Visit this location"
+                 'rear-nonsticky t))
+              (goto-char match-end))))))))
+
 (defun harmless-ui--insert-assistant-body (msg)
   "Insert MSG's reasoning and Markdown at point."
   (when-let* ((r (plist-get msg :reasoning)))
@@ -878,7 +952,9 @@ If that fold is already collapsed, collapse its parent group."
                           'face 'harmless-tool-face))))
   (let ((content (plist-get msg :content)))
     (when (and content (not (string-empty-p content)))
-      (harmless-md-insert content)
+      (let ((start (point)))
+        (harmless-md-insert content)
+        (harmless-ui--buttonize-locations start (point)))
       (unless (bolp)
         (insert "\n"))
       (insert "\n"))))

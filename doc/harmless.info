@@ -314,6 +314,24 @@ through.  It asks before creating the new session.  The copy starts with
 empty token totals.  A turn that is streaming or waiting on permission
 is left alone.  The same command is ‘f’ in the Harmless menu.
 
+   A path written as ‘FILE:LINE’ or ‘FILE:LINE:COLUMN’ in a reply or in
+tool output is a button.  ‘mouse-1’ or ‘RET’ on that button opens the
+file at that position in the other window.  The column starts at 1.
+With no column, the button opens column 1.  The button stays in the
+transcript.  It does not take ‘next-error’ from another buffer.  ‘RET’
+elsewhere in the transcript still moves to the prompt.
+
+   A path outside the project and outside an extra directory is refused:
+‘Path escapes project: ’, followed by the path.  Nil, ‘""’, and
+whitespace are refused: ‘Path is empty’.  A value that is not text is
+refused: ‘path must be a string’.  ‘/’, ‘c:/’, and a drive root are
+refused and are not visited: ‘path is the filesystem root’.  A missing
+file is refused: ‘Cannot read ’, followed by the path.  A directory and
+a trailing slash are refused: ‘path is not a file’.  Line 0, a negative
+line, and a line that is not a positive integer are refused: ‘line is
+not a line’.  A column that is not a positive integer is refused:
+‘column is not a column’.
+
    Click the model name in the header line to change the connection, the
 model, and the effort.  *Note Models::.
 
@@ -3616,6 +3634,7 @@ Command Index
 * harmless-tool-review:                  Review.               (line  6)
 * harmless-tool-write-plan:              Plan mode.            (line  6)
 * harmless-usage:                        Usage.                (line  6)
+* harmless-visit-location:               Transcript.           (line 98)
 * harmless-worktree:                     Worktrees.            (line  6)
 * harmless-worktree-exit:                Worktrees.            (line  6)
 
@@ -3664,55 +3683,55 @@ Node: Installation3348
 Node: Starting5238
 Node: Sessions5777
 Node: Transcript8958
-Node: Prompt12719
-Node: Permissions15932
-Node: Accounts24677
-Node: Models27035
-Node: Tools28131
-Node: File tools33066
-Node: Search39398
-Node: Shell41336
-Node: Checkpoints47154
-Node: Code execution51228
-Node: Questions54818
-Node: Subagents55610
-Node: Workflows60050
-Node: Worktrees65093
-Node: Messages68277
-Node: Web search71196
-Node: Fetch a page72066
-Node: X search73313
-Node: MCP75752
-Node: Computer use78496
-Node: Monitors80580
-Node: Schedules83655
-Node: Todos86151
-Node: Review88820
-Node: Language server92418
-Node: Instructions95645
-Node: Skills100167
-Node: Plugins104355
-Node: Output styles107207
-Node: Image generation109260
-Node: Headless111131
-Node: Pages113819
-Node: Team116656
-Node: Machines137818
-Node: People140685
-Node: Profiles142972
-Node: Health145628
-Node: Fleet147640
-Node: Scope148406
-Node: Context152414
-Node: Memory155549
-Node: Plan mode159357
-Node: Usage162510
-Node: Files163529
-Node: Keys167682
-Node: Trouble169393
-Node: Manual170647
-Node: Command Index171352
-Node: Key Index182003
+Node: Prompt13845
+Node: Permissions17058
+Node: Accounts25803
+Node: Models28161
+Node: Tools29257
+Node: File tools34192
+Node: Search40524
+Node: Shell42462
+Node: Checkpoints48280
+Node: Code execution52354
+Node: Questions55944
+Node: Subagents56736
+Node: Workflows61176
+Node: Worktrees66219
+Node: Messages69403
+Node: Web search72322
+Node: Fetch a page73192
+Node: X search74439
+Node: MCP76878
+Node: Computer use79622
+Node: Monitors81706
+Node: Schedules84781
+Node: Todos87277
+Node: Review89946
+Node: Language server93544
+Node: Instructions96771
+Node: Skills101293
+Node: Plugins105481
+Node: Output styles108333
+Node: Image generation110386
+Node: Headless112257
+Node: Pages114945
+Node: Team117782
+Node: Machines138944
+Node: People141811
+Node: Profiles144098
+Node: Health146754
+Node: Fleet148766
+Node: Scope149532
+Node: Context153540
+Node: Memory156675
+Node: Plan mode160483
+Node: Usage163636
+Node: Files164655
+Node: Keys168808
+Node: Trouble170519
+Node: Manual171773
+Node: Command Index172478
+Node: Key Index183202
 
 End Tag Table
 

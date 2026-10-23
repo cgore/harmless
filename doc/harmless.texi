@@ -367,6 +367,27 @@ session.  The copy starts with empty token totals.  A turn that is
 streaming or waiting on permission is left alone.  The same command is
 @kbd{f} in the Harmless menu.
 
+@findex harmless-visit-location
+A path written as @code{FILE:LINE} or @code{FILE:LINE:COLUMN} in a
+reply or in tool output is a button.  @kbd{mouse-1} or @kbd{RET} on
+that button opens the file at that position in the other window.
+The column starts at 1.  With no column, the button opens column 1.
+The button stays in the transcript.  It does not take
+@code{next-error} from another buffer.  @kbd{RET} elsewhere in the
+transcript still moves to the prompt.
+
+A path outside the project and outside an extra directory is
+refused: @samp{Path escapes project: }, followed by the path.  Nil,
+@code{""}, and whitespace are refused: @samp{Path is empty}.  A
+value that is not text is refused: @samp{path must be a string}.
+@code{/}, @code{c:/}, and a drive root are refused and are not
+visited: @samp{path is the filesystem root}.  A missing file is
+refused: @samp{Cannot read }, followed by the path.  A directory
+and a trailing slash are refused: @samp{path is not a file}.  Line
+0, a negative line, and a line that is not a positive integer are
+refused: @samp{line is not a line}.  A column that is not a
+positive integer is refused: @samp{column is not a column}.
+
 Click the model name in the header line to change the connection, the
 model, and the effort.  @xref{Models}.
 
